@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const gastoController = require('../Controllers/Gasto.controller.js');
-const verifyIDInterfazOperacion = require('../Middlewares/Verificacion/verifyIDInterfazOperacion.js');
+const verifyIDInterfazOperacion = require('../Middlewares/Verification/verifyIDInterfazOperacion.js');
 
 router.get(`/gasto/:idinterfazoperacion`, verifyIDInterfazOperacion, gastoController.getGastos);
 

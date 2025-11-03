@@ -1,7 +1,7 @@
 const pool = require('../DB/dbConnection.js');
 const gastoController = {};
-const hasAccessToInterfazOperacion = require('../Middlewares/Verificacion/hasAccessToInterfazOperacion.js')
-const hasRoleInterfazOperacion = require('../Middlewares/Verificacion/hasRoleInterfazOperacion.js');
+const hasAccessToInterfazOperacion = require('../Middlewares/Verification/hasAccessToInterfazOperacion.js')
+const hasRoleInterfazOperacion = require('../Middlewares/Verification/hasRoleInterfazOperacion.js');
 
 gastoController.getGastos = async (req, res, next) => {
   try {
