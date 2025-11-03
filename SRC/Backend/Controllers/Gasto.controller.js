@@ -1,17 +1,25 @@
+//Importacion de dependencias
 const pool = require('../DB/dbConnection.js');
 const gastoController = {};
 const hasAccessToInterfazOperacion = require('../Middlewares/Verification/hasAccessToInterfazOperacion.js')
 const hasRoleInterfazOperacion = require('../Middlewares/Verification/hasRoleInterfazOperacion.js');
 
+
+//Obtener todos los gastos
+//Filtrado por estado, categoria, responsableGasto, moneda, metodopago, submetodopago, comentario, rango de fechas, montoMin, montoMax, monedaFiltro del montoMin y montoMax
+//Paginacion con offset y limit
 gastoController.getGastos = async (req, res, next) => {
   try {
+    //Parametros requeridos para la busqueda
     const { idinterfazoperacion } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
 
+    //Verificacion de acceso a la interfaz de operacion
     if (!(await hasAccessToInterfazOperacion(req.usuario.idusuario, idinterfazoperacionNum))) {
-      return res.status(403).json({ message: 'No tienes acceso a esta cuenta.' });
+      return res.status(403).json({ message: 'No tienes acceso a esta interfaz de operacion' });
     }
 
+    //Definicion de filtros opcionales
     const {
       estado,
       categoria,
@@ -32,6 +40,7 @@ gastoController.getGastos = async (req, res, next) => {
     let filters = [];
     let values = [idinterfazoperacion];
 
+    //Construccion del filtrado dinamico
     const buildFilter = (field, queryParam, alias) => {
       if (queryParam) {
         const terms = queryParam
@@ -116,24 +125,34 @@ gastoController.getGastos = async (req, res, next) => {
       ORDER BY g.fecha DESC
       OFFSET $${values.length + 1} ROWS FETCH FIRST $${values.length + 2} ROWS ONLY;
     `;
+
+    // Agregar offset y limit a los valores
     values.push(offset, limit);
+
+    // Ejecucion de la consulta
     const result = await pool.query(query, values);
+
+    // Devolucion del resultado
     res.status(200).json(result.rows);
   } catch (err) {
     next(err);
   }
 };
 
+//Obtener gasto por ID
 gastoController.getGastobyID = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    //Parametros requeridos para la busqueda
+    const { idgasto } = req.params;
     const { idinterfazoperacion } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
 
+    //Verificacion de acceso a la interfaz de operacion
     if (!(await hasAccessToInterfazOperacion(req.usuario.idusuario, idinterfazoperacionNum))) {
-      return res.status(403).json({ message: 'No tienes acceso a esta cuenta' });
+      return res.status(403).json({ message: 'No tienes acceso a esta interfaz de operacion' });
     }
 
+    //Consulta SQL para obtener el gasto por ID
     const result = await pool.query(`
     SELECT g.id,
         g.fecha,
@@ -155,32 +174,42 @@ gastoController.getGastobyID = async (req, res, next) => {
       RIGHT JOIN gasto g ON c.idcategoria = g.idcategoria
       LEFT JOIN submetodopago smp ON smp.idsubmetodopago = g.idsubmetodopago
       WHERE c.idinterfazoperacion = $1 and g.idgasto = $2
-      `, [idinterfazoperacion, id]);
-    if (result.rows.length === 0)
+      `, [idinterfazoperacion, idgasto]);
+    //Si no se encuentra el gasto, retornar 404
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: "Gasto not found" });
+    }
+    //Caso contrario, retornar el gasto
     res.json(result.rows);
   } catch (error) {
     next(error);
   }
 };
 
+//Crear nuevo gasto
 gastoController.createGasto = async (req, res, next) => {
   try {
+    //Parametros requeridos para la creacion
     const { idinterfazoperacion } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
+    //Roles permitidos para crear un gasto
     const allowedRoles = ['Administrador', 'Invitado'];
 
+    //Verificacion de acceso a la interfaz de operacion
     if (!(await hasAccessToInterfazOperacion(req.usuario.idusuario, idinterfazoperacionNum))) {
-      return res.status(403).json({ message: 'No tienes acceso a esta cuenta' });
+      return res.status(403).json({ message: 'No tienes acceso a esta interfaz de operacion' });
     }
 
+    //Verificacion de rol permitido
     const userRole = await hasRoleInterfazOperacion(req.usuario.idusuario, idinterfazoperacion, allowedRoles);
     if (!userRole) {
       return res.status(403).json({ message: 'No tienes acceso a esta funcionalidad' });
     }
 
+    //Parametros del cuerpo de la solicitud para la creacion del gasto
     const { fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago } = req.body;
 
+    //Insert para la creacion del gasto
     const newGasto = await pool.query(`
       INSERT INTO gasto (fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, responsableingresargasto)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -188,30 +217,37 @@ gastoController.createGasto = async (req, res, next) => {
     `, [
       fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, req.usuario.idusuario]);
 
+    //Devolucion del nuevo gasto creado
     res.status(200).json(newGasto.rows[0]);
-
   } catch (err) {
     next(err);
   }
 };
 
+//Actualizar gasto
 gastoController.updateGasto = async (req, res, next) => {
   try {
+    //Parametros requeridos para la actualizacion
     const { idinterfazoperacion, idgasto } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
+    //Roles permitidos para actualizar un gasto
     const allowedRoles = ['Administrador', 'Invitado'];
 
+    //Verificacion de acceso a la interfaz de operacion
     if (!(await hasAccessToInterfazOperacion(req.usuario.idusuario, idinterfazoperacionNum))) {
-      return res.status(403).json({ message: 'No tienes acceso a esta cuenta' });
+      return res.status(403).json({ message: 'No tienes acceso a esta interfaz de operacion' });
     }
 
+    //Verificacion de rol permitido
     const userRole = await hasRoleInterfazOperacion(req.usuario.idusuario, idinterfazoperacion, allowedRoles);
     if (!userRole) {
       return res.status(403).json({ message: 'No tienes acceso a esta funcionalidad' });
     }
 
+    //Parametros del cuerpo de la solicitud para la actualizacion del gasto
     const { fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago } = req.body;
 
+    //Update para la actualizacion del gasto mediante el idgasto
     const updateGasto = await pool.query(`
       UPDATE gasto 
       SET fecha = $1, 
@@ -229,31 +265,38 @@ gastoController.updateGasto = async (req, res, next) => {
     `, [
       fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, idinterfazoperacion, idgasto]);
 
+    //Si no se encuentra el gasto a actualizar, retornar 404
     if (updateGasto.rows.length === 0) {
       return res.status(404).json({ message: 'Gasto no encontrado' });
     }
-
+    //Devolucion del gasto actualizado
     return res.json(updateGasto.rows[0]);
   } catch (error) {
     next(error);
   }
 };
 
+//Eliminar gasto (cambiar estado a false)
 gastoController.deleteGasto = async (req, res, next) => {
   try {
+    //Parametros requeridos para la eliminacion
     const { idinterfazoperacion, idgasto } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
+    //Roles permitidos para eliminar un gasto
     const allowedRoles = ['Administrador', 'Invitado'];
 
+    //Verificacion de acceso a la interfaz de operacion
     if (!(await hasAccessToInterfazOperacion(req.usuario.idusuario, idinterfazoperacionNum))) {
-      return res.status(403).json({ message: 'No tienes acceso a esta cuenta' });
+      return res.status(403).json({ message: 'No tienes acceso a esta interfaz de operacion' });
     }
 
+    //Verificacion de rol permitido
     const userRole = await hasRoleInterfazOperacion(req.usuario.idusuario, idinterfazoperacion, allowedRoles);
     if (!userRole) {
       return res.status(403).json({ message: 'No tienes acceso a esta funcionalidad' });
     }
 
+    //Delete logico para cambiar el estado del gasto a false
     const deleteGasto = await pool.query(`
       UPDATE gasto
       SET estado = false
@@ -263,10 +306,12 @@ gastoController.deleteGasto = async (req, res, next) => {
       RETURNING *
     `, [idinterfazoperacion, idgasto]);
 
+    //Si no se encuentra el gasto a eliminar, retornar 404
     if (deleteGasto.rows.length === 0) {
       return res.status(404).json({ message: 'Gasto no encontrado.' });
     }
 
+    //Devolucion de exito sin contenido
     return res.sendStatus(204);
   } catch (error) {
     next(error);

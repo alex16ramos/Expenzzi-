@@ -1,5 +1,8 @@
 const pool = require('../../DB/dbConnection.js');
 
+// Middleware para verificar si el idusario tiene acceso a la interfaz operacion
+//Esto se realiza mediante una busqueda en la tabla usuariointerfaz, verificando si existe dicha tupla de idusuario e idinterfazoperacion
+//Esto devuelve true si tiene acceso, false si no lo tiene
 const hasAccessToInterfazOperacion = async (idinterfazoperacion, idusuario) => {
     const result = await pool.query(`
         SELECT 1
