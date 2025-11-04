@@ -128,7 +128,6 @@ gastoController.getGastos = async (req, res, next) => {
 
     // Agregar offset y limit a los valores
     values.push(offset, limit);
-
     // Ejecucion de la consulta
     const result = await pool.query(query, values);
 

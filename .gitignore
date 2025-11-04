@@ -1,3 +1,7 @@
-# local env files
-.env
-/node_modules
+DB_NAME=ExpenzziDatabase
+DB_HOST=ep-gentle-shadow-ace826sl-pooler.sa-east-1.aws.neon.tech
+DB_USER=Dev
+DB_PASS=npg_8zb3exHGmBdo
+DB_PORT=5432
+PORT=3000
+PASSWORD_SECRET=4'qt)p[bn9qBzoPW~ZHLq{4XkpA9yH
