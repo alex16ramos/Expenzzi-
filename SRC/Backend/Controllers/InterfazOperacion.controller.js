@@ -15,7 +15,7 @@ interfazoperacionController.getAllInterfazOperacionbyIdUsuario = async (req, res
     const { estado, nombre, rol } = req.query;
 
     //Verificacion de acceso, el usuario solo puede ver sus propias interfaces de operacion
-    if (req.usuario.idusuario !== Number(idusuario)) {
+    if (req.usuario.idusuario !== idusuario) {
       return res.status(403).json({ message: 'No tienes acceso a este Usuario.' });
     }
 
@@ -59,7 +59,7 @@ interfazoperacionController.getAllInterfazOperacionbyIdUsuario = async (req, res
             ON ui.idusuario = u.idusuario
         WHERE 
             u.idusuario = $1
-            AND ui.fechasalida IS NULL
+            AND (ui.fechasalida IS NULL)
             ${filters.length > 0 ? 'AND ' + filters.join(' AND ') : ''}
         ORDER BY ui.fechaunion DESC;
     `;
@@ -249,9 +249,22 @@ interfazoperacionController.deleteInterfazOperacion = async (req, res, next) => 
     //Roles permitidos para acceder a esta funcionalidad
     const allowedRoles = ['Administrador'];
 
-    //Verificacion de rol del usuario igual a allowedRoles
-    const userRole = await hasRoleInterfazOperacion(req.usuario.idusuario, idinterfazoperacion, allowedRoles);
-    if (!userRole) {
+    //Función para verificar si el usuario tiene un rol permitido en la interfaz operacion este inactica o activa dicha interfaz
+    const result = await pool.query(  
+            `SELECT ui.rol AS role
+            FROM usuariointerfaz ui
+            JOIN interfazoperacion i 
+                ON ui.idinterfazoperacion = i.idinterfazoperacion
+            JOIN usuario u 
+                ON ui.idusuario = u.idusuario
+            WHERE 
+                i.idinterfazoperacion = $1
+                AND u.idusuario = $2;
+        `, [idinterfazoperacion, req.usuario.idusuario]);
+
+    //Obtener el rol del usuario
+    const userRole = result.rows[0].role;
+    if (!allowedRoles.includes(userRole)) {
       return res.status(403).json({ message: 'No tienes acceso a esta funcionalidad' });
     }
 

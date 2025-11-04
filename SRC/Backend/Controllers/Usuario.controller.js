@@ -50,8 +50,8 @@ usuarioController.login = async (req, res) => {
                 //Token de acceso con datos del usuario y expiración de 15 días
                 const accessToken = jwt.sign(
                     {
-                        idusuario: usuario.idusuario,
-                        nombreusuario: usuario.nombreusuario
+                        idusuario: user.idusuario,
+                        nombreusuario: user.nombreusuario
                     },
                     process.env.PASSWORD_SECRET,
                     { expiresIn: '15d' }
