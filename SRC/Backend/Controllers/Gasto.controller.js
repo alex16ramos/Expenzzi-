@@ -65,11 +65,19 @@ gastoController.getGastos = async (req, res, next) => {
     }
 
     buildFilter(categoria, 'c.nombre');
-    buildFilter(responsableGasto, 'g.responsableGasto');
-    buildFilter(moneda, 'g.moneda');
     buildFilter(metodopago, 'smp.metodo');
     buildFilter(submetodopago, 'smp.nombre');
     buildFilter(comentario, 'g.comentario');
+
+    if (moneda) {
+      filters.push(`g.moneda = $${values.length + 1}`);
+      values.push(moneda);
+    }
+
+    if (responsableGasto) {
+      filters.push(`g.responsablegasto = $${values.length + 1}`);
+      values.push(responsableGasto);
+    }
 
     // Filtros por rango de fechas
     if (fechaDesde) {
@@ -91,11 +99,11 @@ gastoController.getGastos = async (req, res, next) => {
 
     // Filtros por valores monetarios
     if (!isNaN(montoMinValid) && monedaFiltro) {
-      filters.push(`g.importes${`importe`,monedaFiltro.toLowerCase()} >= $${values.length + 1}`);
+      filters.push(`(g.importes).importe${monedaFiltro.toLowerCase()} >= $${values.length + 1}`);
       values.push(montoMinValid);
     }
     if (!isNaN(montoMaxValid) && monedaFiltro) {
-      filters.push(`g.importes${`importe`,monedaFiltro.toLowerCase()} <= $${values.length + 1}`);
+      filters.push(`(g.importes).importe${monedaFiltro.toLowerCase()} <= $${values.length + 1}`);
       values.push(montoMaxValid);
     }
 
@@ -296,7 +304,7 @@ gastoController.deleteGasto = async (req, res, next) => {
     //Delete logico para cambiar el estado del gasto a false
     const deleteGasto = await pool.query(`
       UPDATE gasto
-      SET estado = false
+      SET estado = not(estado)
       FROM categoria c
       JOIN gasto on gasto.idcategoria = c.idcategoria AND c.idinterfazoperacion = $1
       WHERE gasto.idgasto = $2

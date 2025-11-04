@@ -55,9 +55,17 @@ ingresoController.getIngresos = async (req, res, next) => {
       values.push(estado);
     }
 
-    buildFilter(responsableIngreso, 'i.responsableingreso');
-    buildFilter(moneda, 'i.moneda');
     buildFilter(comentario, 'i.comentario');
+
+    if (moneda) {
+      filters.push(`i.moneda = $${values.length + 1}`);
+      values.push(moneda);
+    }
+
+    if (responsableIngreso) {
+      filters.push(`i.responsableingreso = $${values.length + 1}`);
+      values.push(responsableIngreso);
+    }
 
     // Fechas
     if (fechaDesde) {
@@ -79,11 +87,11 @@ ingresoController.getIngresos = async (req, res, next) => {
 
     // Filtros por valores monetarios
     if (!isNaN(montoMinValid) && monedaFiltro) {
-      filters.push(`i.importes${`importe`, monedaFiltro.toLowerCase()} >= $${values.length + 1}`);
+      filters.push(`(i.importes).importe${ monedaFiltro.toLowerCase()} >= $${values.length + 1}`);
       values.push(montoMinValid);
     }
     if (!isNaN(montoMaxValid) && monedaFiltro) {
-      filters.push(`i.importes${`importe`, monedaFiltro.toLowerCase()} <= $${values.length + 1}`);
+      filters.push(`(i.importes).importe${ monedaFiltro.toLowerCase()} <= $${values.length + 1}`);
       values.push(montoMaxValid);
     }
 
@@ -264,7 +272,7 @@ ingresoController.deleteIngreso = async (req, res, next) => {
     //Delete logico para cambiar el estado del gasto a false
     const deleteIngreso = await pool.query(`
       UPDATE ingreso
-      SET estado = false
+      SET estado = not(estado)
       WHERE idingreso = $1 AND idinterfazoperacion = $2
       RETURNING *
     `, [idingreso, idinterfazoperacion]);

@@ -115,13 +115,13 @@ categoriaController.createCategoria = async (req, res, next) => {
     }
 
     //Datos del cuerpo 
-    const { nombre, importelimite, moneda } = req.body;
+    const { nombre } = req.body;
 
     const newCategoria = await pool.query(`
-      INSERT INTO categoria (nombre, importelimite, moneda, idinterfazoperacion, estado)
-      VALUES ($1, $2, $3, $4, true)
+      INSERT INTO categoria (nombre, idinterfazoperacion, estado)
+      VALUES ($1, $2, true)
       RETURNING *
-    `, [nombre, importelimite, moneda, idinterfazoperacion]);
+    `, [nombre, idinterfazoperacion]);
 
     res.status(201).json(newCategoria.rows[0]);
   } catch (err) {
@@ -145,17 +145,15 @@ categoriaController.updateCategoria = async (req, res, next) => {
       return res.status(403).json({ message: 'No tienes acceso a esta funcionalidad' });
     }
 
-    const { nombre, importelimite, moneda } = req.body;
+    const { nombre } = req.body;
 
     const updateCategoria = await pool.query(`
       UPDATE categoria
       SET nombre = $1,
-          importelimite = $2,
-          moneda = $3,
           estado = true
-      WHERE idcategoria = $4 AND idinterfazoperacion = $5
+      WHERE idcategoria = $2 AND idinterfazoperacion = $3
       RETURNING *
-    `, [nombre, importelimite, moneda, idcategoria, idinterfazoperacion]);
+    `, [nombre, idcategoria, idinterfazoperacion]);
 
     if (updateCategoria.rows.length === 0) {
       return res.status(404).json({ message: 'Categoría no encontrada' });
@@ -185,7 +183,7 @@ categoriaController.deleteCategoria = async (req, res, next) => {
 
     const deleteCategoria = await pool.query(`
       UPDATE categoria
-      SET estado = false
+      SET estado = not(estado)
       WHERE idcategoria = $1 AND idinterfazoperacion = $2
       RETURNING *
     `, [idcategoria, idinterfazoperacion]);

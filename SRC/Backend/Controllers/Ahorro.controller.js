@@ -57,9 +57,17 @@ ahorroController.getAhorros = async (req, res, next) => {
       values.push(estado);
     }
 
-    buildFilter(moneda, 'a.moneda');
     buildFilter(comentario, 'a.comentario');
-    buildFilter(periodoaporte, 'a.periodoaporte');
+
+    if (moneda) {
+      filters.push(`a.moneda = $${values.length + 1}`);
+      values.push(moneda);
+    }
+
+    if (periodoaporte) {
+      filters.push(`a.periodoaporte = $${values.length + 1}`);
+      values.push(periodoaporte);
+    }
 
     // Filtros por rango de fechas
     if (fechaDesde) {
@@ -81,11 +89,11 @@ ahorroController.getAhorros = async (req, res, next) => {
 
     // Filtros por valores monetarios
     if (!isNaN(montoMinValid) && monedaFiltro) {
-      filters.push(`a.importes${`importe`, monedaFiltro.toLowerCase()} >= $${values.length + 1}`);
+      filters.push(`(a.importes).importe${monedaFiltro.toLowerCase()} >= $${values.length + 1}`);
       values.push(montoMinValid);
     }
     if (!isNaN(montoMaxValid) && monedaFiltro) {
-      filters.push(`a.importes${`importe`, monedaFiltro.toLowerCase()} <= $${values.length + 1}`);
+      filters.push(`(a.importes).importe${monedaFiltro.toLowerCase()} <= $${values.length + 1}`);
       values.push(montoMaxValid);
     }
 
@@ -268,7 +276,7 @@ ahorroController.deleteAhorro = async (req, res, next) => {
     //Delete logico para cambiar el estado del ahorro a false
     const deleteAhorro = await pool.query(`
       UPDATE ahorro
-      SET estado = false
+      SET estado = not(estado)
       WHERE idahorro = $1 AND idinterfazoperacion = $2
       RETURNING *
     `, [idahorro, idinterfazoperacion]);
