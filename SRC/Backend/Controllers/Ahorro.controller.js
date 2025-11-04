@@ -98,9 +98,9 @@ ahorroController.getAhorros = async (req, res, next) => {
              a.importe,
              a.comentario,
              a.periodoaporte AS "periodoAporte",
-             a.importes(importeARS) AS "ARS",
-             a.importes(importeUSD) AS "USD",
-             a.importes(importeUYU) AS "UYU",
+            (a.importes).importeARS AS "ARS",
+            (a.importes).importeUSD AS "USD",
+            (a.importes).importeUYU AS "UYU",
              a.estado
       FROM ahorro a
       WHERE a.idinterfazoperacion = $1
@@ -141,9 +141,9 @@ ahorroController.getAhorroByID = async (req, res, next) => {
              a.importe,
              a.comentario,
              a.periodoaporte AS "periodoAporte",
-             a.importes(importeARS) AS "ARS",
-             a.importes(importeUSD) AS "USD",
-             a.importes(importeUYU) AS "UYU",
+            (a.importes).importeARS AS "ARS",
+            (a.importes).importeUSD AS "USD",
+            (a.importes).importeUYU AS "UYU",
              a.estado
       FROM ahorro a
       WHERE a.idinterfazoperacion = $1 AND a.idahorro = $2
