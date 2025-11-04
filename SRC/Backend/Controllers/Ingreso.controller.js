@@ -95,9 +95,9 @@ ingresoController.getIngresos = async (req, res, next) => {
              i.moneda,
              i.importe,
              i.comentario,
-             i.importes(importeARS) AS "ARS",
-             i.importes(importeUSD) AS "USD",
-             i.importes(importeUYU) AS "UYU",
+             (i.importes).importeARS AS "ARS",
+             (i.importes).importeUSD AS "USD",
+             (i.importes).importeUYU AS "UYU",
              i.estado
       FROM ingreso i
       WHERE i.idinterfazoperacion = $1
@@ -138,9 +138,9 @@ ingresoController.getIngresobyID = async (req, res, next) => {
              i.moneda,
              i.importe,
              i.comentario,
-             i.importes(importeARS) AS "ARS",
-             i.importes(importeUSD) AS "USD",
-             i.importes(importeUYU) AS "UYU",
+             (i.importes).importeARS AS "ARS",
+             (i.importes).importeUSD AS "USD",
+             (i.importes).importeUYU AS "UYU",
              i.estado
       FROM ingreso i
       WHERE i.idinterfazoperacion = $1 AND i.idingreso = $2
