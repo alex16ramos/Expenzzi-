@@ -1,22 +1,13 @@
 // Importación de dependencias
 const pool = require('../DB/dbConnection.js');
-const monedaController = {};
-const hasAccessToInterfazOperacion = require('../Middlewares/Verification/hasAccessToInterfazOperacion.js');
+const cambioController = {};
 
 //Obtener último cambio o el de una fecha específica
-monedaController.getCambio = async (req, res, next) => {
+cambioController.getCambio = async (req, res, next) => {
   try {
-    const { idinterfazoperacion } = req.params;
-    const idinterfazoperacionNum = Number(idinterfazoperacion);
     const { fecha } = req.query;
 
-    // Verificación de acceso a la interfaz
-    if (!(await hasAccessToInterfazOperacion(req.usuario.idusuario, idinterfazoperacionNum))) {
-      return res.status(403).json({ message: 'No tienes acceso a esta interfaz de operación' });
-    }
-
     let query = '';
-    let values = [idinterfazoperacion];
     let message = '';
 
     if (fecha) {
@@ -32,7 +23,7 @@ monedaController.getCambio = async (req, res, next) => {
           c.cambiarsuyu AS "cambioARSUYU",
           c.cambiarsusd AS "cambioARSUSD"
         FROM cambio c
-        WHERE c.idinterfazoperacion = $1 AND c.fecha = $2
+        WHERE c.fecha = $2
         ORDER BY c.fecha DESC
         LIMIT 1;
       `;
@@ -51,7 +42,6 @@ monedaController.getCambio = async (req, res, next) => {
           c.cambiarsuyu AS "cambioARSUYU",
           c.cambiarsusd AS "cambioARSUSD"
         FROM cambio c
-        WHERE c.idinterfazoperacion = $1
         ORDER BY c.fecha DESC
         LIMIT 1;
       `;
@@ -74,4 +64,4 @@ monedaController.getCambio = async (req, res, next) => {
   }
 };
 
-module.exports = monedaController;
+module.exports = cambioController;

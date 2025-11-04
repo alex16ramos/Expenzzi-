@@ -59,15 +59,19 @@ gastoController.getGastos = async (req, res, next) => {
     };
 
     // Filtros dinámicos
-    if (estado) {
-      filters.push(`(g.nombre = $${values.length + 1})`);
+    if (estado !=null) {
+      filters.push(`(g.estado = $${values.length + 1})`);
       values.push(estado);
     }
 
     buildFilter(categoria, 'c.nombre');
-    buildFilter(metodopago, 'smp.metodo');
     buildFilter(submetodopago, 'smp.nombre');
     buildFilter(comentario, 'g.comentario');
+
+   if (metodopago) {
+      filters.push(`smp.metodo = $${values.length + 1}`);
+      values.push(metodopago);
+    }
 
     if (moneda) {
       filters.push(`g.moneda = $${values.length + 1}`);
@@ -109,7 +113,7 @@ gastoController.getGastos = async (req, res, next) => {
 
     // Consulta SQL construida dinámicamente
     const query = `
-      SELECT g.id,
+      SELECT g.idgasto,
         g.fecha,
         g.responsablegasto as "responsableGasto",
         g.moneda as "monedamonto",
@@ -161,7 +165,7 @@ gastoController.getGastobyID = async (req, res, next) => {
 
     //Consulta SQL para obtener el gasto por ID
     const result = await pool.query(`
-    SELECT g.id,
+    SELECT g.idgasto,
         g.fecha,
         g.responsablegasto as "responsableGasto",
         g.moneda as "monedamonto",
@@ -255,18 +259,17 @@ gastoController.updateGasto = async (req, res, next) => {
 
     //Update para la actualizacion del gasto mediante el idgasto
     const updateGasto = await pool.query(`
-      UPDATE gasto 
+      UPDATE gasto g
       SET fecha = $1, 
           responsablegasto = $2, 
           moneda = $3, 
           importe = $4, 
           comentario = $5, 
           idcategoria = $6, 
-          idsubmetodopago = $7
+          idsubmetodopago = $7,
           estado = true
       FROM categoria c
-      JOIN gasto on $6 = c.idcategoria AND c.idinterfazoperacion = $8
-      WHERE gasto.idgasto = $9
+      WHERE g.idgasto = $9 AND c.idcategoria = $6 AND c.idinterfazoperacion = $8
       RETURNING *
     `, [fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, idinterfazoperacion, idgasto]);
 
@@ -303,11 +306,10 @@ gastoController.deleteGasto = async (req, res, next) => {
 
     //Delete logico para cambiar el estado del gasto a false
     const deleteGasto = await pool.query(`
-      UPDATE gasto
-      SET estado = not(estado)
+      UPDATE gasto g
+      SET estado = not(g.estado)
       FROM categoria c
-      JOIN gasto on gasto.idcategoria = c.idcategoria AND c.idinterfazoperacion = $1
-      WHERE gasto.idgasto = $2
+      WHERE g.idgasto = $2 AND c.idinterfazoperacion = $1 
       RETURNING *
     `, [idinterfazoperacion, idgasto]);
 

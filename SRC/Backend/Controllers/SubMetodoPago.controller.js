@@ -180,7 +180,7 @@ submetodopagoController.deleteSubMetodoPago = async (req, res, next) => {
 
     const deleteSubMetodo = await pool.query(`
       UPDATE submetodopago
-      SET estado = false
+      SET estado = not(estado)
       WHERE idsubmetodopago = $1 AND idinterfazoperacion = $2
       RETURNING *
     `, [idsubmetodopago, idinterfazoperacion]);

@@ -5,7 +5,7 @@ const ingresoController = require('../Controllers/Ingreso.controller.js');
 const authenticateToken = require('../Middlewares/Authentication/authentication.controller.js');
 const verifyIDInterfazOperacion = require('../Middlewares/Verification/verifyIDInterfazOperacion.js');
 
-//Rutas para manejar los gastos
+//Rutas para manejar los ingresos
 router.get(`/ingreso/:idinterfazoperacion`, verifyIDInterfazOperacion,authenticateToken, ingresoController.getIngresos);
 
 router.get(`/ingreso/:idinterfazoperacion/:idingreso`, verifyIDInterfazOperacion,authenticateToken, ingresoController.getIngresobyID);
