@@ -41,7 +41,7 @@ gastoController.getGastos = async (req, res, next) => {
     let values = [idinterfazoperacion];
 
     //Construccion del filtrado dinamico
-    const buildFilter = (field, queryParam, alias) => {
+    const buildFilter = (queryParam, alias) => {
       if (queryParam) {
         const terms = queryParam
           .split(/, | ,|,/) // Dividir por ", ", " ," o ","
@@ -64,12 +64,12 @@ gastoController.getGastos = async (req, res, next) => {
       values.push(estado);
     }
 
-    buildFilter('categoria', categoria, 'c.nombre');
-    buildFilter('responsable', responsableGasto, 'g.responsableGasto');
-    buildFilter('moneda', moneda, 'g.moneda');
-    buildFilter('metodopago', metodopago, 'smp.metodo');
-    buildFilter('submetodopago', submetodopago, 'smp.nombre');
-    buildFilter('comentario', comentario, 'g.comentario');
+    buildFilter(categoria, 'c.nombre');
+    buildFilter(responsableGasto, 'g.responsableGasto');
+    buildFilter(moneda, 'g.moneda');
+    buildFilter(metodopago, 'smp.metodo');
+    buildFilter(submetodopago, 'smp.nombre');
+    buildFilter(comentario, 'g.comentario');
 
     // Filtros por rango de fechas
     if (fechaDesde) {
@@ -143,8 +143,7 @@ gastoController.getGastos = async (req, res, next) => {
 gastoController.getGastobyID = async (req, res, next) => {
   try {
     //Parametros requeridos para la busqueda
-    const { idgasto } = req.params;
-    const { idinterfazoperacion } = req.params;
+    const { idinterfazoperacion, idgasto } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
 
     //Verificacion de acceso a la interfaz de operacion
@@ -214,11 +213,10 @@ gastoController.createGasto = async (req, res, next) => {
       INSERT INTO gasto (fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, responsableingresargasto)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
-    `, [
-      fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, req.usuario.idusuario]);
+    `, [fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, req.usuario.idusuario]);
 
     //Devolucion del nuevo gasto creado
-    res.status(200).json(newGasto.rows[0]);
+    res.status(201).json(newGasto.rows[0]);
   } catch (err) {
     next(err);
   }
@@ -262,8 +260,7 @@ gastoController.updateGasto = async (req, res, next) => {
       JOIN gasto on $6 = c.idcategoria AND c.idinterfazoperacion = $8
       WHERE gasto.idgasto = $9
       RETURNING *
-    `, [
-      fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, idinterfazoperacion, idgasto]);
+    `, [fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, idinterfazoperacion, idgasto]);
 
     //Si no se encuentra el gasto a actualizar, retornar 404
     if (updateGasto.rows.length === 0) {
