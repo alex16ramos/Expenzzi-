@@ -198,4 +198,93 @@ categoriaController.deleteCategoria = async (req, res, next) => {
   }
 };
 
+//Ingresar Limite por categoria 
+categoriaController.setLimiteCategoria = async (req, res, next) => {
+  try {
+    const { idinterfazoperacion, idcategoria } = req.params;
+    const { importelimite, moneda, periodoaplicacion } = req.body;
+
+    const idinterfazoperacionNum = Number(idinterfazoperacion);
+    const allowedRoles = ['Administrador'];
+
+    if (!(await hasAccessToInterfazOperacion(req.usuario.idusuario, idinterfazoperacionNum))) {
+      return res.status(403).json({ message: 'No tienes acceso a esta interfaz de operación' });
+    }
+
+    const userRole = await hasRoleInterfazOperacion(req.usuario.idusuario, idinterfazoperacion, allowedRoles);
+    if (!userRole) {
+      return res.status(403).json({ message: 'No tienes acceso a esta funcionalidad' });
+    }
+
+    //Buscamos categoría actual
+    const categoriaActual = await pool.query(`
+      SELECT * FROM categoria 
+      WHERE idcategoria = $1 AND idinterfazoperacion = $2
+    `, [idcategoria, idinterfazoperacion]);
+
+    if (categoriaActual.rows.length === 0) {
+      return res.status(404).json({ message: 'Categoría no encontrada' });
+    }
+
+    const categoriaAnt = categoriaActual.rows[0];
+
+    //Segun la moneda ingresada
+    let campoImporte;
+    switch (moneda) {
+      case 'ARS':
+        campoImporte = '(g.importes).importeARS';
+        break;
+      case 'USD':
+        campoImporte = '(g.importes).importeUSD';
+        break;
+      case 'UYU':
+        campoImporte = '(g.importes).importeUYU';
+        break;
+      default:
+        return res.status(400).json({ message: 'Moneda no válida. Use ARS, USD o UYU.' });
+    }
+
+    //Calcula importe utilizado segun la moneda 
+    const gastoTotal = await pool.query(`
+      SELECT COALESCE(SUM(${campoImporte}), 0) AS total
+      FROM gasto g
+      JOIN categoria c ON c.idcategoria = g.idcategoria
+      WHERE g.idcategoria = $1 
+        AND c.idinterfazoperacion = $2 
+        AND g.estado = true
+    `, [idcategoria, idinterfazoperacion]);
+
+    const importeUtilizado = parseFloat(gastoTotal.rows[0].total);
+    const porcentajeUtilizado = importelimite > 0 ? (importeUtilizado / importelimite) * 100 : 0;
+
+    //Actualizar la categoría con el nuevo límite
+    const updateCategoria = await pool.query(`
+      UPDATE categoria
+      SET estadolimite = true,
+          importelimite = $1,
+          moneda = $2,
+          importes = ROW($1, $1, $1),
+          estado = true
+      WHERE idcategoria = $3 AND idinterfazoperacion = $4
+      RETURNING *;
+    `, [importelimite, moneda, idcategoria, idinterfazoperacion]);
+
+    //Crear historial del límite
+    await pool.query(`
+      INSERT INTO historiallimite (periodoaplicacion, importeutilizado, porcentajeutilizado, act, ant, idcategoria)
+      VALUES ($1, $2, $3, ROW($4, $5), ${categoriaAnt.estadolimite ? `ROW($6, $7)` : `NULL`}, $8)
+    `, [periodoaplicacion, importeUtilizado, porcentajeUtilizado, importelimite, moneda, categoriaAnt.importelimite,
+      categoriaAnt.moneda, idcategoria]);
+
+    res.status(200).json({
+      message: categoriaAnt.estadolimite ? 'Límite actualizado correctamente' : 'Límite establecido correctamente',
+      limite: updateCategoria.rows[0],
+      gastoActual: importeUtilizado,
+      porcentajeUtilizado: porcentajeUtilizado.toFixed(2) + '%'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = categoriaController;
