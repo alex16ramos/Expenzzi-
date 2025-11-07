@@ -287,4 +287,66 @@ categoriaController.setLimiteCategoria = async (req, res, next) => {
   }
 };
 
+categoriaController.removeLimiteCategoria = async (req, res, next) => {
+  try {
+    const { idinterfazoperacion, idcategoria } = req.params;
+    const idinterfazoperacionNum = Number(idinterfazoperacion);
+    const allowedRoles = ['Administrador'];
+
+    //Verificación de acceso
+    if (!(await hasAccessToInterfazOperacion(req.usuario.idusuario, idinterfazoperacionNum))) {
+      return res.status(403).json({ message: 'No tienes acceso a esta interfaz de operación' });
+    }
+
+    //Verificación de rol
+    const userRole = await hasRoleInterfazOperacion(req.usuario.idusuario, idinterfazoperacion, allowedRoles);
+    if (!userRole) {
+      return res.status(403).json({ message: 'No tienes acceso a esta funcionalidad' });
+    }
+
+    //Buscar la categoría
+    const categoriaActual = await pool.query(`
+      SELECT * FROM categoria
+      WHERE idcategoria = $1 AND idinterfazoperacion = $2
+    `, [idcategoria, idinterfazoperacion]);
+
+    if (categoriaActual.rows.length === 0) {
+      return res.status(404).json({ message: 'Categoría no encontrada' });
+    }
+
+    const categoria = categoriaActual.rows[0];
+
+    //Si no tenía límite, no hay nada que eliminar
+    if (!categoria.estadolimite) {
+      return res.status(400).json({ message: 'Esta categoría no tiene límite establecido.' });
+    }
+
+    //Se registra el cambio en historiallimite
+    await pool.query(`
+      INSERT INTO historiallimite (periodoaplicacion, importeutilizado, porcentajeutilizado, act, ant, idcategoria)
+      VALUES (null, 0, 0, NULL, ROW($1, $2), $3)
+    `, [categoria.importelimite, categoria.moneda, idcategoria]);
+
+    //Actualiza la categoría (reseteo)
+    const updateCategoria = await pool.query(`
+      UPDATE categoria
+      SET estadolimite = false,
+          importelimite = NULL,
+          moneda = NULL,
+          importes = NULL
+      WHERE idcategoria = $1 AND idinterfazoperacion = $2
+      RETURNING *;
+    `, [idcategoria, idinterfazoperacion]);
+
+    res.status(200).json({
+      message: 'Límite eliminado correctamente',
+      categoria: updateCategoria.rows[0]
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+
 module.exports = categoriaController;

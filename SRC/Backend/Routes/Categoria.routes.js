@@ -16,4 +16,9 @@ router.put(`/categoria/:idinterfazoperacion/:idcategoria`, verifyIDInterfazOpera
 
 router.delete(`/categoria/:idinterfazoperacion/:idcategoria`, verifyIDInterfazOperacion,authenticateToken, categoriaController.deleteCategoria);
 
+//Rutas para manejar los limites de categorias
+router.put('/categoria/:idinterfazoperacion/:idcategoria/limite', verifyIDInterfazOperacion, authenticateToken, categoriaController.setLimiteCategoria);
+
+router.put('/categoria/:idinterfazoperacion/:idcategoria/remover-limite', verifyIDInterfazOperacion, authenticateToken, categoriaController.removeLimiteCategoria );
+
 module.exports = router;
