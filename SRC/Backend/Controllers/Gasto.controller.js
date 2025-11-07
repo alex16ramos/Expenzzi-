@@ -254,6 +254,20 @@ gastoController.updateGasto = async (req, res, next) => {
       return res.status(403).json({ message: 'No tienes acceso a esta funcionalidad' });
     }
 
+    //Obtenemos el gasto actual antes de modificarlo
+    const gastoActual = await pool.query(`
+      SELECT g.*
+      FROM gasto g
+      JOIN categoria c ON g.idcategoria = c.idcategoria
+      WHERE g.idgasto = $1 AND c.idinterfazoperacion = $2
+    `, [idgasto, idinterfazoperacion]);
+
+    if (gastoActual.rows.length === 0) {
+      return res.status(404).json({ message: 'Gasto no encontrado' });
+    }
+
+    const gastoAnterior = gastoActual.rows[0];
+
     //Parametros del cuerpo de la solicitud para la actualizacion del gasto
     const { fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago } = req.body;
 
@@ -277,6 +291,19 @@ gastoController.updateGasto = async (req, res, next) => {
     if (updateGasto.rows.length === 0) {
       return res.status(404).json({ message: 'Gasto no encontrado' });
     }
+
+    //Se inserta el historial con los datos anteriores
+    await pool.query(`
+      INSERT INTO historialgasto (fechacambio, responsablecambio, ant, comentarioant, idgasto)
+      VALUES (NOW(), $1, ROW($2, $3), $4, $5)
+    `, [
+      req.usuario.idusuario,              // responsablecambio
+      gastoAnterior.importe,              // ant.importe
+      gastoAnterior.moneda,               // ant.moneda
+      gastoAnterior.comentario || null,   // comentarioant
+      gastoAnterior.idgasto               // FK gasto
+    ]);
+
     //Devolucion del gasto actualizado
     return res.json(updateGasto.rows[0]);
   } catch (error) {
@@ -290,6 +317,7 @@ gastoController.deleteGasto = async (req, res, next) => {
     //Parametros requeridos para la eliminacion
     const { idinterfazoperacion, idgasto } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
+    
     //Roles permitidos para eliminar un gasto
     const allowedRoles = ['Administrador', 'Invitado'];
 
@@ -303,6 +331,20 @@ gastoController.deleteGasto = async (req, res, next) => {
     if (!userRole) {
       return res.status(403).json({ message: 'No tienes acceso a esta funcionalidad' });
     }
+
+    //Obtenemos el gasto actual antes de eliminarlo
+    const gastoActual = await pool.query(`
+      SELECT g.*
+      FROM gasto g
+      JOIN categoria c ON g.idcategoria = c.idcategoria
+      WHERE g.idgasto = $1 AND c.idinterfazoperacion = $2
+    `, [idgasto, idinterfazoperacion]);
+
+    if (gastoActual.rows.length === 0) {
+      return res.status(404).json({ message: 'Gasto no encontrado' });
+    }
+
+    const gastoAnterior = gastoActual.rows[0];
 
     //Delete logico para cambiar el estado del gasto a false
     const deleteGasto = await pool.query(`
@@ -318,10 +360,128 @@ gastoController.deleteGasto = async (req, res, next) => {
       return res.status(404).json({ message: 'Gasto no encontrado.' });
     }
 
+    //Se registra el historial
+    await pool.query(`
+      INSERT INTO historialgasto (fechacambio, responsablecambio, ant, comentarioant, idgasto)
+      VALUES (NOW(), $1, ROW($2, $3), $4, $5)
+    `, [
+      req.usuario.idusuario,              // responsablecambio
+      gastoAnterior.importe,              // ant.importe
+      gastoAnterior.moneda,               // ant.moneda
+      gastoAnterior.comentario || null,   // comentarioant
+      gastoAnterior.idgasto               // FK gasto
+    ]);
+
     //Devolucion de exito sin contenido
     return res.sendStatus(204);
   } catch (error) {
     next(error);
+  }
+};
+
+// Obtener historial de un gasto
+gastoController.getHistorialGasto = async (req, res, next) => {
+  try {
+    // Parámetros requeridos
+    const { idinterfazoperacion, idgasto } = req.params;
+    const idinterfazoperacionNum = Number(idinterfazoperacion);
+
+    // Verificación de acceso
+    if (!(await hasAccessToInterfazOperacion(req.usuario.idusuario, idinterfazoperacionNum))) {
+      return res.status(403).json({ message: 'No tienes acceso a esta interfaz de operación' });
+    }
+
+    // Filtros opcionales
+    const { fechaDesde, fechaHasta } = req.query;
+    let filters = [];
+    let values = [idgasto];
+
+    // Filtros por fecha
+    if (fechaDesde) {
+      filters.push(`h.fechacambio >= $${values.length + 1}`);
+      values.push(new Date(fechaDesde).toISOString());
+    }
+    if (fechaHasta) {
+      filters.push(`h.fechacambio <= $${values.length + 1}`);
+      values.push(new Date(fechaHasta).toISOString());
+    }
+
+    // Consulta SQL
+    const query = `
+      SELECT 
+        h.idhistorialgasto,
+        h.fechacambio,
+        h.responsablecambio,
+        (h.ant).importe AS importe_anterior,
+        (h.ant).moneda AS moneda_anterior,
+        h.comentarioant,
+        h.idgasto
+      FROM historialgasto h
+      JOIN gasto g ON g.idgasto = h.idgasto
+      JOIN categoria c ON g.idcategoria = c.idcategoria
+      WHERE g.idgasto = $1
+        AND c.idinterfazoperacion = $${values.length + 1}
+        ${filters.length ? `AND ${filters.join(' AND ')}` : ''}
+      ORDER BY h.fechacambio DESC;
+    `;
+
+    // Agregamos idinterfazoperacion al final del array
+    values.push(idinterfazoperacion);
+
+    // Ejecutar consulta
+    const result = await pool.query(query, values);
+
+    // Si no hay resultados
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'No hay historial registrado para este gasto.' });
+    }
+
+    // Devolver resultado
+    res.status(200).json(result.rows);
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Obtener historial de gasto por ID
+gastoController.getHistorialGastoByID = async (req, res, next) => {
+  try {
+    // Parámetros requeridos
+    const { idinterfazoperacion, idhistorialgasto } = req.params;
+    const idinterfazoperacionNum = Number(idinterfazoperacion);
+
+    // Verificación de acceso
+    if (!(await hasAccessToInterfazOperacion(req.usuario.idusuario, idinterfazoperacionNum))) {
+      return res.status(403).json({ message: 'No tienes acceso a esta interfaz de operación' });
+    }
+
+    // Consulta SQL
+    const result = await pool.query(`
+      SELECT 
+        h.idhistorialgasto,
+        h.fechacambio,
+        h.responsablecambio,
+        (h.ant).importe AS importe_anterior,
+        (h.ant).moneda AS moneda_anterior,
+        h.comentarioant,
+        h.idgasto
+      FROM historialgasto h
+      JOIN gasto g ON g.idgasto = h.idgasto
+      JOIN categoria c ON g.idcategoria = c.idcategoria
+      WHERE c.idinterfazoperacion = $1 AND h.idhistorialgasto = $2;
+    `, [idinterfazoperacion, idhistorialgasto]);
+
+    // Si no se encuentra el historial
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Historial no encontrado' });
+    }
+
+    // Devolver resultado
+    res.status(200).json(result.rows[0]);
+
+  } catch (err) {
+    next(err);
   }
 };
 

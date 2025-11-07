@@ -221,10 +221,23 @@ ingresoController.updateIngreso = async (req, res, next) => {
       return res.status(403).json({ message: 'No tienes acceso a esta funcionalidad' });
     }
 
-    //Parametros del cuerpo de la solicitud para la actualizacion del gasto
+    //Obtenemos el ingreso actual
+    const ingresoActual = await pool.query(`
+      SELECT * FROM ingreso 
+      WHERE idingreso = $1 AND idinterfazoperacion = $2
+    `, [idingreso, idinterfazoperacion]);
+
+    if (ingresoActual.rows.length === 0) {
+      return res.status(404).json({ message: 'Ingreso no encontrado' });
+    }
+
+    const ingresoAnterior = ingresoActual.rows[0];
+
+  
+    //Parametros del cuerpo de la solicitud para la actualizacion del ingreso
     const { fecha, responsableingreso, moneda, importe, comentario } = req.body;
 
-    //Update para la actualizacion del gasto mediante el idgasto
+    //Update para la actualizacion del ingreso mediante el idingreso
     const updateIngreso = await pool.query(`
       UPDATE ingreso
       SET fecha = $1,
@@ -244,6 +257,14 @@ ingresoController.updateIngreso = async (req, res, next) => {
 
     //Devolucion del gasto actualizado
     res.json(updateIngreso.rows[0]);
+
+    // Se registra el historial luego de actualizar
+    await pool.query(`
+    INSERT INTO historialingreso (fechacambio, responsablecambio, ant, comentarioant, idingreso)
+    VALUES (NOW(), $1, ROW($2, $3), $4, $5)`, 
+    [req.usuario.idusuario, ingresoAnterior.importe, ingresoAnterior.moneda, 
+    ingresoAnterior.comentario || null, ingresoAnterior.idingreso]);
+
   } catch (err) {
     next(err);
   }
@@ -269,6 +290,18 @@ ingresoController.deleteIngreso = async (req, res, next) => {
       return res.status(403).json({ message: 'No tienes acceso a esta funcionalidad' });
     }
 
+    // ✅ Obtenemos el ingreso actual antes de modificarlo
+    const ingresoActual = await pool.query(`
+      SELECT * FROM ingreso 
+      WHERE idingreso = $1 AND idinterfazoperacion = $2
+    `, [idingreso, idinterfazoperacion]);
+
+    if (ingresoActual.rows.length === 0) {
+      return res.status(404).json({ message: 'Ingreso no encontrado' });
+    }
+
+    const ingresoAnterior = ingresoActual.rows[0];
+
     //Delete logico para cambiar el estado del gasto a false
     const deleteIngreso = await pool.query(`
       UPDATE ingreso
@@ -281,6 +314,17 @@ ingresoController.deleteIngreso = async (req, res, next) => {
     if (deleteIngreso.rows.length === 0) {
       return res.status(404).json({ message: 'Ingreso no encontrado.' });
     }
+    
+    await pool.query(`
+      INSERT INTO historialingreso (fechacambio, responsablecambio, ant, comentarioant, idingreso)
+      VALUES (NOW(), $1, ROW($2, $3), $4, $5)`, 
+      [
+      req.usuario.idusuario,                // responsable del cambio
+      ingresoAnterior.importe,              // ant.importe
+      ingresoAnterior.moneda,               // ant.moneda
+      ingresoAnterior.comentario || null,   // comentario anterior
+      ingresoAnterior.idingreso             // FK ingreso
+    ]);
 
     //Devolucion de exito sin contenido
     return res.sendStatus(204);
@@ -288,5 +332,110 @@ ingresoController.deleteIngreso = async (req, res, next) => {
     next(err);
   }
 };
+
+//Obtener historial de un ingreso
+ingresoController.getHistorialIngreso = async (req, res, next) => {
+  try {
+    //Parámetros requeridos
+    const { idinterfazoperacion, idingreso } = req.params;
+    const idinterfazoperacionNum = Number(idinterfazoperacion);
+
+    //Verificación de acceso
+    if (!(await hasAccessToInterfazOperacion(req.usuario.idusuario, idinterfazoperacionNum))) {
+      return res.status(403).json({ message: 'No tienes acceso a esta interfaz de operación' });
+    }
+
+    //Filtros opcionales
+    const { fechaDesde, fechaHasta } = req.query;
+    let filters = [];
+    let values = [idingreso];
+
+    //Filtros por rango de fechas
+    if (fechaDesde) {
+      filters.push(`h.fechacambio >= $${values.length + 1}`);
+      values.push(new Date(fechaDesde).toISOString());
+    }
+    if (fechaHasta) {
+      filters.push(`h.fechacambio <= $${values.length + 1}`);
+      values.push(new Date(fechaHasta).toISOString());
+    }
+
+    //Consulta SQL
+    const query = `
+      SELECT 
+        h.idhistorialingreso,
+        h.fechacambio,
+        h.responsablecambio,
+        (h.ant).importe AS importe_anterior,
+        (h.ant).moneda AS moneda_anterior,
+        h.comentarioant,
+        h.idingreso
+      FROM historialingreso h
+      JOIN ingreso i ON i.idingreso = h.idingreso
+      WHERE i.idingreso = $1
+        AND i.idinterfazoperacion = $${values.length + 1}
+        ${filters.length ? `AND ${filters.join(' AND ')}` : ''}
+      ORDER BY h.fechacambio DESC;
+    `;
+
+    //Agregar idinterfazoperacion al final de los valores
+    values.push(idinterfazoperacion);
+
+    //Ejecutar consulta
+    const result = await pool.query(query, values);
+
+    //Si no hay resultados
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'No hay historial registrado para este ingreso.' });
+    }
+
+    // Devolver resultados
+    res.status(200).json(result.rows);
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Obtener historial de ingreso por ID
+ingresoController.getHistorialIngresoByID = async (req, res, next) => {
+  try {
+    // Parámetros requeridos
+    const { idinterfazoperacion, idhistorialingreso } = req.params;
+    const idinterfazoperacionNum = Number(idinterfazoperacion);
+
+    // Verificación de acceso
+    if (!(await hasAccessToInterfazOperacion(req.usuario.idusuario, idinterfazoperacionNum))) {
+      return res.status(403).json({ message: 'No tienes acceso a esta interfaz de operación' });
+    }
+
+    // Consulta SQL
+    const result = await pool.query(`
+      SELECT 
+        h.idhistorialingreso,
+        h.fechacambio,
+        h.responsablecambio,
+        (h.ant).importe AS importe_anterior,
+        (h.ant).moneda AS moneda_anterior,
+        h.comentarioant,
+        h.idingreso
+      FROM historialingreso h
+      JOIN ingreso i ON i.idingreso = h.idingreso
+      WHERE i.idinterfazoperacion = $1 AND h.idhistorialingreso = $2;
+    `, [idinterfazoperacion, idhistorialingreso]);
+
+    // Si no se encuentra el historial
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Historial no encontrado' });
+    }
+
+    // Devolver resultado
+    res.status(200).json(result.rows[0]);
+
+  } catch (err) {
+    next(err);
+  }
+};
+
 
 module.exports = ingresoController;
