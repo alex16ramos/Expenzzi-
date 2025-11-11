@@ -284,7 +284,7 @@ gastoController.updateGasto = async (req, res, next) => {
           estado = true
       FROM categoria c
       WHERE g.idgasto = $9 AND c.idcategoria = $6 AND c.idinterfazoperacion = $8
-      RETURNING *
+      RETURNING g.*;
     `, [fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, idinterfazoperacion, idgasto]);
 
     //Si no se encuentra el gasto a actualizar, retornar 404
@@ -309,7 +309,7 @@ gastoController.updateGasto = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-};
+}
 
 //Eliminar gasto (cambiar estado a false)
 gastoController.deleteGasto = async (req, res, next) => {
@@ -352,7 +352,7 @@ gastoController.deleteGasto = async (req, res, next) => {
       SET estado = not(g.estado)
       FROM categoria c
       WHERE g.idgasto = $2 AND c.idinterfazoperacion = $1 
-      RETURNING *
+      RETURNING g.*;
     `, [idinterfazoperacion, idgasto]);
 
     //Si no se encuentra el gasto a eliminar, retornar 404

@@ -3,7 +3,14 @@ const cron = require('node-cron');
 const pool = require('../DB/dbConnection.js');
 require('dotenv').config();
 
-cron.schedule('40 11 * * *', async () => {
+let USDARS = null;
+let USDUYU = null;
+let ARSUSD = null;
+let ARSUYU = null;
+let UYUARS = null;
+let UYUUSD = null;
+
+cron.schedule('53 11 * * *', async () => {
     console.log('Ejecutando actualización de tipos de cambio USD...');
     try {
         const responseUSD = await axios.get(`http://apilayer.net/api/live`, {
@@ -17,8 +24,8 @@ cron.schedule('40 11 * * *', async () => {
 
         if (responseUSD.data.success) {
             const ratesUSD = responseUSD.data.quotes;
-            const USDUYU = ratesUSD['USDUYU'];
-            const USDARS = ratesUSD['USDARS'];
+            USDUYU = ratesUSD['USDUYU'];
+            USDARS = ratesUSD['USDARS'];
 
             console.log('Cambio actualizado: USD', { USDUYU, USDARS});
         } else {
@@ -29,7 +36,7 @@ cron.schedule('40 11 * * *', async () => {
     }
 });
 
-cron.schedule('41 11 * * *', async () => {
+cron.schedule('54 11 * * *', async () => {
     console.log('Ejecutando actualización de tipos de cambio ARS...');
 
     try {
@@ -44,8 +51,8 @@ cron.schedule('41 11 * * *', async () => {
 
         if (responseARS.data.success) {
             const ratesARS = responseARS.data.quotes;
-            const ARSUSD = ratesARS['ARSUSD'];
-            const ARSUYU = ratesARS['ARSUYU'];
+            ARSUSD = ratesARS['ARSUSD'];
+            ARSUYU = ratesARS['ARSUYU'];
 
             console.log('Cambio actualizado: ARS', { ARSUSD, ARSUYU });
         } else {
@@ -56,7 +63,7 @@ cron.schedule('41 11 * * *', async () => {
     }
 });
 
-cron.schedule('42 11 * * *', async () => {
+cron.schedule('55 11 * * *', async () => {
     console.log('Ejecutando actualización de tipos de cambio UYU...');
 
     try {
@@ -71,8 +78,8 @@ cron.schedule('42 11 * * *', async () => {
 
         if (responseUYU.data.success) {
             const ratesUYU = responseUYU.data.quotes;
-            const UYUARS = ratesUYU['UYUARS'];
-            const UYUUSD = ratesUYU['UYUUSD'];
+            UYUARS = ratesUYU['UYUARS'];
+            UYUUSD = ratesUYU['UYUUSD'];
 
             console.log('Cambio actualizado: UYU', { UYUARS, UYUUSD });
         } else {
@@ -83,7 +90,7 @@ cron.schedule('42 11 * * *', async () => {
     }
 });
 
-cron.schedule('43 11 * * *', async () => {
+cron.schedule('56 11 * * *', async () => {
     try {
     await pool.query(`
                 INSERT INTO cambio (fecha, cambiouyuusd, cambiouyuars, cambiousdars, cambiousduyu, cambioarsuyu, cambioarsusd)
