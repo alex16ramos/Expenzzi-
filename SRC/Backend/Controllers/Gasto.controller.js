@@ -419,10 +419,10 @@ gastoController.getHistorialGasto = async (req, res, next) => {
       FROM historialgasto h
       JOIN gasto g ON g.idgasto = h.idgasto
       JOIN categoria c ON g.idcategoria = c.idcategoria
-      WHERE g.idgasto = $1
+      WHERE g.idgasto = $1 
         AND c.idinterfazoperacion = $${values.length + 1}
         ${filters.length ? `AND ${filters.join(' AND ')}` : ''}
-      ORDER BY h.fechacambio DESC;
+      ORDER BY h.idhistorialgasto DESC;
     `;
 
     // Agregamos idinterfazoperacion al final del array

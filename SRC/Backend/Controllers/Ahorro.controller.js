@@ -261,10 +261,9 @@ ahorroController.updateAhorro = async (req, res, next) => {
 
        // ✅ Insertar registro en historialahorro
     await pool.query(`
-      INSERT INTO historialahorro (fechacambio, responsablecambio, ant, comentarioant, idahorro)
-      VALUES (NOW(), $1, ROW($2, $3), $4, $5);
+      INSERT INTO historialahorro (fechacambio, ant, comentarioant, idahorro)
+      VALUES (NOW(), ROW($1, $2), $3, $4);
     `, [
-      req.usuario.idusuario,               // responsablecambio
       ahorroAnterior.importe,              // ant.importe
       ahorroAnterior.moneda,               // ant.moneda
       ahorroAnterior.comentario || null,   // comentarioant
@@ -325,10 +324,9 @@ ahorroController.deleteAhorro = async (req, res, next) => {
 
     //Insertar en historial
     await pool.query(`
-      INSERT INTO historialahorro (fechacambio, responsablecambio, ant, comentarioant, idahorro)
-      VALUES (NOW(), $1, ROW($2, $3), $4, $5);
+      INSERT INTO historialahorro (fechacambio, ant, comentarioant, idahorro)
+      VALUES (NOW(), ROW($1, $2), $3, $4);
     `, [
-      req.usuario.idusuario,               // responsablecambio
       ahorroAnterior.importe,              // ant.importe
       ahorroAnterior.moneda,               // ant.moneda
       ahorroAnterior.comentario || null,   // comentarioant
@@ -374,7 +372,6 @@ ahorroController.getHistorialAhorro = async (req, res, next) => {
       SELECT 
          h.idhistorialahorro,
         h.fechacambio,
-        h.responsablecambio,
         (h.ant).importe AS importe_anterior,
         (h.ant).moneda AS moneda_anterior,
         h.comentarioant,
@@ -421,8 +418,7 @@ ahorroController.getHistorialAhorroByID = async (req, res, next) => {
     const result = await pool.query(`
       SELECT 
         h.idhistorialahorro,
-        h.fechacambio,
-        h.responsablecambio,
+        h.fechacambio, 
         (h.ant).importe AS importe_anterior,
         (h.ant).moneda AS moneda_anterior,
         h.comentarioant,

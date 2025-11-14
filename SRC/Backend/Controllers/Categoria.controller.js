@@ -49,7 +49,7 @@ categoriaController.getCategorias = async (req, res, next) => {
         c.estadolimite AS "estadoLimite",
         c.importe AS "importe",
         c.moneda,
-        c.estado,
+        c.estado
       FROM categoria c
       WHERE c.idinterfazoperacion = $1
       ${filters.length ? `AND ${filters.join(' AND ')}` : ''}
@@ -244,13 +244,18 @@ categoriaController.setLimiteCategoria = async (req, res, next) => {
         return res.status(400).json({ message: 'Moneda no válida. Use ARS, USD o UYU.' });
     }
 
-    //Obtenemos importe y porcentaje utilizado
-    const importeutilizado = await pool.query(`
-      SELECT v.importeUtilizado 
+    //Obtenemos importe utilizado
+    const importeQuery = await pool.query(`
+      SELECT v.importeutilizado 
       FROM vistalimitegastosperiodo v
       WHERE v.idcategoria = $1 
-      order by v.periodoinicio desc limit 1; 
+      ORDER BY v.periodoinicio DESC 
+      LIMIT 1;
     `, [idcategoria]);
+
+    const importeutilizado = importeQuery.rows.length > 0 
+    ? Number(importeQuery.rows[0].importeutilizado)
+    : 0;
 
     //Actualizar la categoría con el nuevo límite
     const updateCategoria = await pool.query(`
@@ -274,8 +279,7 @@ categoriaController.setLimiteCategoria = async (req, res, next) => {
     res.status(200).json({
       message: categoriaAnt.estadolimite ? 'Límite actualizado correctamente' : 'Límite establecido correctamente',
       limite: updateCategoria.rows[0],
-      gastoActual: importeUtilizado,
-      porcentajeUtilizado: porcentajeUtilizado.toFixed(2) + '%'
+      gastoActual: importeutilizado
     });
   } catch (err) {
     next(err);
@@ -304,8 +308,9 @@ categoriaController.deleteLimiteCategoria = async (req, res, next) => {
       SELECT * FROM categoria
       WHERE idcategoria = $1 AND idinterfazoperacion = $2
     `, [idcategoria, idinterfazoperacion]);
-
-    const categoria = categoriaActual.rows[0];
+    if (categoriaActual.rows.length === 0) {
+      return res.status(404).json({ message: 'Categoría no encontrada' });
+    }
 
     //Actualiza la categoría (reseteo)
     const updateCategoria = await pool.query(`
@@ -313,9 +318,7 @@ categoriaController.deleteLimiteCategoria = async (req, res, next) => {
       SET estadolimite = false,
           importe = NULL,
           moneda = NULL,
-          (importes).importeARS = NULL,
-          (importes).importeUSD = NULL,
-          (importes).importeUYU = NULL
+          importes = NULL
       WHERE idcategoria = $1 AND idinterfazoperacion = $2
       RETURNING *;
     `, [idcategoria, idinterfazoperacion]);

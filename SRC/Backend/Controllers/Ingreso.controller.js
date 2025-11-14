@@ -375,9 +375,9 @@ ingresoController.getHistorialIngreso = async (req, res, next) => {
       WHERE i.idingreso = $1
         AND i.idinterfazoperacion = $${values.length + 1}
         ${filters.length ? `AND ${filters.join(' AND ')}` : ''}
-      ORDER BY h.fechacambio DESC;
+      ORDER BY h.idhistorialingreso DESC;
     `;
-
+    
     //Agregar idinterfazoperacion al final de los valores
     values.push(idinterfazoperacion);
 
