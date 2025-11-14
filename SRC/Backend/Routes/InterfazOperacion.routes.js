@@ -17,4 +17,11 @@ router.put(`/interfazoperacion/:idinterfazoperacion`, authenticateToken, interfa
 
 router.delete(`/interfazoperacion/:idinterfazoperacion`, authenticateToken, interfazoperacionController.deleteInterfazOperacion);
 
+//Rutas para manejar invitaciones de usuarios a interfaces de operacion
+//Ruta para unirse a una interfaz de operacion mediante un codigo de invitacion
+router.post(`/interfazoperacion/codigoinvitacion/:codigoinvitacion`, authenticateToken, interfazoperacionController.unirseInterfazOperacion);
+//Ruta para salirse de una interfaz de operacion mediante un codigo de invitacion
+router.delete(`/interfazoperacion/codigoinvitacion/:idinterfazoperacion`, authenticateToken, interfazoperacionController.salirseInterfazOperacion);
+
+
 module.exports = router;

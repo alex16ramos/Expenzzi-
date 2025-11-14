@@ -112,7 +112,7 @@ interfazoperacionController.getUsuariosByIdInterfazOperacion = async (req, res, 
 
     //Se filtran los parametros opcionales
     if (rol) {
-      filters.push(`ui.rol ILIKE '%' || $${values.length + 1} || '%'`);
+      filters.push(`ui.rol = $${values.length + 1}`);
       values.push(rol);
     }
 
@@ -288,6 +288,107 @@ interfazoperacionController.deleteInterfazOperacion = async (req, res, next) => 
     res.status(200).json({ message: 'La Interfaz de operacion ha cambiado su estado correctamente' });
   } catch (err) {
     next(err);
+  }
+};
+
+
+// ------------------------------------------------Invitacion a Interfaz de Operacion------------------------------------------------
+// Unirse a una interfaz de operacion mediante un codigo de invitacion
+interfazoperacionController.unirseInterfazOperacion = async (req, res, next) => {
+  try {
+    const { codigoinvitacion } = req.params;
+
+    // Buscar la interfaz y qué tipo de codigo invitacion es
+    const getInterfazOperacion = await pool.query(`
+      SELECT 
+        io.idinterfazoperacion,
+        CASE 
+          WHEN io.linkinvitado = $1 THEN 'Invitado'
+          WHEN io.linkvisualizador = $1 THEN 'Visualizador'
+        END AS codigorol
+      FROM interfazoperacion io
+      WHERE (io.linkinvitado = $1 OR io.linkvisualizador = $1) AND io.estado = true;
+    `, [codigoinvitacion]);
+
+    if (getInterfazOperacion.rows.length === 0) {
+      return res.status(404).json({ message: 'Codigo de invitacion invalido' });
+    }
+
+    const { idinterfazoperacion, codigorol } = getInterfazOperacion.rows[0];
+
+    // Se busca cualquier registro previo del usuario en esa interfaz (sin filtrar por fechasalida)
+    const checkUserInterfaz = await pool.query(`
+      SELECT * FROM usuariointerfaz
+      WHERE idinterfazoperacion = $1 AND idusuario = $2;
+    `, [idinterfazoperacion, req.usuario.idusuario]);
+
+    if (checkUserInterfaz.rows.length > 0) {
+      const existing = checkUserInterfaz.rows[0];
+
+      if (existing.fechasalida === null) {
+        // El usuario ya está activo aun no salió (fechasalida es null).
+        return res.status(200).json({
+          message: 'Ya estás asociado a esta interfaz',
+          data: existing
+        });
+      } else {
+        // El usuario ya esta activo pero ya salio (fechasalida no es null). Lo reactivamos.
+        const actualizarUsuarioInterfazOperacion = await pool.query(`
+          UPDATE usuariointerfaz
+          SET fechasalida = NULL,
+              fechaunion = NOW(),
+              rol = $1
+          WHERE idinterfazoperacion = $2 AND idusuario = $3
+          RETURNING *;
+        `, [codigorol, idinterfazoperacion, req.usuario.idusuario]);
+
+        return res.json({
+          message: 'Se ha unido nuevamente con exito',
+          data: actualizarUsuarioInterfazOperacion.rows[0]
+        });
+      }
+    } else {
+      // No existe registro previo: lo insertamos
+      const agregarUsuarioInterfazOperacion = await pool.query(`
+        INSERT INTO usuariointerfaz (rol, idinterfazoperacion, idusuario)
+        VALUES ($1, $2, $3)
+        RETURNING *;
+      `, [codigorol, idinterfazoperacion, req.usuario.idusuario]);
+
+      return res.json({
+        message: 'Unido correctamente',
+        data: agregarUsuarioInterfazOperacion.rows[0]
+      });
+    }
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Unirse a una interfaz de operacion mediante un codigo de invitacion
+interfazoperacionController.salirseInterfazOperacion = async (req, res, next) => {
+  try {
+    const { idinterfazoperacion } = req.params;
+    //Actualizar la fecha de salida del usuario en usuariointerfaz
+    const setUsuarioInterfaz = await pool.query(`
+        UPDATE usuariointerfaz
+        SET fechasalida = NOW()
+        WHERE idinterfazoperacion = $1 AND idusuario = $2 and fechasalida IS NULL
+        RETURNING *;
+    `, [idinterfazoperacion, req.usuario.idusuario]);
+    //Si no se encuentra la interfaz de operacion, se retorna un 404
+    if (setUsuarioInterfaz.rows.length === 0) {
+      return res.status(404).json({ message: 'Usuario interfaz no encontrado' });
+    }
+    //Devolucion del resultado mediante un mensaje de exito
+    res.json({
+      message: 'Saliste correctamente',
+      data: setUsuarioInterfaz.rows[0]
+    });
+
+  } catch (error) {
+    next(error);
   }
 };
 
