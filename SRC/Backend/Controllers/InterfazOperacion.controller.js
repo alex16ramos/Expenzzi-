@@ -291,4 +291,100 @@ interfazoperacionController.deleteInterfazOperacion = async (req, res, next) => 
   }
 };
 
+// getBalanceGeneral
+interfazoperacionController.getBalanceGeneral = async (req, res, next) => {
+  try {
+    //  Obtenemos el ID de la interfaz que viene en la URL
+    const { idinterfazoperacion } = req.params;
+
+    // Verificamos que el usuario tenga acceso a esta interfaz
+    //  método ya existente
+    if (!(await hasAccessToInterfazOperacion(req.usuario.idusuario, idinterfazoperacion))) {
+      return res.status(403).json({ message: 'No tienes acceso a esta interfaz de operacion' });
+    }
+
+    // Escribimos la consulta SQL    
+    const query = `
+      SELECT 
+        balancegeneralars, 
+        balancegeneralusd, 
+        balancegeneraluyu 
+      FROM interfazoperacion 
+      WHERE idinterfazoperacion = $1
+    `;
+    const values = [idinterfazoperacion];
+
+    // Ejecutamos la consulta
+    const result = await pool.query(query, values);
+
+    // 5. Si no la encuentra, respondemos con un error
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Interfaz de operación no encontrada' });
+    }
+
+    //  Si la encuentra, devolvemos el primer (y único) resultado
+    //   
+    res.status(200).json(result.rows[0]);
+
+  } catch (err) {
+    // 7. Por si todo falla
+    next(err);
+  }
+};
+
+// Actualiza los 3 balances (ARS, USD, UYU) de una interfaz.
+// Se debe llamar después de cualquier cambio en gastos o ingresos.
+
+// Actualiza los 3 balances (ARS, USD, UYU) de una interfaz.
+// Se debe llamar después de cualquier cambio en gastos o ingresos.
+interfazoperacionController.updateBalanceGeneral = async (idinterfazoperacion) => {
+  try {
+    //  Calculamos el total de INGRESOS (sumando las 3 monedas)
+    const ingresosQuery = `
+      SELECT 
+        COALESCE(SUM(importeARS), 0) as totalIngresosARS,
+        COALESCE(SUM(importeUSD), 0) as totalIngresosUSD,
+        COALESCE(SUM(importeUYU), 0) as totalIngresosUYU
+      FROM ingreso
+      WHERE idinterfazoperacion = $1 AND estado = true
+    `;
+    const ingresosResult = await pool.query(ingresosQuery, [idinterfazoperacion]);
+    const ingresos = ingresosResult.rows[0];
+
+    //  Calculamos el total de GASTOS (sumando las 3 monedas)
+    const gastosQuery = `
+      SELECT 
+        COALESCE(SUM(importeARS), 0) as totalGastosARS,
+        COALESCE(SUM(importeUSD), 0) as totalGastosUSD,
+        COALESCE(SUM(importeUYU), 0) as totalGastosUYU
+      FROM gasto
+      WHERE idinterfazoperacion = $1 AND estado = true
+    `;
+    const gastosResult = await pool.query(gastosQuery, [idinterfazoperacion]);
+    const gastos = gastosResult.rows[0];
+
+    //  Calculamos el BALANCE FINAL (Ingresos - Gastos)
+    const balanceARS = ingresos.totalIngresosARS - gastos.totalGastosARS;
+    const balanceUSD = ingresos.totalIngresosUSD - gastos.totalGastosUSD;
+    const balanceUYU = ingresos.totalIngresosUYU - gastos.totalGastosUYU;
+
+    //  Actualizamos la tabla 'interfazoperacion' con los nuevos balances
+    const updateQuery = `
+      UPDATE interfazoperacion
+      SET 
+        balancegeneralars = $1,
+        balancegeneralusd = $2,
+        balancegeneraluyu = $3
+      WHERE idinterfazoperacion = $4
+    `;
+    await pool.query(updateQuery, [balanceARS, balanceUSD, balanceUYU, idinterfazoperacion]);
+
+    console.log(`Balance actualizado para interfaz ${idinterfazoperacion}`);
+    return true; // Terminó bien
+
+  } catch (err) {
+    console.error(`Error actualizando balance para interfaz ${idinterfazoperacion}:`, err);
+    return false; // Hubo un error
+  }
+};
 module.exports = interfazoperacionController;

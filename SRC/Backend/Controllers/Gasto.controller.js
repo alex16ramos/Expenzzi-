@@ -4,6 +4,8 @@ const gastoController = {};
 const hasAccessToInterfazOperacion = require('../Middlewares/Verification/hasAccessToInterfazOperacion.js')
 const hasRoleInterfazOperacion = require('../Middlewares/Verification/hasRoleInterfazOperacion.js');
 
+// Importar la herramienta para actualizar el balance, echo por santi
+const { updateBalanceGeneral } = require('./InterfazOperacion.controller.js');
 
 //Obtener todos los gastos
 //Filtrado por estado, categoria, responsableGasto, moneda, metodopago, submetodopago, comentario, rango de fechas, montoMin, montoMax, monedaFiltro del montoMin y montoMax
@@ -227,6 +229,9 @@ gastoController.createGasto = async (req, res, next) => {
       RETURNING *
     `, [fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, req.usuario.idusuario]);
 
+
+    await updateBalanceGeneral(idinterfazoperacionNum);
+
     //Devolucion del nuevo gasto creado
     res.status(201).json(newGasto.rows[0]);
   } catch (err) {
@@ -277,6 +282,8 @@ gastoController.updateGasto = async (req, res, next) => {
     if (updateGasto.rows.length === 0) {
       return res.status(404).json({ message: 'Gasto no encontrado' });
     }
+    await updateBalanceGeneral(idinterfazoperacion); //echo por santi
+
     //Devolucion del gasto actualizado
     return res.json(updateGasto.rows[0]);
   } catch (error) {
@@ -317,7 +324,7 @@ gastoController.deleteGasto = async (req, res, next) => {
     if (deleteGasto.rows.length === 0) {
       return res.status(404).json({ message: 'Gasto no encontrado.' });
     }
-
+    await updateBalanceGeneral(idinterfazoperacion); //echo por santi
     //Devolucion de exito sin contenido
     return res.sendStatus(204);
   } catch (error) {
