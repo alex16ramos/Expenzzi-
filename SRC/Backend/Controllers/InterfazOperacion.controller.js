@@ -294,7 +294,7 @@ interfazoperacionController.deleteInterfazOperacion = async (req, res, next) => 
 
 // ------------------------------------------------Invitacion a Interfaz de Operacion------------------------------------------------
 // Unirse a una interfaz de operacion mediante un codigo de invitacion
-interfazoperacionController.unirseInterfazOperacion = async (req, res, next) => {
+interfazoperacionController.joinToInterfazOperacion = async (req, res, next) => {
   try {
     const { codigoinvitacion } = req.params;
 
@@ -367,7 +367,7 @@ interfazoperacionController.unirseInterfazOperacion = async (req, res, next) => 
 };
 
 // Unirse a una interfaz de operacion mediante un codigo de invitacion
-interfazoperacionController.salirseInterfazOperacion = async (req, res, next) => {
+interfazoperacionController.getOutOfInterfazOperacion = async (req, res, next) => {
   try {
     const { idinterfazoperacion } = req.params;
     //Actualizar la fecha de salida del usuario en usuariointerfaz
