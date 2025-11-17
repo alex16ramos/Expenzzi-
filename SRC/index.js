@@ -39,7 +39,7 @@ app.use((err, req, res, next) => {
 });
 
 //Cronjobs
-//require('./Backend/cronjobs');
+require('./Backend/Cronjobs');
 
 //Iniciar el servidor
 app.listen(port, () => {

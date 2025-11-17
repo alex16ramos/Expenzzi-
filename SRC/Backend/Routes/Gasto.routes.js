@@ -16,4 +16,9 @@ router.put(`/gasto/:idinterfazoperacion/:idgasto`, verifyIDInterfazOperacion,aut
 
 router.delete(`/gasto/:idinterfazoperacion/:idgasto`, verifyIDInterfazOperacion,authenticateToken, gastoController.deleteGasto);
 
+//Rutas para manejar HISTORIAL GASTO
+router.get('/gasto/:idinterfazoperacion/:idgasto/historial', verifyIDInterfazOperacion, authenticateToken, gastoController.getHistorialGasto);
+
+router.get('/gasto/:idinterfazoperacion/historial/:idhistorialgasto', verifyIDInterfazOperacion, authenticateToken, gastoController.getHistorialGastoByID);
+
 module.exports = router;

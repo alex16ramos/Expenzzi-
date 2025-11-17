@@ -141,6 +141,7 @@ ahorroController.getAhorroByID = async (req, res, next) => {
       return res.status(403).json({ message: 'No tienes acceso a esta interfaz de operación' });
     }
 
+    // Consulta SQL 
     const result = await pool.query(`
       SELECT a.idahorro,
              a.fechadesde,
@@ -224,6 +225,18 @@ ahorroController.updateAhorro = async (req, res, next) => {
       return res.status(403).json({ message: 'No tienes acceso a esta funcionalidad' });
     }
 
+    //Obtenemos ahorro actual antes de modificarlo
+    const ahorroActual = await pool.query(`
+      SELECT * FROM ahorro
+      WHERE idahorro = $1 AND idinterfazoperacion = $2
+    `, [idahorro, idinterfazoperacion]);
+
+    if (ahorroActual.rows.length === 0) {
+      return res.status(404).json({ message: 'Ahorro no encontrado' });
+    }
+
+    const ahorroAnterior = ahorroActual.rows[0];
+
     //Parametros del cuerpo de la solicitud para la actualizacion del ahorro
     const { fechadesde, fechahasta, moneda, importe, comentario, periodoaporte } = req.body;
 
@@ -245,6 +258,17 @@ ahorroController.updateAhorro = async (req, res, next) => {
     if (updateAhorro.rows.length === 0) {
       return res.status(404).json({ message: 'Ahorro no encontrado' });
     }
+
+       // ✅ Insertar registro en historialahorro
+    await pool.query(`
+      INSERT INTO historialahorro (fechacambio, ant, comentarioant, idahorro)
+      VALUES (NOW(), ROW($1, $2), $3, $4);
+    `, [
+      ahorroAnterior.importe,              // ant.importe
+      ahorroAnterior.moneda,               // ant.moneda
+      ahorroAnterior.comentario || null,   // comentarioant
+      ahorroAnterior.idahorro              // FK
+    ]);
 
     //Devolucion del ahorro actualizado
     res.json(updateAhorro.rows[0]);
@@ -272,6 +296,18 @@ ahorroController.deleteAhorro = async (req, res, next) => {
     if (!userRole) {
       return res.status(403).json({ message: 'No tienes acceso a esta funcionalidad' });
     }
+    
+    //Obtenemos el ahorro actual antes de cambiar estado
+    const ahorroActual = await pool.query(`
+      SELECT * FROM ahorro
+      WHERE idahorro = $1 AND idinterfazoperacion = $2;
+    `, [idahorro, idinterfazoperacion]);
+
+    if (ahorroActual.rows.length === 0) {
+      return res.status(404).json({ message: 'Ahorro no encontrado' });
+    }
+
+    const ahorroAnterior = ahorroActual.rows[0];
 
     //Delete logico para cambiar el estado del ahorro a false
     const deleteAhorro = await pool.query(`
@@ -286,8 +322,120 @@ ahorroController.deleteAhorro = async (req, res, next) => {
       return res.status(404).json({ message: 'Ahorro no encontrado.' });
     }
 
+    //Insertar en historial
+    await pool.query(`
+      INSERT INTO historialahorro (fechacambio, ant, comentarioant, idahorro)
+      VALUES (NOW(), ROW($1, $2), $3, $4);
+    `, [
+      ahorroAnterior.importe,              // ant.importe
+      ahorroAnterior.moneda,               // ant.moneda
+      ahorroAnterior.comentario || null,   // comentarioant
+      ahorroAnterior.idahorro              // FK ahorro
+    ]);
+
     //Devolucion de existo sin contenido
     return res.sendStatus(204);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Obtener historial de un ahorro
+ahorroController.getHistorialAhorro = async (req, res, next) => {
+  try {
+    // Parámetros requeridos
+    const { idinterfazoperacion, idahorro } = req.params;
+    const idinterfazoperacionNum = Number(idinterfazoperacion);
+
+    // Verificación de acceso a la interfaz
+    if (!(await hasAccessToInterfazOperacion(req.usuario.idusuario, idinterfazoperacionNum))) {
+      return res.status(403).json({ message: 'No tienes acceso a esta interfaz de operación' });
+    }
+
+    // Filtros opcionales
+    const { fechaDesde, fechaHasta } = req.query;
+    let filters = [];
+    let values = [idahorro];
+
+    // Filtros de fecha
+    if (fechaDesde) {
+      filters.push(`h.fechacambio >= $${values.length + 1}`);
+      values.push(new Date(fechaDesde).toISOString());
+    }
+    if (fechaHasta) {
+      filters.push(`h.fechacambio <= $${values.length + 1}`);
+      values.push(new Date(fechaHasta).toISOString());
+    }
+
+    // Consulta SQL
+    const query = `
+      SELECT 
+         h.idhistorialahorro,
+        h.fechacambio,
+        (h.ant).importe AS importe_anterior,
+        (h.ant).moneda AS moneda_anterior,
+        h.comentarioant,
+        h.idahorro
+      FROM historialahorro h
+      JOIN ahorro a ON a.idahorro = h.idahorro
+      WHERE a.idahorro = $1 AND a.idinterfazoperacion = $${values.length + 1}
+      ${filters.length ? `AND ${filters.join(' AND ')}` : ''}
+      ORDER BY h.fechacambio DESC;
+    `;
+
+    // Agregamos idinterfazoperacion al final del array de valores
+    values.push(idinterfazoperacion);
+
+    // Ejecutar consulta
+    const result = await pool.query(query, values);
+
+    // Si no hay resultados
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'No hay historial registrado para este ahorro.' });
+    }
+
+    // Devolver resultados
+    return res.status(200).json(result.rows);
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Obtener historial de ahorro por ID
+ahorroController.getHistorialAhorroByID = async (req, res, next) => {
+  try {
+    // Parámetros requeridos
+    const { idhistorialahorro, idinterfazoperacion } = req.params;
+    const idinterfazoperacionNum = Number(idinterfazoperacion);
+
+    // Verificación de acceso a la interfaz
+    if (!(await hasAccessToInterfazOperacion(req.usuario.idusuario, idinterfazoperacionNum))) {
+      return res.status(403).json({ message: 'No tienes acceso a esta interfaz de operación' });
+    }
+
+    // Consulta SQL 
+    const result = await pool.query(`
+      SELECT 
+        h.idhistorialahorro,
+        h.fechacambio, 
+        (h.ant).importe AS importe_anterior,
+        (h.ant).moneda AS moneda_anterior,
+        h.comentarioant,
+        h.idahorro
+      FROM historialahorro h
+      JOIN ahorro a ON a.idahorro = h.idahorro
+      WHERE a.idinterfazoperacion = $1 AND h.idhistorialahorro = $2;
+    `, [idinterfazoperacion, idhistorialahorro]);
+
+    // Si no se encuentra el historial, retornar 404
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Historial no encontrado' });
+    }
+
+    // Caso contrario, devuelve el historial encontrado
+    res.json(result.rows[0]);
+
   } catch (err) {
     next(err);
   }

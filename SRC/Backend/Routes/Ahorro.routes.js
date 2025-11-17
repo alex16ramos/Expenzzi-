@@ -16,4 +16,9 @@ router.put(`/ahorro/:idinterfazoperacion/:idahorro`, verifyIDInterfazOperacion,a
 
 router.delete(`/ahorro/:idinterfazoperacion/:idahorro`, verifyIDInterfazOperacion,authenticateToken, ahorroController.deleteAhorro);
 
+//Rutas para manejar HISTORIAL AHORRO 
+router.get('/ahorro/:idinterfazoperacion/:idahorro/historial', verifyIDInterfazOperacion, authenticateToken, ahorroController.getHistorialAhorro);
+
+router.get('/ahorro/:idinterfazoperacion/historial/:idhistorialahorro', verifyIDInterfazOperacion, authenticateToken, ahorroController.getHistorialAhorroByID);
+
 module.exports = router;

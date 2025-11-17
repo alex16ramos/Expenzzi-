@@ -5,7 +5,7 @@ const ingresoController = require('../Controllers/Ingreso.controller.js');
 const authenticateToken = require('../Middlewares/Authentication/authentication.controller.js');
 const verifyIDInterfazOperacion = require('../Middlewares/Verification/verifyIDInterfazOperacion.js');
 
-//Rutas para manejar los ingresos
+//Rutas de INGRESO
 router.get(`/ingreso/:idinterfazoperacion`, verifyIDInterfazOperacion,authenticateToken, ingresoController.getIngresos);
 
 router.get(`/ingreso/:idinterfazoperacion/:idingreso`, verifyIDInterfazOperacion,authenticateToken, ingresoController.getIngresobyID);
@@ -15,5 +15,10 @@ router.post(`/ingreso/:idinterfazoperacion`, verifyIDInterfazOperacion,authentic
 router.put(`/ingreso/:idinterfazoperacion/:idingreso`, verifyIDInterfazOperacion,authenticateToken, ingresoController.updateIngreso);
 
 router.delete(`/ingreso/:idinterfazoperacion/:idingreso`, verifyIDInterfazOperacion,authenticateToken, ingresoController.deleteIngreso);
+
+//Rutas para manejar HISTORIAL INGRESO
+router.get('/ingreso/:idinterfazoperacion/:idingreso/historial', verifyIDInterfazOperacion, authenticateToken, ingresoController.getHistorialIngreso);
+
+router.get('/ingreso/:idinterfazoperacion/historial/:idhistorialingreso', verifyIDInterfazOperacion, authenticateToken, ingresoController.getHistorialIngresoByID);
 
 module.exports = router;
