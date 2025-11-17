@@ -1,11 +1,11 @@
 // Importación de dependencias
 const pool = require('../DB/dbConnection.js');
-const submetodopagoController = {};
+const submetodopagoService = {};
 const hasAccessToInterfazOperacion = require('../Middlewares/Verification/hasAccessToInterfazOperacion.js');
 const hasRoleInterfazOperacion = require('../Middlewares/Verification/hasRoleInterfazOperacion.js');
 
 // Obtener todos los submétodos de pago (filtros simples)
-submetodopagoController.getSubMetodosPago = async (req, res, next) => {
+submetodopagoService.getSubMetodosPago = async (req, res, next) => {
   try {
     const { idinterfazoperacion } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
@@ -62,7 +62,7 @@ submetodopagoController.getSubMetodosPago = async (req, res, next) => {
 };
 
 // Obtener submétodo de pago por ID
-submetodopagoController.getSubMetodoPagoByID = async (req, res, next) => {
+submetodopagoService.getSubMetodoPagoByID = async (req, res, next) => {
   try {
     const { idsubmetodopago, idinterfazoperacion } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
@@ -93,7 +93,7 @@ submetodopagoController.getSubMetodoPagoByID = async (req, res, next) => {
 };
 
 // Crear nuevo submétodo de pago
-submetodopagoController.createSubMetodoPago = async (req, res, next) => {
+submetodopagoService.createSubMetodoPago = async (req, res, next) => {
   try {
     const { idinterfazoperacion } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
@@ -126,7 +126,7 @@ submetodopagoController.createSubMetodoPago = async (req, res, next) => {
 };
 
 // Actualizar submétodo de pago
-submetodopagoController.updateSubMetodoPago = async (req, res, next) => {
+submetodopagoService.updateSubMetodoPago = async (req, res, next) => {
   try {
     const { idinterfazoperacion, idsubmetodopago } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
@@ -163,7 +163,7 @@ submetodopagoController.updateSubMetodoPago = async (req, res, next) => {
 };
 
 // Eliminar submétodo de pago (borrado lógico)
-submetodopagoController.deleteSubMetodoPago = async (req, res, next) => {
+submetodopagoService.deleteSubMetodoPago = async (req, res, next) => {
   try {
     const { idinterfazoperacion, idsubmetodopago } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
@@ -195,4 +195,4 @@ submetodopagoController.deleteSubMetodoPago = async (req, res, next) => {
   }
 };
 
-module.exports = submetodopagoController;
+module.exports = submetodopagoService;

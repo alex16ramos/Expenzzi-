@@ -1,11 +1,11 @@
 // Importación de dependencias
 const pool = require('../DB/dbConnection.js');
-const categoriaController = {};
+const categoriaService = {};
 const hasAccessToInterfazOperacion = require('../Middlewares/Verification/hasAccessToInterfazOperacion.js');
 const hasRoleInterfazOperacion = require('../Middlewares/Verification/hasRoleInterfazOperacion.js');
 
 // Obtener todas las categorías 
-categoriaController.getCategorias = async (req, res, next) => {
+categoriaService.getCategorias = async (req, res, next) => {
   try {
     const { idinterfazoperacion } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
@@ -64,7 +64,7 @@ categoriaController.getCategorias = async (req, res, next) => {
 };
 
 //Obtener categoría por ID
-categoriaController.getCategoriaByID = async (req, res, next) => {
+categoriaService.getCategoriaByID = async (req, res, next) => {
   try {
     const { idcategoria, idinterfazoperacion } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
@@ -97,7 +97,7 @@ categoriaController.getCategoriaByID = async (req, res, next) => {
 };
 
 //Crear nueva categoría
-categoriaController.createCategoria = async (req, res, next) => {
+categoriaService.createCategoria = async (req, res, next) => {
   try {
     const { idinterfazoperacion } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
@@ -130,7 +130,7 @@ categoriaController.createCategoria = async (req, res, next) => {
 };
 
 //Actualizar categoría
-categoriaController.updateCategoria = async (req, res, next) => {
+categoriaService.updateCategoria = async (req, res, next) => {
   try {
     const { idinterfazoperacion, idcategoria } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
@@ -166,7 +166,7 @@ categoriaController.updateCategoria = async (req, res, next) => {
 };
 
 //Eliminar categoría (borrado lógico)
-categoriaController.deleteCategoria = async (req, res, next) => {
+categoriaService.deleteCategoria = async (req, res, next) => {
   try {
     const { idinterfazoperacion, idcategoria } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
@@ -199,7 +199,7 @@ categoriaController.deleteCategoria = async (req, res, next) => {
 };
 
 //Ingresar Limite por categoria 
-categoriaController.setLimiteCategoria = async (req, res, next) => {
+categoriaService.setLimiteCategoria = async (req, res, next) => {
   try {
     const { idinterfazoperacion, idcategoria } = req.params;
     const { importe, moneda, periodoaplicacion } = req.body;
@@ -286,7 +286,7 @@ categoriaController.setLimiteCategoria = async (req, res, next) => {
   }
 };
 
-categoriaController.deleteLimiteCategoria = async (req, res, next) => {
+categoriaService.deleteLimiteCategoria = async (req, res, next) => {
   try {
     const { idinterfazoperacion, idcategoria } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
@@ -334,4 +334,4 @@ categoriaController.deleteLimiteCategoria = async (req, res, next) => {
 };
 
 
-module.exports = categoriaController;
+module.exports = categoriaService;

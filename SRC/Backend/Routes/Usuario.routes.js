@@ -1,11 +1,11 @@
 //Importaciones de dependencias
 const express = require('express');
 const router = express.Router();
-const usuarioController = require ('../Controllers/Usuario.controller.js');
+const usuarioService = require ('../Services/Usuario.Service.js');
 
 //Rutas de usuario
-router.post(`/registrosesion`, usuarioController.register );
+router.post(`/registrosesion`, usuarioService.register );
 
-router.post(`/iniciosesion`, usuarioController.login);
+router.post(`/iniciosesion`, usuarioService.login);
 
 module.exports = router;

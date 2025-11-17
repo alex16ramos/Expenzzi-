@@ -2,11 +2,11 @@
 const pool = require('../DB/dbConnection.js');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const usuarioController = {};
+const usuarioService = {};
 require('dotenv').config();
 
 // Registro de usuario
-usuarioController.register = async (req, res) => {
+usuarioService.register = async (req, res) => {
     //Parametros del body para registrar un usuario
     const { nombreusuario, email, contrasena } = req.body;
 
@@ -30,7 +30,7 @@ usuarioController.register = async (req, res) => {
 };
 
 // Inicio de sesión de usuario
-usuarioController.login = async (req, res) => {
+usuarioService.login = async (req, res) => {
     //Parametros del body para iniciar sesión
     const { email, contrasena } = req.body;
 
@@ -73,4 +73,4 @@ usuarioController.login = async (req, res) => {
     }
 };
 
-module.exports = usuarioController;
+module.exports = usuarioService;

@@ -1,26 +1,26 @@
 //Importacion de dependencias
 const express = require('express');
 const router = express.Router();
-const interfazoperacionController = require ('../Controllers/InterfazOperacion.controller.js');
-const authenticateToken = require('../Middlewares/Authentication/authentication.controller.js');
+const interfazoperacionService = require ('../Services/InterfazOperacion.Service.js');
+const authenticateToken = require('../Middlewares/Authentication/authentication.Service.js');
 const verifyIDInterfazOperacion = require('../Middlewares/Verification/verifyIDInterfazOperacion.js');
 
 //Rutas para manejar las interfaces de operacion
 //Ruta para obtener todas las interfaces de operacion por idusuario
-router.get(`/interfazoperacion/allinterfazoperacionbyidusuario/:idusuario`, authenticateToken, interfazoperacionController.getAllInterfazOperacionbyIdUsuario);
+router.get(`/interfazoperacion/allinterfazoperacionbyidusuario/:idusuario`, authenticateToken, interfazoperacionService.getAllInterfazOperacionbyIdUsuario);
 //Ruta para obtener todos los usuarios que tienen acceso a una interfaz de operacion mediante idinterfazoperacion
-router.get(`/interfazoperacion/allusuariosbyidinterfazoperacion/:idinterfazoperacion`,verifyIDInterfazOperacion, authenticateToken, interfazoperacionController.getUsuariosByIdInterfazOperacion);
+router.get(`/interfazoperacion/allusuariosbyidinterfazoperacion/:idinterfazoperacion`,verifyIDInterfazOperacion, authenticateToken, interfazoperacionService.getUsuariosByIdInterfazOperacion);
 
-router.post(`/interfazoperacion/`, authenticateToken, interfazoperacionController.createInterfazOperacion);
+router.post(`/interfazoperacion/`, authenticateToken, interfazoperacionService.createInterfazOperacion);
 
-router.put(`/interfazoperacion/:idinterfazoperacion`, authenticateToken, interfazoperacionController.updateInterfazOperacion);
+router.put(`/interfazoperacion/:idinterfazoperacion`, authenticateToken, interfazoperacionService.updateInterfazOperacion);
 
-router.delete(`/interfazoperacion/:idinterfazoperacion`, authenticateToken, interfazoperacionController.deleteInterfazOperacion);
+router.delete(`/interfazoperacion/:idinterfazoperacion`, authenticateToken, interfazoperacionService.deleteInterfazOperacion);
 
 //Rutas para manejar invitaciones de usuarios a interfaces de operacion
 
-router.post(`/interfazoperacion/codigoinvitacion/:codigoinvitacion`, authenticateToken, interfazoperacionController.joinToInterfazOperacion);
+router.post(`/interfazoperacion/codigoinvitacion/:codigoinvitacion`, authenticateToken, interfazoperacionService.joinToInterfazOperacion);
 
-router.delete(`/interfazoperacion/codigoinvitacion/:idinterfazoperacion`, authenticateToken, interfazoperacionController.getOutOfInterfazOperacion);
+router.delete(`/interfazoperacion/codigoinvitacion/:idinterfazoperacion`, authenticateToken, interfazoperacionService.getOutOfInterfazOperacion);
 
 module.exports = router;

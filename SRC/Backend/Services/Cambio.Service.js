@@ -1,9 +1,9 @@
 // Importación de dependencias
 const pool = require('../DB/dbConnection.js');
-const cambioController = {};
+const cambioService = {};
 
 //Obtener último cambio o el de una fecha específica
-cambioController.getCambio = async (req, res, next) => {
+cambioService.getCambio = async (req, res, next) => {
   try {
     const { fecha } = req.query;
 
@@ -64,4 +64,4 @@ cambioController.getCambio = async (req, res, next) => {
   }
 };
 
-module.exports = cambioController;
+module.exports = cambioService;

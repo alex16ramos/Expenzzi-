@@ -1,11 +1,11 @@
 // Importación de dependencias
 const pool = require('../DB/dbConnection.js');
-const ingresoController = {};
+const ingresoService = {};
 const hasAccessToInterfazOperacion = require('../Middlewares/Verification/hasAccessToInterfazOperacion.js');
 const hasRoleInterfazOperacion = require('../Middlewares/Verification/hasRoleInterfazOperacion.js');
 
 // ✅ Obtener todos los ingresos (con filtros y paginación)
-ingresoController.getIngresos = async (req, res, next) => {
+ingresoService.getIngresos = async (req, res, next) => {
   try {
     const { idinterfazoperacion } = req.params;
     const idinterfazoperacionNum = Number(idinterfazoperacion);
@@ -127,7 +127,7 @@ ingresoController.getIngresos = async (req, res, next) => {
 };
 
 // ✅ Obtener ingreso por ID
-ingresoController.getIngresobyID = async (req, res, next) => {
+ingresoService.getIngresobyID = async (req, res, next) => {
   try {
     //Parametros requeridos para la busqueda
     const { idingreso, idinterfazoperacion } = req.params;
@@ -165,7 +165,7 @@ ingresoController.getIngresobyID = async (req, res, next) => {
 };
 
 // Crear ingreso
-ingresoController.createIngreso = async (req, res, next) => {
+ingresoService.createIngreso = async (req, res, next) => {
   try {
      //Parametros requeridos para la creacion
     const { idinterfazoperacion } = req.params;
@@ -202,7 +202,7 @@ ingresoController.createIngreso = async (req, res, next) => {
 };
 
 // Actualizar ingreso
-ingresoController.updateIngreso = async (req, res, next) => {
+ingresoService.updateIngreso = async (req, res, next) => {
   try {
     //Parametros requeridos para la actualizacion
     const { idinterfazoperacion, idingreso } = req.params;
@@ -271,7 +271,7 @@ ingresoController.updateIngreso = async (req, res, next) => {
 };
 
 // Eliminar ingreso (cambiar estado a false)
-ingresoController.deleteIngreso = async (req, res, next) => {
+ingresoService.deleteIngreso = async (req, res, next) => {
   try {
     //Parametros requeridos para la eliminacion
     const { idinterfazoperacion, idingreso } = req.params;
@@ -334,7 +334,7 @@ ingresoController.deleteIngreso = async (req, res, next) => {
 };
 
 //Obtener historial de un ingreso
-ingresoController.getHistorialIngreso = async (req, res, next) => {
+ingresoService.getHistorialIngreso = async (req, res, next) => {
   try {
     //Parámetros requeridos
     const { idinterfazoperacion, idingreso } = req.params;
@@ -398,7 +398,7 @@ ingresoController.getHistorialIngreso = async (req, res, next) => {
 };
 
 // Obtener historial de ingreso por ID
-ingresoController.getHistorialIngresoByID = async (req, res, next) => {
+ingresoService.getHistorialIngresoByID = async (req, res, next) => {
   try {
     // Parámetros requeridos
     const { idinterfazoperacion, idhistorialingreso } = req.params;
@@ -438,4 +438,4 @@ ingresoController.getHistorialIngresoByID = async (req, res, next) => {
 };
 
 
-module.exports = ingresoController;
+module.exports = ingresoService;

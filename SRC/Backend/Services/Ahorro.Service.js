@@ -1,11 +1,11 @@
 // Importación de dependencias
 const pool = require('../DB/dbConnection.js');
-const ahorroController = {};
+const ahorroService = {};
 const hasAccessToInterfazOperacion = require('../Middlewares/Verification/hasAccessToInterfazOperacion.js');
 const hasRoleInterfazOperacion = require('../Middlewares/Verification/hasRoleInterfazOperacion.js');
 
 // Obtener todos los ahorros (con filtros y paginación)
-ahorroController.getAhorros = async (req, res, next) => {
+ahorroService.getAhorros = async (req, res, next) => {
   try {
     //Parametros requeridos para la busqueda
     const { idinterfazoperacion } = req.params;
@@ -130,7 +130,7 @@ ahorroController.getAhorros = async (req, res, next) => {
 };
 
 // Obtener ahorro por ID
-ahorroController.getAhorroByID = async (req, res, next) => {
+ahorroService.getAhorroByID = async (req, res, next) => {
   try {
     //Parametros requeridos para la busqueda
     const { idahorro, idinterfazoperacion } = req.params;
@@ -169,7 +169,7 @@ ahorroController.getAhorroByID = async (req, res, next) => {
 };
 
 //Crear nuevo ahorro
-ahorroController.createAhorro = async (req, res, next) => {
+ahorroService.createAhorro = async (req, res, next) => {
   try {
     //Parametros requeridos para la creacion
     const { idinterfazoperacion } = req.params;
@@ -206,7 +206,7 @@ ahorroController.createAhorro = async (req, res, next) => {
 };
 
 // Actualizar ahorro
-ahorroController.updateAhorro = async (req, res, next) => {
+ahorroService.updateAhorro = async (req, res, next) => {
   try {
      //Parametros requeridos para la actualizacion
     const { idinterfazoperacion, idahorro } = req.params;
@@ -278,7 +278,7 @@ ahorroController.updateAhorro = async (req, res, next) => {
 };
 
 //Eliminar ahorro (borrado lógico)
-ahorroController.deleteAhorro = async (req, res, next) => {
+ahorroService.deleteAhorro = async (req, res, next) => {
   try {
     //Parametros requeridos para la eliminacion
     const { idinterfazoperacion, idahorro } = req.params;
@@ -341,7 +341,7 @@ ahorroController.deleteAhorro = async (req, res, next) => {
 };
 
 // Obtener historial de un ahorro
-ahorroController.getHistorialAhorro = async (req, res, next) => {
+ahorroService.getHistorialAhorro = async (req, res, next) => {
   try {
     // Parámetros requeridos
     const { idinterfazoperacion, idahorro } = req.params;
@@ -403,7 +403,7 @@ ahorroController.getHistorialAhorro = async (req, res, next) => {
 };
 
 // Obtener historial de ahorro por ID
-ahorroController.getHistorialAhorroByID = async (req, res, next) => {
+ahorroService.getHistorialAhorroByID = async (req, res, next) => {
   try {
     // Parámetros requeridos
     const { idhistorialahorro, idinterfazoperacion } = req.params;
@@ -441,4 +441,4 @@ ahorroController.getHistorialAhorroByID = async (req, res, next) => {
   }
 };
 
-module.exports = ahorroController;
+module.exports = ahorroService;

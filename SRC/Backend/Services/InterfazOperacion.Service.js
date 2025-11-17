@@ -1,13 +1,13 @@
 //Importacion de dependencias
 const pool = require('../DB/dbConnection.js');
-const interfazoperacionController = {};
+const interfazoperacionService = {};
 const hasAccessToInterfazOperacion = require('../Middlewares/Verification/hasAccessToInterfazOperacion.js')
 const hasRoleInterfazOperacion = require('../Middlewares/Verification/hasRoleInterfazOperacion.js');
 
 
 // Obtener todas las interfaces de operacion asociadas a un idusuario
 // Filtrado por estado y nombre
-interfazoperacionController.getAllInterfazOperacionbyIdUsuario = async (req, res, next) => {
+interfazoperacionService.getAllInterfazOperacionbyIdUsuario = async (req, res, next) => {
   try {
     //Parametros requeridos para la busqueda
     const { idusuario } = req.params;
@@ -82,7 +82,7 @@ interfazoperacionController.getAllInterfazOperacionbyIdUsuario = async (req, res
 
 // Obtener los usuarios asociados a una interfaz de operacion
 //Filtrado por rol, nombreusuario y fecha de union
-interfazoperacionController.getUsuariosByIdInterfazOperacion = async (req, res, next) => {
+interfazoperacionService.getUsuariosByIdInterfazOperacion = async (req, res, next) => {
   try {
     //Parametros requeridos para la busqueda
     const { idinterfazoperacion } = req.params;
@@ -172,7 +172,7 @@ interfazoperacionController.getUsuariosByIdInterfazOperacion = async (req, res, 
 };
 
 //Creacion de una nueva interfaz de operacion
-interfazoperacionController.createInterfazOperacion = async (req, res, next) => {
+interfazoperacionService.createInterfazOperacion = async (req, res, next) => {
   try {
     //Parametros requeridos para la creacion
     const { nombre, descripcion } = req.body;
@@ -204,7 +204,7 @@ interfazoperacionController.createInterfazOperacion = async (req, res, next) => 
 };
 
 // Actualizar una interfaz de operacion
-interfazoperacionController.updateInterfazOperacion = async (req, res, next) => {
+interfazoperacionService.updateInterfazOperacion = async (req, res, next) => {
   try {
     //Parametros que se pueden actualizar
     const { nombre, descripcion } = req.body;
@@ -242,7 +242,7 @@ interfazoperacionController.updateInterfazOperacion = async (req, res, next) => 
 };
 
 // Desactivar o activar una interfaz de operacion mediante el estado
-interfazoperacionController.deleteInterfazOperacion = async (req, res, next) => {
+interfazoperacionService.deleteInterfazOperacion = async (req, res, next) => {
   try {
     //Parametros requeridos
     const { idinterfazoperacion } = req.params;
@@ -294,7 +294,7 @@ interfazoperacionController.deleteInterfazOperacion = async (req, res, next) => 
 
 // ------------------------------------------------Invitacion a Interfaz de Operacion------------------------------------------------
 // Unirse a una interfaz de operacion mediante un codigo de invitacion
-interfazoperacionController.joinToInterfazOperacion = async (req, res, next) => {
+interfazoperacionService.joinToInterfazOperacion = async (req, res, next) => {
   try {
     const { codigoinvitacion } = req.params;
 
@@ -367,7 +367,7 @@ interfazoperacionController.joinToInterfazOperacion = async (req, res, next) => 
 };
 
 // Unirse a una interfaz de operacion mediante un codigo de invitacion
-interfazoperacionController.getOutOfInterfazOperacion = async (req, res, next) => {
+interfazoperacionService.getOutOfInterfazOperacion = async (req, res, next) => {
   try {
     const { idinterfazoperacion } = req.params;
     //Actualizar la fecha de salida del usuario en usuariointerfaz
@@ -392,4 +392,4 @@ interfazoperacionController.getOutOfInterfazOperacion = async (req, res, next) =
   }
 };
 
-module.exports = interfazoperacionController;
+module.exports = interfazoperacionService;

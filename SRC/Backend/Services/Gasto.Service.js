@@ -1,6 +1,6 @@
 //Importacion de dependencias
 const pool = require('../DB/dbConnection.js');
-const gastoController = {};
+const gastoService = {};
 const hasAccessToInterfazOperacion = require('../Middlewares/Verification/hasAccessToInterfazOperacion.js')
 const hasRoleInterfazOperacion = require('../Middlewares/Verification/hasRoleInterfazOperacion.js');
 
@@ -8,7 +8,7 @@ const hasRoleInterfazOperacion = require('../Middlewares/Verification/hasRoleInt
 //Obtener todos los gastos
 //Filtrado por estado, categoria, responsableGasto, moneda, metodopago, submetodopago, comentario, rango de fechas, montoMin, montoMax, monedaFiltro del montoMin y montoMax
 //Paginacion con offset y limit
-gastoController.getGastos = async (req, res, next) => {
+gastoService.getGastos = async (req, res, next) => {
   try {
     //Parametros requeridos para la busqueda
     const { idinterfazoperacion } = req.params;
@@ -152,7 +152,7 @@ gastoController.getGastos = async (req, res, next) => {
 };
 
 //Obtener gasto por ID
-gastoController.getGastobyID = async (req, res, next) => {
+gastoService.getGastobyID = async (req, res, next) => {
   try {
     //Parametros requeridos para la busqueda
     const { idinterfazoperacion, idgasto } = req.params;
@@ -198,7 +198,7 @@ gastoController.getGastobyID = async (req, res, next) => {
 };
 
 //Crear nuevo gasto
-gastoController.createGasto = async (req, res, next) => {
+gastoService.createGasto = async (req, res, next) => {
   try {
     //Parametros requeridos para la creacion
     const { idinterfazoperacion } = req.params;
@@ -235,7 +235,7 @@ gastoController.createGasto = async (req, res, next) => {
 };
 
 //Actualizar gasto
-gastoController.updateGasto = async (req, res, next) => {
+gastoService.updateGasto = async (req, res, next) => {
   try {
     //Parametros requeridos para la actualizacion
     const { idinterfazoperacion, idgasto } = req.params;
@@ -312,7 +312,7 @@ gastoController.updateGasto = async (req, res, next) => {
 }
 
 //Eliminar gasto (cambiar estado a false)
-gastoController.deleteGasto = async (req, res, next) => {
+gastoService.deleteGasto = async (req, res, next) => {
   try {
     //Parametros requeridos para la eliminacion
     const { idinterfazoperacion, idgasto } = req.params;
@@ -380,7 +380,7 @@ gastoController.deleteGasto = async (req, res, next) => {
 };
 
 // Obtener historial de un gasto
-gastoController.getHistorialGasto = async (req, res, next) => {
+gastoService.getHistorialGasto = async (req, res, next) => {
   try {
     // Parámetros requeridos
     const { idinterfazoperacion, idgasto } = req.params;
@@ -445,7 +445,7 @@ gastoController.getHistorialGasto = async (req, res, next) => {
 };
 
 // Obtener historial de gasto por ID
-gastoController.getHistorialGastoByID = async (req, res, next) => {
+gastoService.getHistorialGastoByID = async (req, res, next) => {
   try {
     // Parámetros requeridos
     const { idinterfazoperacion, idhistorialgasto } = req.params;
@@ -485,4 +485,4 @@ gastoController.getHistorialGastoByID = async (req, res, next) => {
   }
 };
 
-module.exports = gastoController;
+module.exports = gastoService;

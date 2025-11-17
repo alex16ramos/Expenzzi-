@@ -1,9 +1,9 @@
 //Importacion de dependencias
 const express = require('express');
 const router = express.Router();
-const cambioController = require('../Controllers/Cambio.controller.js');
+const cambioService = require('../Services/Cambio.Service.js');
 
 //Rutas para manejar los cambios
-router.get(`/cambio/`,  cambioController.getCambio);
+router.get(`/cambio/`,  cambioService.getCambio);
 
 module.exports = router;
