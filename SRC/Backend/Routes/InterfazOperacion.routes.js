@@ -1,0 +1,23 @@
+//Importacion de dependencias
+const express = require('express');
+const router = express.Router();
+const interfazoperacionController = require ('../Controllers/InterfazOperacion.controller.js');
+const authenticateToken = require('../Middlewares/Authentication/authentication.controller.js');
+const verifyIDInterfazOperacion = require('../Middlewares/Verification/verifyIDInterfazOperacion.js');
+
+//Rutas para manejar las interfaces de operacion
+//Ruta para obtener todas las interfaces de operacion por idusuario
+router.get(`/interfazoperacion/allinterfazoperacionbyidusuario/:idusuario`, authenticateToken, interfazoperacionController.getAllInterfazOperacionbyIdUsuario);
+//Ruta para obtener todos los usuarios que tienen acceso a una interfaz de operacion mediante idinterfazoperacion
+router.get(`/interfazoperacion/allusuariosbyidinterfazoperacion/:idinterfazoperacion`,verifyIDInterfazOperacion, authenticateToken, interfazoperacionController.getUsuariosByIdInterfazOperacion);
+
+// Ruta para obtener el balance general
+router.get(`/interfazoperacion/balance/:idinterfazoperacion`, authenticateToken, interfazoperacionController.getBalanceGeneral);
+
+router.post(`/interfazoperacion/`, authenticateToken, interfazoperacionController.createInterfazOperacion);
+
+router.put(`/interfazoperacion/:idinterfazoperacion`, authenticateToken, interfazoperacionController.updateInterfazOperacion);
+
+router.delete(`/interfazoperacion/:idinterfazoperacion`, authenticateToken, interfazoperacionController.deleteInterfazOperacion);
+
+module.exports = router;
