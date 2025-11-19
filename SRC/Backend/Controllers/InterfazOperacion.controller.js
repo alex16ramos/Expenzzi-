@@ -306,9 +306,9 @@ interfazoperacionController.getBalanceGeneral = async (req, res, next) => {
     // Escribimos la consulta SQL    
     const query = `
       SELECT 
-        balancegeneralars, 
-        balancegeneralusd, 
-        balancegeneraluyu 
+       (balancegeneral).importears,
+        (balancegeneral).importeusd,
+        (balancegeneral).importeuyu
       FROM interfazoperacion 
       WHERE idinterfazoperacion = $1
     `;
@@ -338,13 +338,15 @@ interfazoperacionController.getBalanceGeneral = async (req, res, next) => {
 // Actualiza los 3 balances (ARS, USD, UYU) de una interfaz.
 // Se debe llamar después de cualquier cambio en gastos o ingresos.
 interfazoperacionController.updateBalanceGeneral = async (idinterfazoperacion) => {
-  try {
+  try 
+  {
+    
     //  Calculamos el total de INGRESOS (sumando las 3 monedas)
     const ingresosQuery = `
       SELECT 
-        COALESCE(SUM(importeARS), 0) as totalIngresosARS,
-        COALESCE(SUM(importeUSD), 0) as totalIngresosUSD,
-        COALESCE(SUM(importeUYU), 0) as totalIngresosUYU
+        COALESCE(SUM((importes).importeARS), 0) as totalIngresosARS,
+        COALESCE(SUM((importes).importeUSD), 0) as totalIngresosUSD,
+        COALESCE(SUM((importes).importeUYU), 0) as totalIngresosUYU
       FROM ingreso
       WHERE idinterfazoperacion = $1 AND estado = true
     `;
@@ -354,28 +356,32 @@ interfazoperacionController.updateBalanceGeneral = async (idinterfazoperacion) =
     //  Calculamos el total de GASTOS (sumando las 3 monedas)
     const gastosQuery = `
       SELECT 
-        COALESCE(SUM(importeARS), 0) as totalGastosARS,
-        COALESCE(SUM(importeUSD), 0) as totalGastosUSD,
-        COALESCE(SUM(importeUYU), 0) as totalGastosUYU
-      FROM gasto
-      WHERE idinterfazoperacion = $1 AND estado = true
+        COALESCE(SUM((g.importes).importeARS), 0) as totalGastosARS,
+        COALESCE(SUM((g.importes).importeUSD), 0) as totalGastosUSD,
+        COALESCE(SUM((g.importes).importeUYU), 0) as totalGastosUYU
+      FROM categoria c
+      join gasto g ON c.idcategoria = g.idcategoria
+      WHERE c.idinterfazoperacion = $1 AND g.estado = true
     `;
     const gastosResult = await pool.query(gastosQuery, [idinterfazoperacion]);
     const gastos = gastosResult.rows[0];
 
-    //  Calculamos el BALANCE FINAL (Ingresos - Gastos)
-    const balanceARS = ingresos.totalIngresosARS - gastos.totalGastosARS;
-    const balanceUSD = ingresos.totalIngresosUSD - gastos.totalGastosUSD;
-    const balanceUYU = ingresos.totalIngresosUYU - gastos.totalGastosUYU;
 
-    //  Actualizamos la tabla 'interfazoperacion' con los nuevos balances
+    //  Calculamos el BALANCE FINAL (Ingresos - Gastos)
+
+    //const balanceARS = ingresos.totalIngresosARS - gastos.totalGastosARS;
+    //const balanceUSD = ingresos.totalIngresosUSD - gastos.totalGastosUSD;
+    //const balanceUYU = ingresos.totalIngresosUYU - gastos.totalGastosUYU;
+
+    const balanceARS = gastos.totalgastosars;   //falta
+    const balanceUSD = gastos.totalgastosusd;
+    const balanceUYU = gastos.totalgastosuyu;
+    // Actualizamos la tabla 'interfazoperacion' con los nuevos balances
     const updateQuery = `
       UPDATE interfazoperacion
-      SET 
-        balancegeneralars = $1,
-        balancegeneralusd = $2,
-        balancegeneraluyu = $3
-      WHERE idinterfazoperacion = $4
+      SET balancegeneral = ROW($1, $2, $3)
+      WHERE idinterfazoperacion = $4;
+
     `;
     await pool.query(updateQuery, [balanceARS, balanceUSD, balanceUYU, idinterfazoperacion]);
 
