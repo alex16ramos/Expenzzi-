@@ -213,17 +213,28 @@ CREATE OR REPLACE FUNCTION public.sync_usuario_fn()
 RETURNS TRIGGER AS $$
 BEGIN
   IF (TG_OP = 'INSERT') THEN
-    INSERT INTO public.usuario (idusuario, nombreusuario, email)
-    VALUES (NEW.id, COALESCE(NEW.name, 'Usuario'), NEW.email)
-    ON CONFLICT (idusuario) DO UPDATE
-    SET nombreusuario = EXCLUDED.nombreusuario, email = EXCLUDED.email;
+    BEGIN
+      INSERT INTO public.usuario (nombreusuario, email, contrasena)
+      VALUES (COALESCE(NEW.name, 'Usuario'), NEW.email, 'NEON_AUTH')
+      ON CONFLICT (email) DO UPDATE
+      SET nombreusuario = EXCLUDED.nombreusuario;
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'sync_usuario_fn insert error: %', SQLERRM;
+    END;
   ELSIF (TG_OP = 'UPDATE') THEN
-    UPDATE public.usuario
-    SET nombreusuario = COALESCE(NEW.name, nombreusuario),
-        email = NEW.email
-    WHERE idusuario = NEW.id;
+    BEGIN
+      UPDATE public.usuario
+      SET nombreusuario = COALESCE(NEW.name, nombreusuario)
+      WHERE email = NEW.email;
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'sync_usuario_fn update error: %', SQLERRM;
+    END;
   ELSIF (TG_OP = 'DELETE') THEN
-    DELETE FROM public.usuario WHERE idusuario = OLD.id;
+    BEGIN
+      DELETE FROM public.usuario WHERE email = OLD.email;
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'sync_usuario_fn delete error: %', SQLERRM;
+    END;
   END IF;
   RETURN NEW;
 END;

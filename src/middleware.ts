@@ -6,7 +6,6 @@ export default auth.middleware({
 
 export const config = {
   matcher: [
-    // Protect dashboard and operational interface pages
     '/dashboard/:path*',
     '/interface/:path*',
   ],
