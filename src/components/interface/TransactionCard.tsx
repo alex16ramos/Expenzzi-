@@ -16,9 +16,9 @@ export interface Transaction {
 }
 
 export const CURRENCY_STYLE: Record<string, string> = {
-  ARS: 'bg-violet-100 text-violet-700',
-  USD: 'bg-emerald-100 text-emerald-700',
-  UYU: 'bg-amber-100 text-amber-700',
+  ARS: 'bg-violet-500/15 text-violet-300 border border-violet-500/30',
+  USD: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30',
+  UYU: 'bg-amber-500/15 text-amber-300 border border-amber-500/30',
 };
 
 interface TransactionCardProps {
@@ -37,25 +37,25 @@ export function TransactionCard({
   onDelete,
 }: TransactionCardProps) {
   const currencyBadgeClass =
-    CURRENCY_STYLE[tx.currency] || 'bg-slate-100 text-slate-700';
+    CURRENCY_STYLE[tx.currency] || 'bg-slate-800 text-slate-300 border border-slate-700';
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm transition-all hover:border-slate-300">
+    <div className="bg-slate-900/80 rounded-2xl border border-slate-800/80 overflow-hidden shadow-md transition-all hover:border-slate-700">
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-3 p-3 text-left active:bg-slate-50 transition-colors"
+        className="w-full flex items-center gap-3 p-3 text-left active:bg-slate-800/50 transition-colors"
       >
-        <div className="w-9 h-9 rounded-full bg-violet-50 text-violet-700 text-xs font-semibold flex items-center justify-center shrink-0">
+        <div className="w-9 h-9 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-bold flex items-center justify-center shrink-0">
           {tx.initials}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-slate-900 truncate">
+          <p className="text-sm font-semibold text-slate-100 truncate">
             {tx.user}
           </p>
-          <p className="text-xs text-slate-500">{tx.date}</p>
+          <p className="text-xs text-slate-400">{tx.date}</p>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-sm font-semibold text-slate-900">
+          <p className="text-sm font-bold text-white tracking-tight">
             {tx.amount.toLocaleString('es-AR')}
           </p>
           <span
@@ -66,29 +66,29 @@ export function TransactionCard({
         </div>
         <ChevronDown
           className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180' : ''
+            isOpen ? 'rotate-180 text-violet-400' : ''
           }`}
         />
       </button>
 
       {isOpen && (
-        <div className="px-3 pb-3 pt-1 border-t border-slate-100 bg-slate-50/60">
+        <div className="px-3 pb-3 pt-1 border-t border-slate-800/60 bg-slate-950/60">
           <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs mb-3 mt-2">
             <div>
               <dt className="text-slate-400">Equiv. ARS</dt>
-              <dd className="text-slate-700 font-medium">$ {tx.ars}</dd>
+              <dd className="text-slate-200 font-semibold">$ {tx.ars}</dd>
             </div>
             <div>
               <dt className="text-slate-400">Equiv. USD</dt>
-              <dd className="text-slate-700 font-medium">US$ {tx.usd}</dd>
+              <dd className="text-slate-200 font-semibold">US$ {tx.usd}</dd>
             </div>
             <div className="col-span-2">
               <dt className="text-slate-400">Comentario</dt>
-              <dd className="text-slate-700">{tx.comment || '-'}</dd>
+              <dd className="text-slate-300">{tx.comment || '-'}</dd>
             </div>
             <div className="col-span-2">
               <dt className="text-slate-400">Método de pago</dt>
-              <dd className="text-slate-700">{tx.method || '-'}</dd>
+              <dd className="text-slate-300">{tx.method || '-'}</dd>
             </div>
           </dl>
           <div className="flex gap-2">

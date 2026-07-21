@@ -19,57 +19,57 @@ export function TransactionTable({
   onDelete,
 }: TransactionTableProps) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+    <div className="bg-slate-900/80 rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
       <table className="w-full text-left text-xs border-collapse">
-        <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-semibold text-[11px] tracking-wider">
+        <thead className="bg-slate-950 border-b border-slate-800 text-slate-400 uppercase font-semibold text-[11px] tracking-wider">
           <tr>
-            <th className="py-3 px-4">Usuario</th>
-            <th className="py-3 px-4">Fecha</th>
-            <th className="py-3 px-4 text-right">Importe</th>
-            <th className="py-3 px-4 text-center">Moneda</th>
-            <th className="py-3 px-4">Método</th>
-            <th className="py-3 px-4 text-center">Detalles</th>
+            <th className="py-3.5 px-4">Usuario</th>
+            <th className="py-3.5 px-4">Fecha</th>
+            <th className="py-3.5 px-4 text-right">Importe</th>
+            <th className="py-3.5 px-4 text-center">Moneda</th>
+            <th className="py-3.5 px-4">Método</th>
+            <th className="py-3.5 px-4 text-center">Detalles</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="divide-y divide-slate-800/60">
           {transactions.map((tx) => {
             const isOpen = expandedId === tx.id;
             const currencyBadgeClass =
-              CURRENCY_STYLE[tx.currency] || 'bg-slate-100 text-slate-700';
+              CURRENCY_STYLE[tx.currency] || 'bg-slate-800 text-slate-300 border border-slate-700';
 
             return (
               <React.Fragment key={tx.id}>
                 <tr
                   onClick={() => onToggle(tx.id)}
-                  className="hover:bg-slate-50/80 cursor-pointer transition-colors"
+                  className="hover:bg-slate-800/50 cursor-pointer transition-colors"
                 >
-                  <td className="py-3 px-4 font-medium text-slate-900">
+                  <td className="py-3.5 px-4 font-semibold text-slate-100">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-violet-50 text-violet-700 text-[11px] font-semibold flex items-center justify-center shrink-0">
+                      <div className="w-7 h-7 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-[11px] font-bold flex items-center justify-center shrink-0">
                         {tx.initials}
                       </div>
                       <span>{tx.user}</span>
                     </div>
                   </td>
-                  <td className="py-3 px-4 text-slate-500">{tx.date}</td>
-                  <td className="py-3 px-4 text-right font-semibold text-slate-900">
+                  <td className="py-3.5 px-4 text-slate-400">{tx.date}</td>
+                  <td className="py-3.5 px-4 text-right font-extrabold text-white">
                     {tx.amount.toLocaleString('es-AR')}
                   </td>
-                  <td className="py-3 px-4 text-center">
+                  <td className="py-3.5 px-4 text-center">
                     <span
                       className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full ${currencyBadgeClass}`}
                     >
                       {tx.currency}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-slate-600 truncate max-w-[150px]">
+                  <td className="py-3.5 px-4 text-slate-300 truncate max-w-[150px]">
                     {tx.method || '-'}
                   </td>
-                  <td className="py-3 px-4 text-center">
-                    <button className="p-1 rounded-lg hover:bg-slate-200/60 transition-colors">
+                  <td className="py-3.5 px-4 text-center">
+                    <button className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors">
                       <ChevronDown
-                        className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
-                          isOpen ? 'rotate-180 text-violet-600' : ''
+                        className={`w-4 h-4 transition-transform duration-200 ${
+                          isOpen ? 'rotate-180 text-violet-400' : ''
                         }`}
                       />
                     </button>
@@ -77,25 +77,25 @@ export function TransactionTable({
                 </tr>
 
                 {isOpen && (
-                  <tr className="bg-slate-50/70 border-b border-slate-200">
+                  <tr className="bg-slate-950/60 border-b border-slate-800">
                     <td colSpan={6} className="p-4">
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-slate-200">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/90 p-4 rounded-xl border border-slate-800">
                         <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs flex-1">
                           <div>
                             <dt className="text-slate-400">Equiv. ARS</dt>
-                            <dd className="text-slate-900 font-semibold mt-0.5">
+                            <dd className="text-slate-100 font-bold mt-0.5">
                               $ {tx.ars}
                             </dd>
                           </div>
                           <div>
                             <dt className="text-slate-400">Equiv. USD</dt>
-                            <dd className="text-slate-900 font-semibold mt-0.5">
+                            <dd className="text-slate-100 font-bold mt-0.5">
                               US$ {tx.usd}
                             </dd>
                           </div>
                           <div className="col-span-2">
                             <dt className="text-slate-400">Comentario</dt>
-                            <dd className="text-slate-700 mt-0.5">
+                            <dd className="text-slate-300 mt-0.5">
                               {tx.comment || 'Sin comentario'}
                             </dd>
                           </div>

@@ -20,14 +20,14 @@ export function Header({
   onMenuClick,
 }: HeaderProps) {
   return (
-    <div className="bg-white border-b border-slate-200 px-4 pt-3 pb-3 shrink-0">
+    <div className="bg-slate-950/90 border-b border-slate-800/80 px-4 pt-3 pb-3 shrink-0">
       <div className="flex items-center justify-between">
         <button
           onClick={onMenuClick}
-          className="p-2 -ml-2 rounded-lg hover:bg-slate-100 active:bg-slate-200 transition-colors"
+          className="p-2 -ml-2 rounded-lg hover:bg-slate-900 active:bg-slate-800 text-slate-300 hover:text-white transition-colors"
           title="Menú"
         >
-          <Menu className="w-5 h-5 text-slate-700" />
+          <Menu className="w-5 h-5" />
         </button>
 
         <div className="relative inline-block">
@@ -41,25 +41,25 @@ export function Header({
                   : 'Ingresos';
               onSectionChange(next);
             }}
-            className="flex items-center gap-1 text-slate-900 font-semibold text-sm hover:text-violet-600 transition-colors"
+            className="flex items-center gap-1.5 text-white font-semibold text-sm hover:text-violet-400 transition-colors bg-slate-900 px-3 py-1 rounded-xl border border-slate-800"
           >
             {activeSection}
             <ChevronDown className="w-4 h-4 text-slate-400" />
           </button>
         </div>
 
-        <div className="w-8 h-8 rounded-full bg-violet-600 text-white text-[11px] font-semibold flex items-center justify-center shadow-sm shadow-violet-600/20">
+        <div className="w-8 h-8 rounded-full bg-violet-600 text-white text-[11px] font-semibold flex items-center justify-center shadow-md shadow-violet-600/30">
           {userInitials}
         </div>
       </div>
 
       <div className="relative mt-3">
-        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
         <Input
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
-          placeholder="Búsqueda avanzada"
-          className="pl-9 h-9 bg-slate-50 border-slate-200 text-sm rounded-xl"
+          placeholder="Búsqueda avanzada..."
+          className="pl-9 h-9"
         />
       </div>
     </div>

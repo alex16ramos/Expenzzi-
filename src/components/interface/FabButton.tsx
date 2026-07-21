@@ -49,15 +49,15 @@ export function FabButton({ onAddTransaction }: FabButtonProps) {
       </div>
 
       {isOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="w-full max-w-sm bg-white rounded-2xl p-5 space-y-4 shadow-xl border border-slate-200">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-slate-900 rounded-2xl p-5 space-y-4 shadow-2xl border border-slate-800 text-white">
             <div className="flex justify-between items-center">
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className="text-base font-bold text-white tracking-tight">
                 Nuevo Movimiento
               </h3>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -65,7 +65,7 @@ export function FabButton({ onAddTransaction }: FabButtonProps) {
 
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">
+                <label className="text-xs font-medium text-slate-300">
                   Importe y Moneda
                 </label>
                 <div className="flex gap-2">
@@ -81,7 +81,7 @@ export function FabButton({ onAddTransaction }: FabButtonProps) {
                   <select
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
-                    className="h-9 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    className="h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-sm font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
                   >
                     <option value="ARS">ARS ($)</option>
                     <option value="USD">USD (US$)</option>
@@ -91,7 +91,7 @@ export function FabButton({ onAddTransaction }: FabButtonProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">
+                <label className="text-xs font-medium text-slate-300">
                   Comentario
                 </label>
                 <Input
@@ -103,7 +103,7 @@ export function FabButton({ onAddTransaction }: FabButtonProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">
+                <label className="text-xs font-medium text-slate-300">
                   Método de Pago
                 </label>
                 <Input
