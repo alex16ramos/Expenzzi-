@@ -1,8 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
+import { authClient } from '@/lib/auth-client';
 
 export default function Dashboard() {
+  const session = authClient.useSession();
+  const user = session?.data?.user;
+
   const [interfaces, setInterfaces] = useState([
     {
       id: '1',
@@ -29,6 +33,16 @@ export default function Dashboard() {
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [codigo, setCodigo] = useState('');
+
+  const handleSignOut = async () => {
+    try {
+      await authClient.signOut();
+    } catch {
+      // Ignore if already signed out
+    } finally {
+      window.location.href = '/';
+    }
+  };
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,9 +94,11 @@ export default function Dashboard() {
             <span className="font-bold tracking-tight text-lg">Expenzzi</span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-xs text-slate-400 hidden sm:inline">Usuario de Prueba</span>
+            <span className="text-xs text-slate-400 hidden sm:inline">
+              {user ? user.name || user.email : 'Cargando sesión...'}
+            </span>
             <button 
-              onClick={() => window.location.href = '/'}
+              onClick={handleSignOut}
               className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300 hover:text-white transition-colors"
             >
               Cerrar Sesión

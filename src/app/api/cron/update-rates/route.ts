@@ -73,8 +73,9 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json({ success: true, cambio: data });
-  } catch (err: any) {
-    console.error('Cron job error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const error = err as Error;
+    console.error('Cron job error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

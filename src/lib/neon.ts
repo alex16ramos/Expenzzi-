@@ -7,7 +7,7 @@ import { auth } from './auth';
  */
 export async function getDbClient() {
   const session = await auth.getSession();
-  const token = (session as any)?.token;
+  const token = (session as { token?: string } | null)?.token;
 
   const headers: Record<string, string> = {};
   if (token) {

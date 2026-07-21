@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import Image from 'next/image';
+
+import { authClient } from '@/lib/auth-client';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
@@ -18,24 +19,47 @@ export default function Home() {
 
     try {
       if (activeTab === 'login') {
-        // Here we call Managed Better Auth sign-in method
-        // e.g. await authClient.signIn.email({ email, password })
-        setMessage('Simulación: Iniciando sesión...');
-        // Mock redirect for testing base implementation
-        setTimeout(() => {
+        const res = await authClient.signIn.email({
+          email,
+          password,
+        });
+
+        console.log('[DEBUG AUTH] signIn response:', res);
+
+        if (res?.error) {
+          const detail = res.error.message || JSON.stringify(res.error);
+          setMessage(`Error (${res.error.status || 400}): ${detail}`);
+        } else if (res?.data) {
+          setMessage('Inicio de sesión exitoso. Redirigiendo...');
           window.location.href = '/dashboard';
-        }, 1000);
+        } else {
+          setMessage('Error: Sin respuesta de Neon Auth. Revisa la variable NEON_AUTH_BASE_URL en .env');
+        }
       } else {
-        // Here we call Managed Better Auth sign-up method
-        // e.g. await authClient.signUp.email({ email, password, name })
-        setMessage('Simulación: Registro exitoso...');
-        setTimeout(() => {
+        const res = await authClient.signUp.email({
+          email,
+          password,
+          name,
+        });
+
+        console.log('[DEBUG AUTH] signUp response:', res);
+
+        if (res?.error) {
+          const detail = res.error.message || JSON.stringify(res.error);
+          setMessage(`Error (${res.error.status || 400}): ${detail}`);
+        } else if (res?.data) {
           setActiveTab('login');
-          setMessage('¡Registro exitoso! Por favor inicia sesión.');
-        }, 1200);
+          setMessage('¡Registro exitoso! Por favor inicia sesión con tus credenciales.');
+        } else {
+          setMessage('Error: Sin respuesta de Neon Auth. Revisa la variable NEON_AUTH_BASE_URL en .env');
+        }
       }
-    } catch (error: any) {
-      setMessage(`Error: ${error.message || 'Ocurrió un error'}`);
+    } catch (error: unknown) {
+      console.error('[DEBUG AUTH] Catch exception:', error);
+      const err = error as { status?: number; message?: string; error_description?: string };
+      const status = err?.status ? ` (${err.status})` : '';
+      const msg = err?.message || err?.error_description || 'Ocurrió un error al procesar la solicitud';
+      setMessage(`Error${status}: ${msg}`);
     } finally {
       setLoading(false);
     }
