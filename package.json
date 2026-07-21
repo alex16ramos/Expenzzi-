@@ -1,16 +1,30 @@
 {
+  "name": "expenzzi",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
   "dependencies": {
-    "axios": "^1.13.2",
-    "bcrypt": "^6.0.0",
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "jwt-decode": "^4.0.0",
-    "morgan": "^1.10.1",
-    "node-cron": "^4.2.1",
-    "pg": "^8.16.3"
+    "@neondatabase/auth": "0.4.2-beta",
+    "@neondatabase/neon-js": "0.6.2-beta",
+    "@neondatabase/postgrest-js": "0.2.0-beta",
+    "axios": "^1.7.0",
+    "next": "16.2.10",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
-    "dotenv": "^17.2.3"
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.10",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }
