@@ -538,6 +538,38 @@ SELECT a.*,
        (a.importes).importeuyu AS importeuyu
 FROM public.ahorro a;
 
+CREATE OR REPLACE VIEW public.vistalimitegastosperiodo AS
+SELECT 
+  c.idcategoria,
+  c.nombre AS categorianombre,
+  c.idinterfazoperacion,
+  c.estadolimite,
+  c.importe AS importelimite,
+  c.moneda AS monedalimite,
+  c.periodoaplicacion,
+  c.fechacreacionlimite,
+  COALESCE(
+    SUM(
+      CASE 
+        WHEN c.moneda = 'ARS'::tmoneda THEN COALESCE((g.importes).importears, g.importe)
+        WHEN c.moneda = 'USD'::tmoneda THEN COALESCE((g.importes).importeusd, g.importe)
+        WHEN c.moneda = 'UYU'::tmoneda THEN COALESCE((g.importes).importeuyu, g.importe)
+        ELSE g.importe
+      END
+    ), 0
+  ) AS importeutilizado
+FROM public.categoria c
+LEFT JOIN public.gasto g ON g.idcategoria = c.idcategoria AND g.estado = true AND (
+  (c.periodoaplicacion = 'Semanal'::tperiodo AND g.fecha >= date_trunc('week', CURRENT_DATE)) OR
+  (c.periodoaplicacion = 'Mensual'::tperiodo AND g.fecha >= date_trunc('month', CURRENT_DATE)) OR
+  (c.periodoaplicacion = 'Trimestral'::tperiodo AND g.fecha >= date_trunc('quarter', CURRENT_DATE)) OR
+  (c.periodoaplicacion = 'Anual'::tperiodo AND g.fecha >= date_trunc('year', CURRENT_DATE)) OR
+  (c.periodoaplicacion IS NULL AND g.fecha >= date_trunc('month', CURRENT_DATE))
+)
+WHERE c.estado = true
+GROUP BY c.idcategoria, c.nombre, c.idinterfazoperacion, c.estadolimite, c.importe, c.moneda, c.periodoaplicacion, c.fechacreacionlimite;
+
+
 -- 12. RLS Policies Configuration
 -- A. Policy for "usuario"
 CREATE POLICY select_usuario ON "usuario" FOR SELECT TO authenticated, anon

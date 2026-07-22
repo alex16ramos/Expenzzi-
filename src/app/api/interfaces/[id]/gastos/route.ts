@@ -160,8 +160,6 @@ export async function POST(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const resolvedParams = await params;
-    const interfaceId = BigInt(resolvedParams.id);
     const body = await req.json();
 
     const { fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago } = body;

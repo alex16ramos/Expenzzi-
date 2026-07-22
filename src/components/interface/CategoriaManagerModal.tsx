@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Edit2, Trash2, Tag, Check, AlertCircle } from 'lucide-react';
+import { X, Plus, Edit2, Trash2, Tag, Check, AlertCircle, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -11,6 +11,7 @@ export interface CategoriaItem {
   moneda: string | null;
   periodoaplicacion: string | null;
   estado?: boolean;
+  importeutilizado?: number;
 }
 
 interface CategoriaManagerModalProps {
@@ -20,6 +21,7 @@ interface CategoriaManagerModalProps {
   onCreate: (data: Omit<CategoriaItem, 'id'>) => Promise<void>;
   onUpdate: (data: CategoriaItem) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  userRole?: string;
 }
 
 export function CategoriaManagerModal({
@@ -29,7 +31,9 @@ export function CategoriaManagerModal({
   onCreate,
   onUpdate,
   onDelete,
+  userRole = 'Visualizador',
 }: CategoriaManagerModalProps) {
+  const isAdmin = userRole === 'Administrador';
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nombre, setNombre] = useState('');
   const [estadolimite, setEstadolimite] = useState(false);
@@ -67,6 +71,11 @@ export function CategoriaManagerModal({
 
     if (!nombre.trim()) {
       setErrorMsg('El nombre de la categoría es obligatorio');
+      return;
+    }
+
+    if (estadolimite && !isAdmin) {
+      setErrorMsg('Solo un usuario Administrador puede configurar o modificar límites presupuestarios (RF20)');
       return;
     }
 
@@ -119,7 +128,7 @@ export function CategoriaManagerModal({
         <div className="flex justify-between items-center pb-3 border-b border-slate-800 shrink-0">
           <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
             <Tag className="w-4 h-4 text-violet-400" />
-            Gestión de Categorías (RF21 - RF24)
+            Gestión de Categorías y Límites (CU10 / RF20)
           </h3>
           <button
             onClick={onClose}
@@ -165,20 +174,28 @@ export function CategoriaManagerModal({
           </div>
 
           {/* Toggle Limite */}
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              type="checkbox"
-              id="estadolimite"
-              checked={estadolimite}
-              onChange={(e) => setEstadolimite(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500 cursor-pointer"
-            />
-            <label htmlFor="estadolimite" className="text-xs text-slate-300 cursor-pointer">
-              Definir Límite Presupuestario Opcional
-            </label>
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="estadolimite"
+                disabled={!isAdmin}
+                checked={estadolimite}
+                onChange={(e) => setEstadolimite(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500 cursor-pointer disabled:opacity-50"
+              />
+              <label htmlFor="estadolimite" className="text-xs text-slate-300 cursor-pointer">
+                Definir Límite Presupuestario Opcional (RF20)
+              </label>
+            </div>
+            {!isAdmin && (
+              <span className="text-[10px] text-amber-400 flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                <ShieldAlert className="w-3 h-3" /> Solo Admin
+              </span>
+            )}
           </div>
 
-          {estadolimite && (
+          {estadolimite && isAdmin && (
             <div className="grid grid-cols-3 gap-2 pt-2 animate-in fade-in duration-150">
               <div>
                 <label className="text-[10px] text-slate-400">Importe Límite</label>
@@ -238,43 +255,77 @@ export function CategoriaManagerModal({
               No hay categorías creadas aún para esta interfaz.
             </p>
           ) : (
-            categories.map((c) => (
-              <div
-                key={c.id}
-                className="flex items-center justify-between p-3 bg-slate-950/80 rounded-xl border border-slate-800 hover:border-slate-700 transition-colors"
-              >
-                <div>
-                  <p className="text-xs font-bold text-slate-200">{c.nombre}</p>
-                  {c.estadolimite && c.importe ? (
-                    <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 mt-1 inline-block">
-                      Límite: {c.moneda || 'ARS'} ${c.importe} / {c.periodoaplicacion || 'Mensual'}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-slate-500">Sin límite de gasto</span>
+            categories.map((c) => {
+              const used = c.importeutilizado || 0;
+              const limit = c.importe || 0;
+              const percentage = c.estadolimite && limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+              const isExceeded = c.estadolimite && limit > 0 && used > limit;
+
+              return (
+                <div
+                  key={c.id}
+                  className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 hover:border-slate-700 transition-colors space-y-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-200">{c.nombre}</p>
+                      {c.estadolimite && c.importe ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-md border font-semibold ${
+                            isExceeded
+                              ? 'text-rose-400 bg-rose-500/10 border-rose-500/20'
+                              : 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+                          }`}>
+                            Límite: {c.moneda || 'ARS'} ${c.importe} / {c.periodoaplicacion || 'Mensual'}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            Utilizado: {c.moneda || 'ARS'} ${used.toLocaleString('es-AR')}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-500">Sin límite de gasto</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleStartEdit(c)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                        title="Editar Categoría"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteItem(c.id)}
+                        className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
+                        title="Desactivar Categoría (Baja Lógica)"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {c.estadolimite && limit > 0 && (
+                    <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          isExceeded
+                            ? 'bg-rose-500'
+                            : percentage > 80
+                            ? 'bg-amber-400'
+                            : 'bg-emerald-500'
+                        }`}
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
                   )}
                 </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleStartEdit(c)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                    title="Editar Categoría"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteItem(c.id)}
-                    className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
-                    title="Desactivar Categoría (Baja Lógica)"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
     </div>
   );
 }
+

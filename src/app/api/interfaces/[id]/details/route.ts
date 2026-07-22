@@ -66,6 +66,21 @@ export async function GET(
       orderBy: { nombre: 'asc' },
     });
 
+    // Calculate category limit usage map
+    const categoryUsageMap = new Map<string, number>();
+    try {
+      const rows = await prisma.$queryRaw<Array<{ idcategoria: bigint; importeutilizado: number | string | null }>>`
+        SELECT idcategoria, importeutilizado 
+        FROM vistalimitegastosperiodo 
+        WHERE idinterfazoperacion = ${interfaceId}
+      `;
+      for (const r of rows) {
+        categoryUsageMap.set(String(r.idcategoria), Number(r.importeutilizado || 0));
+      }
+    } catch {
+      // Fallback ignore if raw query unavailable
+    }
+
     // Fetch active submethods for this interface
     const submethods = await prisma.subMetodoPago.findMany({
       where: {
@@ -108,6 +123,7 @@ export async function GET(
         importe: c.importe ? Number(c.importe) : null,
         moneda: c.moneda,
         periodoaplicacion: c.periodoaplicacion,
+        importeutilizado: categoryUsageMap.get(String(c.idcategoria)) || 0,
       })),
       submethods: submethods.map((s) => ({
         id: String(s.idsubmetodopago),

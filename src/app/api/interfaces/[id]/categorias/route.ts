@@ -17,9 +17,83 @@ async function getUserIdFromSession(): Promise<string | null> {
   }
 }
 
+async function getUserRole(userId: string, interfaceId: bigint): Promise<string | null> {
+  const ui = await prisma.usuarioInterfaz.findFirst({
+    where: { idusuario: userId, idinterfazoperacion: interfaceId, fechasalida: null }
+  });
+  return ui?.rol || null;
+}
+
+async function getCategoryLimitUsageMap(interfaceId: bigint): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  try {
+    const rows = await prisma.$queryRaw<Array<{ idcategoria: bigint; importeutilizado: number | string | null }>>`
+      SELECT idcategoria, importeutilizado 
+      FROM vistalimitegastosperiodo 
+      WHERE idinterfazoperacion = ${interfaceId}
+    `;
+    for (const r of rows) {
+      map.set(String(r.idcategoria), Number(r.importeutilizado || 0));
+    }
+  } catch (e) {
+    console.warn('[vistalimitegastosperiodo Raw Query Warning, falling back to manual calculation]:', e);
+    const expenses = await prisma.gasto.findMany({
+      where: {
+        estado: true,
+        categoria: {
+          idinterfazoperacion: interfaceId,
+          estadolimite: true,
+          estado: true,
+        },
+      },
+      include: { categoria: true },
+    });
+    for (const g of expenses) {
+      if (!g.idcategoria || !g.categoria) continue;
+      const catId = String(g.idcategoria);
+      const limitMoneda = g.categoria.moneda || 'ARS';
+      const period = g.categoria.periodoaplicacion || 'Mensual';
+      
+      const now = new Date();
+      const gDate = new Date(g.fecha);
+      let inPeriod = false;
+      if (period === 'Semanal') {
+        const startOfWeek = new Date(now);
+        const day = startOfWeek.getDay();
+        const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+        startOfWeek.setDate(diff);
+        startOfWeek.setHours(0,0,0,0);
+        inPeriod = gDate >= startOfWeek;
+      } else if (period === 'Mensual') {
+        inPeriod = gDate.getFullYear() === now.getFullYear() && gDate.getMonth() === now.getMonth();
+      } else if (period === 'Trimestral') {
+        const currentQ = Math.floor(now.getMonth() / 3);
+        const gQ = Math.floor(gDate.getMonth() / 3);
+        inPeriod = gDate.getFullYear() === now.getFullYear() && gQ === currentQ;
+      } else if (period === 'Anual') {
+        inPeriod = gDate.getFullYear() === now.getFullYear();
+      }
+
+      if (inPeriod) {
+        let val = Number(g.importe);
+        if (g.moneda !== limitMoneda) {
+          if (g.moneda === 'USD' && limitMoneda === 'ARS') val *= 1000;
+          else if (g.moneda === 'ARS' && limitMoneda === 'USD') val /= 1000;
+          else if (g.moneda === 'UYU' && limitMoneda === 'ARS') val *= 25;
+          else if (g.moneda === 'ARS' && limitMoneda === 'UYU') val /= 25;
+          else if (g.moneda === 'USD' && limitMoneda === 'UYU') val *= 40;
+          else if (g.moneda === 'UYU' && limitMoneda === 'USD') val /= 40;
+        }
+        map.set(catId, (map.get(catId) || 0) + val);
+      }
+    }
+  }
+  return map;
+}
+
 /**
  * GET /api/interfaces/[id]/categorias
- * List active categories for interface (RF21-RF24)
+ * List active categories for interface (RF21-RF24, CU10)
  */
 export async function GET(
   req: Request,
@@ -42,6 +116,8 @@ export async function GET(
       orderBy: { nombre: 'asc' },
     });
 
+    const usageMap = await getCategoryLimitUsageMap(interfaceId);
+
     return NextResponse.json({
       data: categories.map((c) => ({
         id: String(c.idcategoria),
@@ -52,6 +128,7 @@ export async function GET(
         periodoaplicacion: c.periodoaplicacion,
         fechacreacionlimite: c.fechacreacionlimite ? c.fechacreacionlimite.toISOString().split('T')[0] : null,
         estado: c.estado,
+        importeutilizado: usageMap.get(String(c.idcategoria)) || 0,
       })),
     });
   } catch (err: unknown) {
@@ -63,7 +140,7 @@ export async function GET(
 
 /**
  * POST /api/interfaces/[id]/categorias
- * Create a category (RF21-RF24)
+ * Create a category (RF21-RF24, RF20)
  */
 export async function POST(
   req: Request,
@@ -83,6 +160,16 @@ export async function POST(
 
     if (!nombre || !String(nombre).trim()) {
       return NextResponse.json({ error: 'El nombre de la categoría es obligatorio' }, { status: 400 });
+    }
+
+    if (estadolimite) {
+      const role = await getUserRole(userId, interfaceId);
+      if (role !== 'Administrador') {
+        return NextResponse.json(
+          { error: 'Solo un Administrador puede establecer o modificar límites en categorías (RF20).' },
+          { status: 403 }
+        );
+      }
     }
 
     const newCategory = await prisma.categoria.create({
@@ -108,6 +195,7 @@ export async function POST(
         moneda: newCategory.moneda,
         periodoaplicacion: newCategory.periodoaplicacion,
         estado: newCategory.estado,
+        importeutilizado: 0,
       },
     });
   } catch (err: unknown) {
@@ -122,7 +210,8 @@ export async function POST(
  * Update a category
  */
 export async function PUT(
-  req: Request
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromSession();
@@ -130,11 +219,23 @@ export async function PUT(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
+    const resolvedParams = await params;
+    const interfaceId = BigInt(resolvedParams.id);
     const body = await req.json();
     const { idcategoria, nombre, estadolimite, importe, moneda, periodoaplicacion } = body;
 
     if (!idcategoria) {
       return NextResponse.json({ error: 'idcategoria es requerido' }, { status: 400 });
+    }
+
+    if (estadolimite !== undefined || importe !== undefined || moneda !== undefined || periodoaplicacion !== undefined) {
+      const role = await getUserRole(userId, interfaceId);
+      if (role !== 'Administrador') {
+        return NextResponse.json(
+          { error: 'Solo un Administrador puede configurar límites de categorías (RF20).' },
+          { status: 403 }
+        );
+      }
     }
 
     const updated = await prisma.categoria.update({
@@ -145,8 +246,11 @@ export async function PUT(
         ...(importe !== undefined && { importe: importe ? Number(importe) : null }),
         ...(moneda !== undefined && { moneda: moneda ? (moneda as TMoneda) : null }),
         ...(periodoaplicacion !== undefined && { periodoaplicacion: periodoaplicacion ? (periodoaplicacion as TPeriodo) : null }),
+        ...(estadolimite && { fechacreacionlimite: new Date() }),
       },
     });
+
+    const usageMap = await getCategoryLimitUsageMap(interfaceId);
 
     return NextResponse.json({
       success: true,
@@ -158,6 +262,7 @@ export async function PUT(
         moneda: updated.moneda,
         periodoaplicacion: updated.periodoaplicacion,
         estado: updated.estado,
+        importeutilizado: usageMap.get(String(updated.idcategoria)) || 0,
       },
     });
   } catch (err: unknown) {
@@ -199,3 +304,4 @@ export async function DELETE(
     return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
 }
+

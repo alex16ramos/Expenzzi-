@@ -711,6 +711,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         onCreate={handleCreateCategory}
         onUpdate={handleUpdateCategory}
         onDelete={handleDeleteCategory}
+        userRole={userRole}
       />
 
       <SubmetodoManagerModal
