@@ -1,6 +1,6 @@
 # Expenzzi
 
-Aplicación para la gestión colaborativa e inteligente de gastos, ingresos y ahorros compartidos en múltiples monedas (ARS, USD, UYU) con conversión de divisas automática e integración con Neon Auth y Neon Data API.
+Aplicación para la gestión colaborativa e inteligente de gastos, ingresos y ahorros compartidos en múltiples monedas (ARS, USD, UYU) con conversión de divisas automática, Prisma ORM (con adaptador serverless de Neon), Neon Auth y Neon Data API.
 
 ## Comandos Disponibles
 
@@ -22,6 +22,18 @@ Para detectar problemas de formateo, errores de sintaxis y buenas prácticas de 
 pnpm lint
 ```
 
+### Generación de Cliente Prisma
+Para regenerar los tipos e interfaces de TypeScript a partir del esquema de base de datos:
+```bash
+pnpm exec prisma generate
+```
+
+### Sincronización de Esquema de Base de Datos
+Para aplicar cambios de modelos o sincronizar la estructura con Neon PostgreSQL:
+```bash
+pnpm exec prisma db push
+```
+
 ### Auditoría de Calidad y Rendimiento
 Para diagnosticar y reportar problemas de arquitectura, performance, accesibilidad y seguridad en componentes React:
 ```bash
@@ -32,11 +44,15 @@ pnpx react-doctor --verbose
 
 ## Estructura del Proyecto
 
-- `setup.sql`: Script de base de datos con triggers automáticos, vistas de Data API y RLS.
+- `prisma/schema.prisma`: Esquema de datos de Prisma ORM con enums, modelos y relaciones.
+- `prisma.config.ts`: Configuración CLI de Prisma 7 conectada vía `DIRECT_URL`.
+- `setup.sql`: Script DDL de PostgreSQL con triggers automáticos, vistas y RLS.
+- `src/lib/db.ts`: Instancia singleton de Prisma Client con el adaptador `@prisma/adapter-neon`.
 - `src/lib/auth.ts`: Inicialización y configuración de Neon Auth.
 - `src/lib/neon.ts`: Clientes configurados para consultar Neon Data API.
-- `src/proxy.ts`: Middleware de proxy para protección de rutas privadas.
-- `src/app/page.tsx`: Landing page premium responsiva con formularios de acceso.
+- `@prisma/client`: Tipos y cliente nativos generados por Prisma.
+- `src/middleware.ts`: Middleware para protección y enrutamiento de peticiones.
+- `src/app/page.tsx`: Landing page responsiva con formularios de acceso.
 - `src/app/dashboard/page.tsx`: Dashboard de usuario para ingresar o unirse a interfaces.
 - `src/app/interface/[id]/page.tsx`: Panel principal de operaciones de balance y movimientos.
 - `src/app/api/cron/update-rates/route.ts`: Endpoint cron para actualización de cotizaciones.

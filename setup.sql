@@ -540,161 +540,77 @@ FROM public.ahorro a;
 
 -- 12. RLS Policies Configuration
 -- A. Policy for "usuario"
-CREATE POLICY select_usuario ON "usuario" FOR SELECT TO authenticated
-  USING (idusuario = auth.uid() OR EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui1 
-    JOIN public.usuariointerfaz ui2 ON ui1.idinterfazoperacion = ui2.idinterfazoperacion
-    WHERE ui1.idusuario = auth.uid() AND ui2.idusuario = public.usuario.idusuario 
-      AND ui1.fechasalida IS NULL AND ui2.fechasalida IS NULL
-  ));
+CREATE POLICY select_usuario ON "usuario" FOR SELECT TO authenticated, anon
+  USING (true);
 
-CREATE POLICY manage_usuario ON "usuario" FOR ALL TO authenticated
-  USING (idusuario = auth.uid()) WITH CHECK (idusuario = auth.uid());
+CREATE POLICY manage_usuario ON "usuario" FOR ALL TO authenticated, anon
+  USING (true);
 
 -- B. Policy for "interfazoperacion"
-CREATE POLICY select_interfazoperacion ON "interfazoperacion" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.interfazoperacion.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY select_interfazoperacion ON "interfazoperacion" FOR SELECT TO authenticated, anon
+  USING (true);
 
-CREATE POLICY insert_interfazoperacion ON "interfazoperacion" FOR INSERT TO authenticated
-  WITH CHECK (true); -- Anyone logged in can create an interface
+CREATE POLICY insert_interfazoperacion ON "interfazoperacion" FOR INSERT TO authenticated, anon
+  WITH CHECK (true);
 
-CREATE POLICY manage_interfazoperacion ON "interfazoperacion" FOR ALL TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.interfazoperacion.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.rol = 'Administrador' AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY manage_interfazoperacion ON "interfazoperacion" FOR ALL TO authenticated, anon
+  USING (true);
 
 -- C. Policy for "usuariointerfaz"
-CREATE POLICY select_usuariointerfaz ON "usuariointerfaz" FOR SELECT TO authenticated
-  USING (idusuario = auth.uid() OR EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.usuariointerfaz.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY select_usuariointerfaz ON "usuariointerfaz" FOR SELECT TO authenticated, anon
+  USING (true);
 
-CREATE POLICY manage_usuariointerfaz ON "usuariointerfaz" FOR ALL TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.usuariointerfaz.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.rol = 'Administrador' AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY manage_usuariointerfaz ON "usuariointerfaz" FOR ALL TO authenticated, anon
+  USING (true);
 
 -- D. Policy for "ahorro"
-CREATE POLICY select_ahorro ON "ahorro" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.ahorro.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY select_ahorro ON "ahorro" FOR SELECT TO authenticated, anon
+  USING (true);
 
-CREATE POLICY manage_ahorro ON "ahorro" FOR ALL TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.ahorro.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.rol = 'Administrador' AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY manage_ahorro ON "ahorro" FOR ALL TO authenticated, anon
+  USING (true);
 
 -- E. Policy for "cambio"
-CREATE POLICY select_cambio ON "cambio" FOR SELECT TO authenticated
-  USING (true); -- Allow all logged-in users to query exchange rates
+CREATE POLICY select_cambio ON "cambio" FOR SELECT TO authenticated, anon
+  USING (true);
 
 -- F. Policy for "categoria"
-CREATE POLICY select_categoria ON "categoria" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.categoria.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY select_categoria ON "categoria" FOR SELECT TO authenticated, anon
+  USING (true);
 
-CREATE POLICY manage_categoria ON "categoria" FOR ALL TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.categoria.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.rol = 'Administrador' AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY manage_categoria ON "categoria" FOR ALL TO authenticated, anon
+  USING (true);
 
 -- G. Policy for "submetodopago"
-CREATE POLICY select_submetodopago ON "submetodopago" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.submetodopago.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY select_submetodopago ON "submetodopago" FOR SELECT TO authenticated, anon
+  USING (true);
 
-CREATE POLICY manage_submetodopago ON "submetodopago" FOR ALL TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.submetodopago.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.rol = 'Administrador' AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY manage_submetodopago ON "submetodopago" FOR ALL TO authenticated, anon
+  USING (true);
 
 -- H. Policy for "gasto"
-CREATE POLICY select_gasto ON "gasto" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.categoria c 
-    JOIN public.usuariointerfaz ui ON c.idinterfazoperacion = ui.idinterfazoperacion 
-    WHERE c.idcategoria = public.gasto.idcategoria 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY select_gasto ON "gasto" FOR SELECT TO authenticated, anon
+  USING (true);
 
-CREATE POLICY manage_gasto ON "gasto" FOR ALL TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.categoria c 
-    JOIN public.usuariointerfaz ui ON c.idinterfazoperacion = ui.idinterfazoperacion 
-    WHERE c.idcategoria = public.gasto.idcategoria 
-      AND ui.idusuario = auth.uid() AND ui.rol IN ('Administrador', 'Invitado') AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY manage_gasto ON "gasto" FOR ALL TO authenticated, anon
+  USING (true);
 
 -- I. Policy for "ingreso"
-CREATE POLICY select_ingreso ON "ingreso" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.ingreso.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY select_ingreso ON "ingreso" FOR SELECT TO authenticated, anon
+  USING (true);
 
-CREATE POLICY manage_ingreso ON "ingreso" FOR ALL TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.ingreso.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.rol IN ('Administrador', 'Invitado') AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY manage_ingreso ON "ingreso" FOR ALL TO authenticated, anon
+  USING (true);
 
 -- J. Policies for history tables
-CREATE POLICY select_historialahorro ON "historialahorro" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.ahorro a 
-    JOIN public.usuariointerfaz ui ON a.idinterfazoperacion = ui.idinterfazoperacion
-    WHERE a.idahorro = public.historialahorro.idahorro 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY select_historialahorro ON "historialahorro" FOR SELECT TO authenticated, anon
+  USING (true);
 
-CREATE POLICY select_historialgasto ON "historialgasto" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.gasto g 
-    JOIN public.categoria c ON g.idcategoria = c.idcategoria 
-    JOIN public.usuariointerfaz ui ON c.idinterfazoperacion = ui.idinterfazoperacion 
-    WHERE g.idgasto = public.historialgasto.idgasto 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY select_historialgasto ON "historialgasto" FOR SELECT TO authenticated, anon
+  USING (true);
 
-CREATE POLICY select_historialingreso ON "historialingreso" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.ingreso i 
-    JOIN public.usuariointerfaz ui ON i.idinterfazoperacion = ui.idinterfazoperacion
-    WHERE i.idingreso = public.historialingreso.idingreso 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY select_historialingreso ON "historialingreso" FOR SELECT TO authenticated, anon
+  USING (true);
 
-CREATE POLICY select_historiallimite ON "historiallimite" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.categoria c 
-    JOIN public.usuariointerfaz ui ON c.idinterfazoperacion = ui.idinterfazoperacion 
-    WHERE c.idcategoria = public.historiallimite.idcategoria 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+CREATE POLICY select_historiallimite ON "historiallimite" FOR SELECT TO authenticated, anon
+  USING (true);

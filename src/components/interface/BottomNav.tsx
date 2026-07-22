@@ -1,14 +1,10 @@
 import React from 'react';
-import { ArrowUpCircle, ArrowDownCircle, PieChart } from 'lucide-react';
-
-export interface NavItem {
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-}
+import { ArrowUpCircle, ArrowDownCircle, PiggyBank, PieChart } from 'lucide-react';
 
 export const NAV_ITEMS = [
   { label: 'Gastos', icon: ArrowUpCircle },
   { label: 'Ingresos', icon: ArrowDownCircle },
+  { label: 'Ahorros', icon: PiggyBank },
   { label: 'Resúmenes', icon: PieChart },
 ];
 
@@ -19,7 +15,7 @@ interface BottomNavProps {
 
 export function BottomNav({ activeSection, onSectionChange }: BottomNavProps) {
   return (
-    <div className="grid grid-cols-3 border-t border-slate-800/80 bg-slate-950 pb-1.5 pt-2 shrink-0">
+    <div className="grid grid-cols-4 border-t border-slate-800/80 bg-slate-950 pb-1.5 pt-2 shrink-0">
       {NAV_ITEMS.map((item) => {
         const isActive = activeSection.toLowerCase() === item.label.toLowerCase();
         const Icon = item.icon;
@@ -36,7 +32,7 @@ export function BottomNav({ activeSection, onSectionChange }: BottomNavProps) {
               }`}
             />
             <span
-              className={`text-[11px] ${
+              className={`text-[10px] ${
                 isActive
                   ? 'text-violet-400 font-semibold'
                   : 'text-slate-500'

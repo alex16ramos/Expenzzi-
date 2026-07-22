@@ -1,0 +1,267 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ----------------------------------------------------
+// ENUMS
+// ----------------------------------------------------
+
+enum TMetodoDePago {
+  Efectivo
+  Credito
+  Debito
+
+  @@map("tmetododepago")
+}
+
+enum TMoneda {
+  ARS
+  USD
+  UYU
+
+  @@map("tmoneda")
+}
+
+enum TPeriodo {
+  Anual
+  Trimestral
+  Mensual
+  Semanal
+
+  @@map("tperiodo")
+}
+
+enum TRol {
+  Administrador
+  Invitado
+  Visualizador
+
+  @@map("trol")
+}
+
+// ----------------------------------------------------
+// MODELS
+// ----------------------------------------------------
+
+model Usuario {
+  idusuario     String   @id @map("idusuario") @db.Uuid
+  nombreusuario String   @map("nombreusuario") @db.VarChar
+  email         String   @unique(map: "usuario_email_key") @map("email") @db.VarChar
+  contrasena    String?  @map("contrasena") @db.VarChar
+
+  usuarioInterfaces          UsuarioInterfaz[]
+  gastosResponsable          Gasto[]            @relation("GastoResponsable")
+  gastosIngresador           Gasto[]            @relation("GastoIngresador")
+  ingresosResponsable        Ingreso[]          @relation("IngresoResponsable")
+  ingresosIngresador         Ingreso[]          @relation("IngresoIngresador")
+  historialGastosCambio      HistorialGasto[]   @relation("HistorialGastoCambio")
+  historialIngresosCambio    HistorialIngreso[] @relation("HistorialIngresoCambio")
+
+  @@index([email], map: "idx_email")
+  @@index([email], map: "idx_usuario_email")
+  @@map("usuario")
+}
+
+model InterfazOperacion {
+  idinterfazoperacion BigInt   @id @default(autoincrement()) @map("idinterfazoperacion")
+  nombre              String   @map("nombre") @db.VarChar(50)
+  descripcion         String?  @map("descripcion") @db.VarChar
+  fechacreacion       DateTime @default(now()) @map("fechacreacion") @db.Date
+  estado              Boolean? @default(true) @map("estado")
+  linkinvitado        String?  @default(dbgenerated("gen_random_uuid()")) @map("linkinvitado") @db.VarChar
+  linkvisualizador    String?  @default(dbgenerated("gen_random_uuid()")) @map("linkvisualizador") @db.VarChar
+
+  usuarioInterfaces UsuarioInterfaz[]
+  ahorros           Ahorro[]
+  categorias        Categoria[]
+  submetodospago    SubMetodoPago[]
+  ingresos          Ingreso[]
+
+  @@index([nombre, estado], map: "idx_io_nombre_estado")
+  @@map("interfazoperacion")
+}
+
+model UsuarioInterfaz {
+  rol                 TRol?
+  fechaunion          DateTime @default(now()) @map("fechaunion") @db.Date
+  fechasalida         DateTime? @map("fechasalida") @db.Date
+  idinterfazoperacion BigInt   @map("idinterfazoperacion")
+  idusuario           String   @map("idusuario") @db.Uuid
+
+  interfazoperacion   InterfazOperacion @relation(fields: [idinterfazoperacion], references: [idinterfazoperacion], onDelete: Cascade)
+  usuario             Usuario           @relation(fields: [idusuario], references: [idusuario], onDelete: Cascade)
+
+  @@id([idinterfazoperacion, idusuario], map: "usuariointerfaz_pkey")
+  @@unique([idinterfazoperacion, idusuario], map: "usuariointerfaz_idinterfazoperacion_idusuario_key")
+  @@index([idinterfazoperacion, idusuario], map: "idx_idinterfazoperacion_idusuario")
+  @@index([idinterfazoperacion, rol], map: "idx_idinterfazoperacion_rol")
+  @@index([idinterfazoperacion, idusuario], map: "idx_usuariointerfaz_idinterfaz_idusuario")
+  @@index([idusuario], map: "idx_usuariointerfaz_idusuario")
+  @@map("usuariointerfaz")
+}
+
+model Ahorro {
+  idahorro            BigInt    @id @default(autoincrement()) @map("idahorro")
+  fechadesde          DateTime  @default(now()) @map("fechadesde") @db.Date
+  fechahasta          DateTime  @map("fechahasta") @db.Date
+  moneda              TMoneda   @map("moneda")
+  importe             Decimal   @map("importe") @db.Decimal(12, 2)
+  comentario          String?   @map("comentario") @db.VarChar
+  periodoaporte       TPeriodo? @map("periodoaporte")
+  estado              Boolean?  @default(true) @map("estado")
+  idinterfazoperacion BigInt?   @map("idinterfazoperacion")
+
+  interfazoperacion   InterfazOperacion? @relation(fields: [idinterfazoperacion], references: [idinterfazoperacion], onDelete: Cascade)
+  historialAhorros    HistorialAhorro[]
+
+  @@index([idinterfazoperacion, fechadesde, fechahasta, estado], map: "idx_idinterfazoperacion_fechadesde_fechahasta_estado")
+  @@map("ahorro")
+}
+
+model Cambio {
+  idcambio     BigInt   @id @default(autoincrement()) @map("idcambio")
+  fecha        DateTime @default(now()) @map("fecha") @db.Date
+  cambiouyuusd Decimal? @map("cambiouyuusd") @db.Decimal(12, 4)
+  cambiouyuars Decimal? @map("cambiouyuars") @db.Decimal(12, 4)
+  cambiousduyu Decimal? @map("cambiousduyu") @db.Decimal(12, 4)
+  cambiousdars Decimal? @map("cambiousdars") @db.Decimal(12, 4)
+  cambioarsuyu Decimal? @map("cambioarsuyu") @db.Decimal(12, 4)
+  cambioarsusd Decimal? @map("cambioarsusd") @db.Decimal(12, 4)
+
+  @@index([fecha], map: "idx_fecha")
+  @@map("cambio")
+}
+
+model Categoria {
+  idcategoria         BigInt    @id @default(autoincrement()) @map("idcategoria")
+  nombre              String    @map("nombre") @db.VarChar(50)
+  estadolimite        Boolean?  @default(false) @map("estadolimite")
+  importe             Decimal?  @map("importe") @db.Decimal(12, 2)
+  moneda              TMoneda?  @map("moneda")
+  estado              Boolean?  @default(true) @map("estado")
+  idinterfazoperacion BigInt?   @map("idinterfazoperacion")
+  fechacreacionlimite DateTime? @map("fechacreacionlimite") @db.Date
+  periodoaplicacion   TPeriodo? @map("periodoaplicacion")
+
+  interfazoperacion   InterfazOperacion? @relation(fields: [idinterfazoperacion], references: [idinterfazoperacion], onDelete: Cascade)
+  gastos              Gasto[]
+  historialLimites    HistorialLimite[]
+
+  @@index([idinterfazoperacion, nombre, estado], map: "idx_idinterfazoperacion_nombre_estado")
+  @@map("categoria")
+}
+
+model SubMetodoPago {
+  idsubmetodopago     BigInt        @id @default(autoincrement()) @map("idsubmetodopago")
+  nombre              String        @map("nombre") @db.VarChar(50)
+  metodo              TMetodoDePago @map("metodo")
+  estado              Boolean?      @default(true) @map("estado")
+  idinterfazoperacion BigInt?       @map("idinterfazoperacion")
+
+  interfazoperacion   InterfazOperacion? @relation(fields: [idinterfazoperacion], references: [idinterfazoperacion], onDelete: Cascade)
+  gastos              Gasto[]
+
+  @@index([idinterfazoperacion], map: "idx_submetodopago_idinterfazoperacion")
+  @@map("submetodopago")
+}
+
+model Gasto {
+  idgasto                  BigInt   @id @default(autoincrement()) @map("idgasto")
+  fecha                    DateTime @default(now()) @map("fecha") @db.Date
+  responsablegasto         String   @map("responsablegasto") @db.Uuid
+  moneda                   TMoneda  @map("moneda")
+  importe                  Decimal  @map("importe") @db.Decimal(12, 2)
+  comentario               String?  @map("comentario") @db.VarChar
+  responsableingresargasto String   @map("responsableingresargasto") @db.Uuid
+  estado                   Boolean? @default(true) @map("estado")
+  idcategoria              BigInt?  @map("idcategoria")
+  idsubmetodopago          BigInt?  @map("idsubmetodopago")
+
+  usuarioResponsable       Usuario        @relation("GastoResponsable", fields: [responsablegasto], references: [idusuario])
+  usuarioIngresador        Usuario        @relation("GastoIngresador", fields: [responsableingresargasto], references: [idusuario])
+  categoria                Categoria?     @relation(fields: [idcategoria], references: [idcategoria])
+  submetodopago            SubMetodoPago? @relation(fields: [idsubmetodopago], references: [idsubmetodopago])
+  historialGastos          HistorialGasto[]
+
+  @@index([idsubmetodopago], map: "idx_gasto_submetodopago")
+  @@index([idcategoria, fecha, estado], map: "idx_idcategoria_fecha_estado")
+  @@map("gasto")
+}
+
+model Ingreso {
+  idingreso                  BigInt   @id @default(autoincrement()) @map("idingreso")
+  fecha                      DateTime @default(now()) @map("fecha") @db.Date
+  responsableingreso         String   @map("responsableingreso") @db.Uuid
+  moneda                     TMoneda  @map("moneda")
+  importe                    Decimal  @map("importe") @db.Decimal(12, 2)
+  comentario                 String?  @map("comentario") @db.VarChar
+  responsableingresaringreso String   @map("responsableingresaringreso") @db.Uuid
+  estado                     Boolean? @default(true) @map("estado")
+  idinterfazoperacion        BigInt?  @map("idinterfazoperacion")
+
+  usuarioResponsable         Usuario            @relation("IngresoResponsable", fields: [responsableingreso], references: [idusuario])
+  usuarioIngresador          Usuario            @relation("IngresoIngresador", fields: [responsableingresaringreso], references: [idusuario])
+  interfazoperacion          InterfazOperacion? @relation(fields: [idinterfazoperacion], references: [idinterfazoperacion])
+  historialIngresos          HistorialIngreso[]
+
+  @@index([idinterfazoperacion, fecha, estado], map: "idx_idinterfazoperacion_fecha_estado")
+  @@map("ingreso")
+}
+
+model HistorialAhorro {
+  idhistorialahorro BigInt   @id @default(autoincrement()) @map("idhistorialahorro")
+  fechacambio       DateTime @default(now()) @map("fechacambio") @db.Date
+  comentarioant     String?  @map("comentarioant") @db.VarChar
+  idahorro          BigInt?  @map("idahorro")
+
+  ahorro            Ahorro?  @relation(fields: [idahorro], references: [idahorro])
+
+  @@index([idahorro], map: "idx_idahorro")
+  @@map("historialahorro")
+}
+
+model HistorialGasto {
+  idhistorialgasto  BigInt   @id @default(autoincrement()) @map("idhistorialgasto")
+  fechacambio        DateTime @default(now()) @map("fechacambio") @db.Date
+  responsablecambio String   @map("responsablecambio") @db.Uuid
+  comentarioant      String?  @map("comentarioant") @db.VarChar
+  idgasto            BigInt?  @map("idgasto")
+
+  usuarioResponsable Usuario @relation("HistorialGastoCambio", fields: [responsablecambio], references: [idusuario])
+  gasto              Gasto?   @relation(fields: [idgasto], references: [idgasto])
+
+  @@index([idgasto], map: "idx_idgasto")
+  @@map("historialgasto")
+}
+
+model HistorialIngreso {
+  idhistorialingreso BigInt   @id @default(autoincrement()) @map("idhistorialingreso")
+  fechacambio        DateTime @default(now()) @map("fechacambio") @db.Date
+  responsablecambio  String   @map("responsablecambio") @db.Uuid
+  comentarioant      String?  @map("comentarioant") @db.VarChar
+  idingreso          BigInt?  @map("idingreso")
+
+  usuarioResponsable Usuario  @relation("HistorialIngresoCambio", fields: [responsablecambio], references: [idusuario])
+  ingreso            Ingreso? @relation(fields: [idingreso], references: [idingreso])
+
+  @@index([idingreso], map: "idx_idingreso")
+  @@map("historialingreso")
+}
+
+model HistorialLimite {
+  idlimitecategoria   BigInt   @id @default(autoincrement()) @map("idlimitecategoria")
+  periodoaplicacion   TPeriodo @map("periodoaplicacion")
+  importeutilizado    Decimal? @map("importeutilizado") @db.Decimal(12, 2)
+  idcategoria         BigInt?  @map("idcategoria")
+  fechacreacionlimite DateTime @map("fechacreacionlimite") @db.Date
+  importelimite       Decimal? @map("importelimite") @db.Decimal(9, 2)
+
+  categoria           Categoria? @relation(fields: [idcategoria], references: [idcategoria])
+
+  @@index([idcategoria], map: "idx_idcategoria")
+  @@map("historiallimite")
+}

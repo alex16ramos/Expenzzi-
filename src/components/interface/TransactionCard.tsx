@@ -13,6 +13,7 @@ export interface Transaction {
   usd: string;
   comment: string;
   method: string;
+  rawItem?: Record<string, unknown>;
 }
 
 export const CURRENCY_STYLE: Record<string, string> = {

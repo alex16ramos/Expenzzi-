@@ -1,7 +1,10 @@
 import React from 'react';
-import { ChevronDown, Pencil, Trash2 } from 'lucide-react';
+import { ChevronDown, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Transaction, CURRENCY_STYLE } from './TransactionCard';
+
+export type SortField = 'date' | 'amount' | 'user';
+export type SortOrder = 'asc' | 'desc';
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -9,6 +12,9 @@ interface TransactionTableProps {
   onToggle: (id: string | number) => void;
   onEdit?: (tx: Transaction) => void;
   onDelete?: (id: string | number) => void;
+  sortBy?: SortField;
+  sortOrder?: SortOrder;
+  onSortChange?: (field: SortField) => void;
 }
 
 export function TransactionTable({
@@ -17,15 +23,48 @@ export function TransactionTable({
   onToggle,
   onEdit,
   onDelete,
+  sortBy = 'date',
+  sortOrder = 'desc',
+  onSortChange,
 }: TransactionTableProps) {
+  const renderSortIcon = (field: SortField) => {
+    if (sortBy !== field) return <ArrowUpDown className="w-3.5 h-3.5 opacity-40 hover:opacity-100 transition-opacity" />;
+    return sortOrder === 'desc' ? (
+      <ArrowDown className="w-3.5 h-3.5 text-violet-400 font-bold" />
+    ) : (
+      <ArrowUp className="w-3.5 h-3.5 text-violet-400 font-bold" />
+    );
+  };
+
   return (
     <div className="bg-slate-900/80 rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
       <table className="w-full text-left text-xs border-collapse">
-        <thead className="bg-slate-950 border-b border-slate-800 text-slate-400 uppercase font-semibold text-[11px] tracking-wider">
+        <thead className="bg-slate-950 border-b border-slate-800 text-slate-400 uppercase font-semibold text-[11px] tracking-wider select-none">
           <tr>
-            <th className="py-3.5 px-4">Usuario</th>
-            <th className="py-3.5 px-4">Fecha</th>
-            <th className="py-3.5 px-4 text-right">Importe</th>
+            <th className="py-3.5 px-4">
+              <button
+                onClick={() => onSortChange?.('user')}
+                className="flex items-center gap-1.5 hover:text-white transition-colors focus:outline-none"
+              >
+                Usuario {renderSortIcon('user')}
+              </button>
+            </th>
+            <th className="py-3.5 px-4">
+              <button
+                onClick={() => onSortChange?.('date')}
+                className="flex items-center gap-1.5 hover:text-white transition-colors focus:outline-none"
+              >
+                Fecha {renderSortIcon('date')}
+              </button>
+            </th>
+            <th className="py-3.5 px-4 text-right">
+              <button
+                onClick={() => onSortChange?.('amount')}
+                className="flex items-center gap-1.5 hover:text-white transition-colors focus:outline-none ml-auto"
+              >
+                Importe {renderSortIcon('amount')}
+              </button>
+            </th>
             <th className="py-3.5 px-4 text-center">Moneda</th>
             <th className="py-3.5 px-4">Método</th>
             <th className="py-3.5 px-4 text-center">Detalles</th>
