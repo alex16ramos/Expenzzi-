@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Edit2, Trash2, Tag, Check, AlertCircle, ShieldAlert } from 'lucide-react';
+import { X, Plus, Edit2, Trash2, Tag, Check, AlertCircle, ShieldAlert, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -21,6 +21,7 @@ interface CategoriaManagerModalProps {
   onCreate: (data: Omit<CategoriaItem, 'id'>) => Promise<void>;
   onUpdate: (data: CategoriaItem) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onViewHistory?: (cat: CategoriaItem) => void;
   userRole?: string;
 }
 
@@ -31,6 +32,7 @@ export function CategoriaManagerModal({
   onCreate,
   onUpdate,
   onDelete,
+  onViewHistory,
   userRole = 'Visualizador',
 }: CategoriaManagerModalProps) {
   const isAdmin = userRole === 'Administrador';
@@ -288,6 +290,15 @@ export function CategoriaManagerModal({
                     </div>
 
                     <div className="flex items-center gap-1">
+                      {onViewHistory && (
+                        <button
+                          onClick={() => onViewHistory(c)}
+                          className="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
+                          title="Ver Historial de Cambios del Límite"
+                        >
+                          <History className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleStartEdit(c)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"

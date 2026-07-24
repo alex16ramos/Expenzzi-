@@ -151,8 +151,7 @@ export async function GET(
  * Create a new Gasto (CU12 / RF5, RF6, RF7)
  */
 export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  req: Request
 ) {
   try {
     const userId = await getUserIdFromSession();

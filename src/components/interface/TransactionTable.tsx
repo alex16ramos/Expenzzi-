@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronDown, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Transaction, CURRENCY_STYLE } from './TransactionCard';
 
@@ -12,6 +12,7 @@ interface TransactionTableProps {
   onToggle: (id: string | number) => void;
   onEdit?: (tx: Transaction) => void;
   onDelete?: (id: string | number) => void;
+  onViewHistory?: (tx: Transaction) => void;
   sortBy?: SortField;
   sortOrder?: SortOrder;
   onSortChange?: (field: SortField) => void;
@@ -23,6 +24,7 @@ export function TransactionTable({
   onToggle,
   onEdit,
   onDelete,
+  onViewHistory,
   sortBy = 'date',
   sortOrder = 'desc',
   onSortChange,
@@ -140,6 +142,21 @@ export function TransactionTable({
                           </div>
                         </dl>
                         <div className="flex gap-2 shrink-0">
+                          {onViewHistory && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onViewHistory(tx);
+                              }}
+                              className="gap-1.5 border-amber-500/30 hover:border-amber-500/50 text-amber-300 hover:bg-amber-500/10"
+                              title="Ver historial de auditoría"
+                            >
+                              <History className="w-3.5 h-3.5 text-amber-400" />
+                              Historial
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"

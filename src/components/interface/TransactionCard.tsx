@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, Pencil, Trash2 } from 'lucide-react';
+import { ChevronDown, Pencil, Trash2, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export interface Transaction {
@@ -28,6 +28,7 @@ interface TransactionCardProps {
   onToggle: () => void;
   onEdit?: (tx: Transaction) => void;
   onDelete?: (id: string | number) => void;
+  onViewHistory?: (tx: Transaction) => void;
 }
 
 export function TransactionCard({
@@ -36,6 +37,7 @@ export function TransactionCard({
   onToggle,
   onEdit,
   onDelete,
+  onViewHistory,
 }: TransactionCardProps) {
   const currencyBadgeClass =
     CURRENCY_STYLE[tx.currency] || 'bg-slate-800 text-slate-300 border border-slate-700';
@@ -93,6 +95,18 @@ export function TransactionCard({
             </div>
           </dl>
           <div className="flex gap-2">
+            {onViewHistory && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onViewHistory(tx)}
+                className="h-8 text-xs gap-1 rounded-lg border-amber-500/30 hover:border-amber-500/50 text-amber-300 hover:bg-amber-500/10"
+                title="Ver historial de cambios en auditoría"
+              >
+                <History className="w-3.5 h-3.5 text-amber-400" />
+                Historial
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"

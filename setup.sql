@@ -317,12 +317,20 @@ FOR EACH ROW EXECUTE FUNCTION public.calcular_importes_trigger_fn();
 -- Gasto update log
 CREATE OR REPLACE FUNCTION public.log_gasto_historial_fn()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_uid uuid;
 BEGIN
+  BEGIN
+    v_uid := auth.uid();
+  EXCEPTION WHEN OTHERS THEN
+    v_uid := OLD.responsablegasto;
+  END;
+
   IF (OLD.importe <> NEW.importe OR OLD.moneda <> NEW.moneda OR COALESCE(OLD.comentario, '') <> COALESCE(NEW.comentario, '')) THEN
     INSERT INTO public.historialgasto (fechacambio, responsablecambio, ant, comentarioant, idgasto)
     VALUES (
       CURRENT_DATE, 
-      COALESCE(auth.uid(), OLD.responsablegasto), 
+      COALESCE(v_uid, OLD.responsablegasto), 
       ROW(OLD.importe, OLD.moneda)::timportemoneda, 
       OLD.comentario, 
       OLD.idgasto
@@ -339,12 +347,20 @@ FOR EACH ROW EXECUTE FUNCTION public.log_gasto_historial_fn();
 -- Ingreso update log
 CREATE OR REPLACE FUNCTION public.log_ingreso_historial_fn()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_uid uuid;
 BEGIN
+  BEGIN
+    v_uid := auth.uid();
+  EXCEPTION WHEN OTHERS THEN
+    v_uid := OLD.responsableingreso;
+  END;
+
   IF (OLD.importe <> NEW.importe OR OLD.moneda <> NEW.moneda OR COALESCE(OLD.comentario, '') <> COALESCE(NEW.comentario, '')) THEN
     INSERT INTO public.historialingreso (fechacambio, responsablecambio, ant, comentarioant, idingreso)
     VALUES (
       CURRENT_DATE, 
-      COALESCE(auth.uid(), OLD.responsableingreso), 
+      COALESCE(v_uid, OLD.responsableingreso), 
       ROW(OLD.importe, OLD.moneda)::timportemoneda, 
       OLD.comentario, 
       OLD.idingreso

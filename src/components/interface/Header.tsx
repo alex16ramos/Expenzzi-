@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, ChevronDown, Tag, CreditCard } from 'lucide-react';
+import { Menu, ChevronDown, Tag, CreditCard, History } from 'lucide-react';
 import { SortField, SortOrder } from './TransactionTable';
 
 interface HeaderProps {
@@ -12,6 +12,7 @@ interface HeaderProps {
   onMenuClick?: () => void;
   onOpenCategories?: () => void;
   onOpenSubmethods?: () => void;
+  onOpenAudit?: () => void;
   sortBy?: SortField;
   sortOrder?: SortOrder;
   onSortSelect?: (sortBy: SortField, sortOrder: SortOrder) => void;
@@ -25,6 +26,7 @@ export function Header({
   onMenuClick,
   onOpenCategories,
   onOpenSubmethods,
+  onOpenAudit,
 }: HeaderProps) {
   const sections = ['Gastos', 'Ingresos', 'Ahorros', 'Resúmenes'];
 
@@ -56,6 +58,16 @@ export function Header({
 
         {/* Config ABM Buttons & User Avatar */}
         <div className="flex items-center gap-1.5">
+          {onOpenAudit && (
+            <button
+              onClick={onOpenAudit}
+              className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-800 transition-colors"
+              title="Historial de Auditoría y Cambios"
+            >
+              <History className="w-4 h-4" />
+            </button>
+          )}
+
           {onOpenCategories && (
             <button
               onClick={onOpenCategories}

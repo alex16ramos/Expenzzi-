@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, use } from 'react';
-import { Signal, Wifi, BatteryFull, Plus, RefreshCw, Tag, CreditCard, Shield } from 'lucide-react';
+import { Signal, Wifi, BatteryFull, Plus, RefreshCw, Tag, CreditCard, Shield, History } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
 import { Header } from '@/components/interface/Header';
 import { TransactionCard, Transaction } from '@/components/interface/TransactionCard';
@@ -14,8 +14,10 @@ import { FilterBar, FilterState } from '@/components/interface/FilterBar';
 import { GastoFormModal, GastoFormData } from '@/components/interface/GastoFormModal';
 import { IngresoFormModal, IngresoFormData } from '@/components/interface/IngresoFormModal';
 import { AhorroFormModal, AhorroFormData } from '@/components/interface/AhorroFormModal';
+import { ComparativeReportsDashboard } from '@/components/interface/ComparativeReportsDashboard';
 import { CategoriaManagerModal, CategoriaItem } from '@/components/interface/CategoriaManagerModal';
 import { SubmetodoManagerModal, SubmetodoItem } from '@/components/interface/SubmetodoManagerModal';
+import { AuditHistoryModal } from '@/components/interface/AuditHistoryModal';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -54,6 +56,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
   // UI state
   const [activeSection, setActiveSection] = useState<'Gastos' | 'Ingresos' | 'Ahorros' | 'Resúmenes'>('Gastos');
+  const [summarySubTab, setSummarySubTab] = useState<'comparative' | 'user'>('comparative');
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -80,6 +83,23 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isSubmethodModalOpen, setIsSubmethodModalOpen] = useState(false);
+
+  // Audit History Modal state
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+  const [auditTypeFilter, setAuditTypeFilter] = useState<'todos' | 'gasto' | 'ingreso' | 'ahorro' | 'limite'>('todos');
+  const [auditEntityId, setAuditEntityId] = useState<string | null>(null);
+  const [auditTitle, setAuditTitle] = useState<string | undefined>(undefined);
+
+  const handleOpenAuditModal = (
+    type: 'todos' | 'gasto' | 'ingreso' | 'ahorro' | 'limite' = 'todos',
+    entityId?: string | number | null,
+    title?: string
+  ) => {
+    setAuditTypeFilter(type);
+    setAuditEntityId(entityId ? String(entityId) : null);
+    setAuditTitle(title);
+    setIsAuditModalOpen(true);
+  };
 
   // User initials
   const userInitials = user?.name
@@ -490,6 +510,13 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => handleOpenAuditModal('todos')}
+            className="text-xs font-medium bg-slate-950 hover:bg-slate-800 text-amber-300 px-3 py-1.5 rounded-xl border border-slate-800 transition-colors flex items-center gap-1.5"
+            title="Ver Historial y Auditoría de Cambios"
+          >
+            <History className="w-3.5 h-3.5 text-amber-400" /> Historial de Cambios
+          </button>
+          <button
             onClick={() => setIsCategoryModalOpen(true)}
             className="text-xs font-medium bg-slate-950 hover:bg-slate-800 text-slate-300 px-3 py-1.5 rounded-xl border border-slate-800 transition-colors flex items-center gap-1.5"
           >
@@ -536,6 +563,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
           onMenuClick={() => (window.location.href = '/dashboard')}
           onOpenCategories={() => setIsCategoryModalOpen(true)}
           onOpenSubmethods={() => setIsSubmethodModalOpen(true)}
+          onOpenAudit={() => handleOpenAuditModal('todos')}
           sortBy={sortBy}
           sortOrder={sortOrder}
           onSortSelect={handleSortSelect}
@@ -544,7 +572,36 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         {/* Dynamic Content */}
         <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 bg-slate-950/60 pb-16">
           {activeSection === 'Resúmenes' ? (
-            <UserExpenseChart transactions={transactions} title="Distribución de Movimientos" />
+            <div className="space-y-3">
+              <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
+                <button
+                  onClick={() => setSummarySubTab('comparative')}
+                  className={`flex-1 py-1.5 rounded-lg font-semibold transition-all ${
+                    summarySubTab === 'comparative'
+                      ? 'bg-violet-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Reportes (RF13/14)
+                </button>
+                <button
+                  onClick={() => setSummarySubTab('user')}
+                  className={`flex-1 py-1.5 rounded-lg font-semibold transition-all ${
+                    summarySubTab === 'user'
+                      ? 'bg-violet-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Por Integrante
+                </button>
+              </div>
+
+              {summarySubTab === 'comparative' ? (
+                <ComparativeReportsDashboard interfaceId={interfaceId} categories={categories} />
+              ) : (
+                <UserExpenseChart transactions={transactions} title="Distribución de Movimientos" />
+              )}
+            </div>
           ) : (
             <>
               {isLoading ? (
@@ -562,6 +619,17 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
                       onToggle={() => setExpandedId(expandedId === tx.id ? null : tx.id)}
                       onEdit={handleEditClick}
                       onDelete={handleDeleteTransaction}
+                      onViewHistory={(transaction) =>
+                        handleOpenAuditModal(
+                          activeSection === 'Gastos'
+                            ? 'gasto'
+                            : activeSection === 'Ingresos'
+                            ? 'ingreso'
+                            : 'ahorro',
+                          transaction.id,
+                          transaction.comment || transaction.user
+                        )
+                      }
                     />
                   ))}
 
@@ -599,6 +667,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
           onMenuClick={() => (window.location.href = '/dashboard')}
           onOpenCategories={() => setIsCategoryModalOpen(true)}
           onOpenSubmethods={() => setIsSubmethodModalOpen(true)}
+          onOpenAudit={() => handleOpenAuditModal('todos')}
           sortBy={sortBy}
           sortOrder={sortOrder}
           onSortSelect={handleSortSelect}
@@ -606,10 +675,39 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
         <div className="p-6 space-y-6">
           {activeSection === 'Resúmenes' ? (
-            <UserExpenseChart
-              transactions={transactions}
-              title={`Estadísticas por Usuario — ${activeSection}`}
-            />
+            <div className="space-y-6">
+              <div className="flex bg-slate-950/80 p-1 rounded-xl border border-slate-800 text-xs w-fit">
+                <button
+                  onClick={() => setSummarySubTab('comparative')}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                    summarySubTab === 'comparative'
+                      ? 'bg-violet-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Reportes Comparativos de Períodos (RF13, RF14)
+                </button>
+                <button
+                  onClick={() => setSummarySubTab('user')}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                    summarySubTab === 'user'
+                      ? 'bg-violet-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Distribución por Integrante
+                </button>
+              </div>
+
+              {summarySubTab === 'comparative' ? (
+                <ComparativeReportsDashboard interfaceId={interfaceId} categories={categories} />
+              ) : (
+                <UserExpenseChart
+                  transactions={transactions}
+                  title={`Estadísticas por Usuario — ${activeSection}`}
+                />
+              )}
+            </div>
           ) : (
             <div className="space-y-3">
               <div className="flex justify-between items-center">
@@ -653,6 +751,17 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
                   onToggle={(id) => setExpandedId(expandedId === id ? null : id)}
                   onDelete={handleDeleteTransaction}
                   onEdit={handleEditClick}
+                  onViewHistory={(transaction) =>
+                    handleOpenAuditModal(
+                      activeSection === 'Gastos'
+                        ? 'gasto'
+                        : activeSection === 'Ingresos'
+                        ? 'ingreso'
+                        : 'ahorro',
+                      transaction.id,
+                      transaction.comment || transaction.user
+                    )
+                  }
                   sortBy={sortBy}
                   sortOrder={sortOrder}
                   onSortChange={handleSortChange}
@@ -711,6 +820,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         onCreate={handleCreateCategory}
         onUpdate={handleUpdateCategory}
         onDelete={handleDeleteCategory}
+        onViewHistory={(cat) => handleOpenAuditModal('limite', cat.id, cat.nombre)}
         userRole={userRole}
       />
 
@@ -721,6 +831,16 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         onCreate={handleCreateSubmethod}
         onUpdate={handleUpdateSubmethod}
         onDelete={handleDeleteSubmethod}
+      />
+
+      <AuditHistoryModal
+        key={`${auditTypeFilter}-${auditEntityId || 'all'}-${isAuditModalOpen}`}
+        isOpen={isAuditModalOpen}
+        onClose={() => setIsAuditModalOpen(false)}
+        interfaceId={interfaceId}
+        initialTypeFilter={auditTypeFilter}
+        entityIdFilter={auditEntityId}
+        titleFilter={auditTitle}
       />
     </div>
   );
