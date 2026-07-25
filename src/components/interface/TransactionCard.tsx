@@ -1,7 +1,17 @@
+'use client';
+
 import React from 'react';
-import { ChevronDown, Pencil, Trash2, History } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { getAvatarBg, getAvatarClass } from '@/app/dashboard/perfil/page';
+import {
+  ShoppingCart,
+  Car,
+  Wifi,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Landmark,
+  HeartPulse,
+  Film,
+  LucideIcon,
+} from 'lucide-react';
 
 export interface Transaction {
   id: string | number;
@@ -13,135 +23,135 @@ export interface Transaction {
   currency: 'ARS' | 'USD' | 'UYU' | string;
   ars: string;
   usd: string;
+  uyu?: string;
   comment: string;
   method: string;
+  category?: string;
+  type?: 'Gasto' | 'Ingreso' | 'Ahorro' | string;
   rawItem?: Record<string, unknown>;
 }
 
-export const CURRENCY_STYLE: Record<string, string> = {
-  ARS: 'bg-violet-500/15 text-violet-300 border border-violet-500/30',
-  USD: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30',
-  UYU: 'bg-amber-500/15 text-amber-300 border border-amber-500/30',
-};
+export function getCategoryIconAndStyle(categoryName?: string | null, type?: string): {
+  icon: LucideIcon;
+  bg: string;
+  text: string;
+  sign: string;
+} {
+  const cat = (categoryName || '').toLowerCase();
+  const t = (type || '').toLowerCase();
+
+  if (t === 'ingreso' || cat.includes('ingreso') || cat.includes('cobro') || cat.includes('sueldo')) {
+    return {
+      icon: ArrowDownLeft,
+      bg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+      text: 'text-emerald-600 dark:text-emerald-400',
+      sign: '+',
+    };
+  }
+
+  if (t === 'ahorro' || cat.includes('ahorro') || cat.includes('invers')) {
+    return {
+      icon: Landmark,
+      bg: 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400',
+      text: 'text-indigo-600 dark:text-indigo-400',
+      sign: '',
+    };
+  }
+
+  if (cat.includes('super') || cat.includes('alimento') || cat.includes('comida') || cat.includes('coto')) {
+    return {
+      icon: ShoppingCart,
+      bg: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+      text: 'text-rose-600 dark:text-rose-400',
+      sign: '-',
+    };
+  }
+
+  if (cat.includes('transp') || cat.includes('auto') || cat.includes('nafta') || cat.includes('combust') || cat.includes('ypf')) {
+    return {
+      icon: Car,
+      bg: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
+      text: 'text-rose-600 dark:text-rose-400',
+      sign: '-',
+    };
+  }
+
+  if (cat.includes('servic') || cat.includes('net') || cat.includes('wifi') || cat.includes('telecom') || cat.includes('luz')) {
+    return {
+      icon: Wifi,
+      bg: 'bg-purple-500/10 border-purple-500/20 text-purple-400',
+      text: 'text-rose-600 dark:text-rose-400',
+      sign: '-',
+    };
+  }
+
+  if (cat.includes('salud') || cat.includes('farmac') || cat.includes('med')) {
+    return {
+      icon: HeartPulse,
+      bg: 'bg-rose-500/10 border-rose-500/20 text-rose-400',
+      text: 'text-rose-600 dark:text-rose-400',
+      sign: '-',
+    };
+  }
+
+  if (cat.includes('entreten') || cat.includes('cine') || cat.includes('juego')) {
+    return {
+      icon: Film,
+      bg: 'bg-pink-500/10 border-pink-500/20 text-pink-400',
+      text: 'text-rose-600 dark:text-rose-400',
+      sign: '-',
+    };
+  }
+
+  return {
+    icon: ArrowUpRight,
+    bg: 'bg-slate-800 border-slate-700/60 text-slate-300',
+    text: 'text-rose-600 dark:text-rose-400',
+    sign: '-',
+  };
+}
 
 interface TransactionCardProps {
   transaction: Transaction;
-  isOpen: boolean;
-  onToggle: () => void;
-  onEdit?: (tx: Transaction) => void;
-  onDelete?: (id: string | number) => void;
-  onViewHistory?: (tx: Transaction) => void;
+  onSelect: (tx: Transaction) => void;
 }
 
-export function TransactionCard({
-  transaction: tx,
-  isOpen,
-  onToggle,
-  onEdit,
-  onDelete,
-  onViewHistory,
-}: TransactionCardProps) {
-  const currencyBadgeClass =
-    CURRENCY_STYLE[tx.currency] || 'bg-slate-800 text-slate-300 border border-slate-700';
+export function TransactionCard({ transaction: tx, onSelect }: TransactionCardProps) {
+  const { icon: Icon, bg, text, sign } = getCategoryIconAndStyle(
+    tx.category || tx.comment,
+    tx.type
+  );
+
+  const title = tx.comment || tx.category || `Movimiento #${tx.id}`;
+  const subtitle = `${tx.date} • ${tx.category || tx.method || 'General'}`;
 
   return (
-    <div className="bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-800/80 overflow-hidden shadow-md transition-all hover:border-slate-400 dark:hover:border-slate-700">
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center gap-3 p-3 text-left active:bg-slate-800/50 transition-colors"
-      >
-        <div className={`w-9 h-9 rounded-full ${getAvatarBg(tx.avatar)} border border-slate-700 flex items-center justify-center overflow-hidden shrink-0`}>
-          {tx.avatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={tx.avatar}
-              alt={tx.user}
-              className={getAvatarClass(tx.avatar)}
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          ) : (
-            <span className="text-violet-400 text-xs font-bold">{tx.initials}</span>
-          )}
+    <div
+      onClick={() => onSelect(tx)}
+      className="p-3.5 flex items-center justify-between hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
+    >
+      <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-full ${bg} border flex items-center justify-center shrink-0 shadow-sm`}>
+          <Icon className="w-5 h-5" />
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-100 truncate">
-            {tx.user}
+        <div>
+          <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
+            {title}
+          </h4>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+            {subtitle}
           </p>
-          <p className="text-xs text-slate-400">{tx.date}</p>
         </div>
-        <div className="text-right shrink-0">
-          <p className="text-sm font-bold text-white tracking-tight">
-            {tx.amount.toLocaleString('es-AR')}
-          </p>
-          <span
-            className={`inline-block mt-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${currencyBadgeClass}`}
-          >
-            {tx.currency}
-          </span>
-        </div>
-        <ChevronDown
-          className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-violet-400' : ''
-          }`}
-        />
-      </button>
+      </div>
 
-      {isOpen && (
-        <div className="px-3 pb-3 pt-1 border-t border-slate-800/60 bg-slate-950/60">
-          <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs mb-3 mt-2">
-            <div>
-              <dt className="text-slate-400">Equiv. ARS</dt>
-              <dd className="text-slate-200 font-semibold">$ {tx.ars}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-400">Equiv. USD</dt>
-              <dd className="text-slate-200 font-semibold">US$ {tx.usd}</dd>
-            </div>
-            <div className="col-span-2">
-              <dt className="text-slate-400">Comentario</dt>
-              <dd className="text-slate-300">{tx.comment || '-'}</dd>
-            </div>
-            <div className="col-span-2">
-              <dt className="text-slate-400">Método de pago</dt>
-              <dd className="text-slate-300">{tx.method || '-'}</dd>
-            </div>
-          </dl>
-          <div className="flex gap-2">
-            {onViewHistory && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onViewHistory(tx)}
-                className="h-8 text-xs gap-1 rounded-lg border-amber-500/30 hover:border-amber-500/50 text-amber-300 hover:bg-amber-500/10"
-                title="Ver historial de cambios en auditoría"
-              >
-                <History className="w-3.5 h-3.5 text-amber-400" />
-                Historial
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onEdit?.(tx)}
-              className="flex-1 h-8 text-xs gap-1.5 rounded-lg"
-            >
-              <Pencil className="w-3.5 h-3.5" />
-              Modificar
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => onDelete?.(tx.id)}
-              className="flex-1 h-8 text-xs gap-1.5 rounded-lg"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Eliminar
-            </Button>
-          </div>
-        </div>
-      )}
+      <div className="text-right shrink-0">
+        <span className={`text-xs font-extrabold ${text}`}>
+          {sign}$ {tx.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+        </span>
+        <span className="block text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase">
+          {tx.currency}
+        </span>
+      </div>
     </div>
   );
 }

@@ -46,22 +46,35 @@ export async function DELETE(
       return NextResponse.json({ error: 'No tienes acceso a esta interfaz' }, { status: 403 });
     }
 
-    if (userInterfaz.rol !== 'Administrador') {
-      return NextResponse.json(
-        { error: 'Solo los administradores pueden eliminar la interfaz' },
-        { status: 403 }
-      );
+    if (userInterfaz.rol === 'Administrador') {
+      // Delete the interface (cascades related records according to schema)
+      await prisma.interfazOperacion.delete({
+        where: { idinterfazoperacion: interfaceId },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: 'Interfaz eliminada exitosamente',
+      });
+    } else {
+      // Non-admin user leaving the interface
+      await prisma.usuarioInterfaz.update({
+        where: {
+          idinterfazoperacion_idusuario: {
+            idinterfazoperacion: interfaceId,
+            idusuario: userId,
+          },
+        },
+        data: {
+          fechasalida: new Date(),
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: 'Has salido de la interfaz exitosamente',
+      });
     }
-
-    // Delete the interface (cascades related records according to schema or deletes manually)
-    await prisma.interfazOperacion.delete({
-      where: { idinterfazoperacion: interfaceId },
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: 'Interfaz eliminada exitosamente',
-    });
   } catch (err: unknown) {
     console.error('[API /api/interfaces/[id] DELETE Error]:', err);
     const errorMsg = (err as { message?: string })?.message || 'Error del servidor al eliminar la interfaz';

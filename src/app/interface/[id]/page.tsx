@@ -1,17 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, use } from 'react';
-import { Signal, Wifi, BatteryFull, Plus, RefreshCw, Tag, CreditCard, Shield, History, UserPlus, Trash2 } from 'lucide-react';
+import { Plus, Minus, RefreshCw, Eye, EyeOff, PieChart, Sliders } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { Header } from '@/components/interface/Header';
 import { InviteModal } from '@/components/interface/InviteModal';
 import { TransactionCard, Transaction } from '@/components/interface/TransactionCard';
-import { TransactionTable, SortField, SortOrder } from '@/components/interface/TransactionTable';
+import { SortField, SortOrder } from '@/components/interface/TransactionTable';
+import { TransactionDetailModal } from '@/components/interface/TransactionDetailModal';
 import { Pagination } from '@/components/interface/Pagination';
 import { BottomNav } from '@/components/interface/BottomNav';
 import { UserExpenseChart } from '@/components/interface/UserExpenseChart';
-import { BalanceCards, GeneralBalances } from '@/components/interface/BalanceCards';
+import { GeneralBalances } from '@/components/interface/BalanceCards';
 import { FilterBar, FilterState } from '@/components/interface/FilterBar';
 import { GastoFormModal, GastoFormData } from '@/components/interface/GastoFormModal';
 import { IngresoFormModal, IngresoFormData } from '@/components/interface/IngresoFormModal';
@@ -63,7 +63,6 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize] = useState(20);
-  const [expandedId, setExpandedId] = useState<string | number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Sorting state
@@ -87,6 +86,12 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
   const [isSubmethodModalOpen, setIsSubmethodModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
+  // Fintech Mercado Pago UI states
+  const [isBalanceVisible, setIsBalanceVisible] = useState(true);
+  const [selectedCurrency, setSelectedCurrency] = useState<'ARS' | 'USD' | 'UYU'>('ARS');
+  const [selectedTransactionForModal, setSelectedTransactionForModal] = useState<Transaction | null>(null);
+  const [isFilterBarOpen, setIsFilterBarOpen] = useState(false);
+
   // Audit History Modal state
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [auditTypeFilter, setAuditTypeFilter] = useState<'todos' | 'gasto' | 'ingreso' | 'ahorro' | 'limite'>('todos');
@@ -104,36 +109,12 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     setIsAuditModalOpen(true);
   };
 
-  const handleDeleteInterface = async () => {
-    if (
-      !confirm(
-        `¿Estás seguro de que deseas eliminar la interfaz "${interfaceData?.nombre || interfaceId}"? Esta acción eliminará permanentemente la interfaz y todas sus operaciones.`
-      )
-    ) {
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/interfaces/${interfaceId}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        window.location.href = '/dashboard';
-      } else {
-        alert(data.error || 'Error al eliminar la interfaz');
-      }
-    } catch (err) {
-      console.error('Error deleting interface:', err);
-      alert('Error de conexión al eliminar la interfaz');
-    }
-  };
 
   // User initials
   const userInitials = user?.name
     ? user.name
         .split(' ')
-        .map((n) => n[0])
+        .map((n: string) => n[0])
         .join('')
         .toUpperCase()
         .slice(0, 2)
@@ -143,14 +124,19 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
   const loadInterfaceDetails = useCallback(async () => {
     try {
       const res = await fetch(`/api/interfaces/${interfaceId}/details`);
-      const data = await res.json();
-      if (res.ok) {
-        setInterfaceData(data.interface);
-        setUserRole(data.role || 'Visualizador');
-        setCategories(data.categories || []);
-        setSubmethods(data.submethods || []);
-        setMembers(data.members || []);
+      if (!res.ok) {
+        if (res.status === 404 || res.status === 403) {
+          alert('No tienes acceso a esta interfaz o ha sido eliminada.');
+          window.location.href = '/dashboard';
+        }
+        return;
       }
+      const data = await res.json();
+      setInterfaceData(data.interface);
+      setUserRole(data.role || 'Visualizador');
+      setCategories(data.categories || []);
+      setSubmethods(data.submethods || []);
+      setMembers(data.members || []);
     } catch (err) {
       console.error('Error fetching interface details:', err);
     }
@@ -160,8 +146,9 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
   const loadBalances = useCallback(async () => {
     try {
       const res = await fetch(`/api/interfaces/${interfaceId}/balance`);
+      if (!res.ok) return;
       const data = await res.json();
-      if (res.ok && data.balances) {
+      if (data.balances) {
         setBalances(data.balances);
       }
     } catch (err) {
@@ -200,16 +187,24 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
           : `/api/interfaces/${interfaceId}/ahorros`;
 
       const res = await fetch(`${endpoint}?${queryParams.toString()}`);
+      if (!res.ok) {
+        setTransactions([]);
+        return;
+      }
       const json = await res.json();
 
-      if (res.ok && Array.isArray(json.data)) {
+      if (Array.isArray(json.data)) {
         // Map backend records to unified Transaction format for components
         const mapped: Transaction[] = json.data.map((item: Record<string, unknown>) => {
           const amt = Number(item.importe || 0);
           const curr = String(item.moneda || 'ARS');
+          const catName = item.categoriaNombre ? String(item.categoriaNombre) : undefined;
+          const isGasto = activeSection === 'Gastos';
+          const isIngreso = activeSection === 'Ingresos';
+
           return {
             id: String(item.id),
-            date: item.fecha ? String(item.fecha).split('T')[0] : (item.fechadesde ? String(item.fechadesde).split('T')[0] : ''),
+            date: item.fecha ? String(item.fecha).split('T')[0] : (item.fechadesde ? String(item.fechadesde).split('T')[0] : 'Hoy'),
             user: String(item.responsableNombre || 'Usuario'),
             avatar: item.responsableFotoPerfil ? String(item.responsableFotoPerfil) : null,
             initials: String(item.responsableNombre || 'U').slice(0, 2).toUpperCase(),
@@ -217,8 +212,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
             currency: curr,
             ars: curr === 'ARS' ? amt.toLocaleString('es-AR') : (amt * 1100).toLocaleString('es-AR'),
             usd: curr === 'USD' ? String(amt) : (amt / 1100).toFixed(1),
-            comment: String(item.comentario || item.periodoaporte || activeSection),
+            uyu: (amt * 0.04).toFixed(0),
+            comment: String(item.comentario || ''),
             method: item.submetodoNombre ? `${item.metodoBase || ''} - ${item.submetodoNombre}` : String(item.categoriaNombre || item.periodoaporte || 'General'),
+            category: catName,
+            type: isGasto ? 'Gasto' : isIngreso ? 'Ingreso' : 'Ahorro',
             rawItem: item,
           };
         });
@@ -269,6 +267,30 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       // Ignore
     } finally {
       window.location.href = '/';
+    }
+  };
+
+  const handleLeaveOrDeleteInterface = async () => {
+    const isAdmin = userRole === 'Administrador';
+    const confirmMessage = isAdmin
+      ? '¿Estás seguro de que deseas eliminar permanentemente esta interfaz? Se eliminarán todas las operaciones.'
+      : '¿Estás seguro de que deseas salir de esta interfaz? Dejarás de pertenecer a este grupo.';
+
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      const res = await fetch(`/api/interfaces/${interfaceId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(data.message || (isAdmin ? 'Interfaz eliminada' : 'Has salido de la interfaz'));
+        window.location.href = '/dashboard';
+      } else {
+        alert(data.error || 'Error al procesar la solicitud');
+      }
+    } catch {
+      alert('Error al conectar con el servidor');
     }
   };
 
@@ -465,374 +487,278 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     return sortOrder === 'desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
   });
 
+  const currBalanceObj = balances?.[selectedCurrency];
+  const totalBalanceAmount =
+    (activeSection === 'Ingresos'
+      ? currBalanceObj?.ingresos
+      : activeSection === 'Ahorros'
+      ? currBalanceObj?.ahorros
+      : currBalanceObj?.gastos) ??
+    transactions
+      .filter((t) => t.currency === selectedCurrency)
+      .reduce((acc, t) => acc + t.amount, 0);
+
+  const currencySymbol = selectedCurrency === 'USD' ? 'US$' : selectedCurrency === 'UYU' ? '$U' : '$';
+
   return (
-    <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col items-center gap-6 p-3 sm:p-8 font-sans relative overflow-x-hidden transition-colors duration-200">
+    <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex justify-center items-start p-0 md:py-8 font-sans relative overflow-x-hidden transition-colors duration-200">
       {/* Background Radial Glow Effects */}
       <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl -z-10 pointer-events-none" />
       <div className="absolute bottom-10 left-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-3xl -z-10 pointer-events-none" />
 
-      {/* Top Navigation Bar */}
-      <div className="w-full max-w-4xl flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl transition-colors">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => (window.location.href = '/dashboard')}
-            className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-          >
-            &larr; Dashboard
-          </button>
-          <span className="text-slate-300 dark:text-slate-800">|</span>
-          <span className="text-xs text-slate-700 dark:text-slate-300 font-medium bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded-lg truncate max-w-[150px]">
-            {interfaceData?.nombre || `Interfaz #${interfaceId}`}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsInviteModalOpen(true)}
-            className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-xl bg-violet-600 hover:bg-violet-500 text-white shadow-sm transition-colors"
-            title="Invitar Usuarios o Amigos"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Invitar</span>
-          </button>
-          <ThemeToggle variant="compact" />
-          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-violet-500/10 text-violet-300 border border-violet-500/20 flex items-center gap-1">
-            <Shield className="w-3 h-3 text-violet-400" />
-            {userRole}
-          </span>
-          {userRole === 'Administrador' && (
-            <button
-              onClick={handleDeleteInterface}
-              className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-              title="Eliminar esta Interfaz"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          )}
-          <button
-            onClick={handleSignOut}
-            className="text-xs text-rose-400 hover:text-rose-300 font-semibold px-2 py-1 rounded-lg hover:bg-rose-500/10 border border-rose-500/20 transition-colors"
-          >
-            Salir
-          </button>
-        </div>
-      </div>
+      {/* Main Container Frame */}
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 min-h-screen md:min-h-[840px] md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col justify-between relative transition-colors">
+        <div>
+          {/* Header Component */}
+          <Header
+            interfaceId={interfaceId}
+            interfaceName={interfaceData?.nombre}
+            activeSection={activeSection}
+            onSectionChange={(sec) => setActiveSection(sec as typeof activeSection)}
+            userInitials={userInitials}
+            userRole={userRole}
+            onMenuClick={() => (window.location.href = '/dashboard')}
+            onOpenCategories={() => setIsCategoryModalOpen(true)}
+            onOpenSubmethods={() => setIsSubmethodModalOpen(true)}
+            onOpenAudit={() => handleOpenAuditModal('todos')}
+            onDeleteInterface={handleLeaveOrDeleteInterface}
+            onNotificationHandled={loadInterfaceDetails}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSortSelect={handleSortSelect}
+          />
 
-      {/* General Balances Cards (RF19) */}
-      <div className="w-full max-w-4xl">
-        <BalanceCards balances={balances} isLoading={isLoading} />
-      </div>
+          <main className="p-5 space-y-6">
+            {/* HERO BALANCE CARD */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-900/90 via-slate-900 to-slate-900 border border-indigo-500/30 p-5 shadow-xl shadow-indigo-950/40">
+              <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
 
-      {/* ABM Modals Trigger Bar */}
-      <div className="w-full max-w-4xl flex flex-wrap items-center justify-between gap-2 bg-slate-900/60 p-3 rounded-2xl border border-slate-800/80">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-300">Acciones ABM:</span>
-          <button
-            onClick={() => {
-              setEditingGasto(null);
-              setIsGastoModalOpen(true);
-            }}
-            className="text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded-xl shadow-md shadow-violet-600/20 transition-all flex items-center gap-1"
-          >
-            <Plus className="w-3.5 h-3.5" /> Nuevo Gasto
-          </button>
-          <button
-            onClick={() => {
-              setEditingIngreso(null);
-              setIsIngresoModalOpen(true);
-            }}
-            className="text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl shadow-md shadow-emerald-600/20 transition-all flex items-center gap-1"
-          >
-            <Plus className="w-3.5 h-3.5" /> Nuevo Ingreso
-          </button>
-          <button
-            onClick={() => {
-              setEditingAhorro(null);
-              setIsAhorroModalOpen(true);
-            }}
-            className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl shadow-md shadow-indigo-600/20 transition-all flex items-center gap-1"
-          >
-            <Plus className="w-3.5 h-3.5" /> Nuevo Ahorro (Admin)
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleOpenAuditModal('todos')}
-            className="text-xs font-medium bg-slate-950 hover:bg-slate-800 text-amber-300 px-3 py-1.5 rounded-xl border border-slate-800 transition-colors flex items-center gap-1.5"
-            title="Ver Historial y Auditoría de Cambios"
-          >
-            <History className="w-3.5 h-3.5 text-amber-400" /> Historial de Cambios
-          </button>
-          <button
-            onClick={() => setIsCategoryModalOpen(true)}
-            className="text-xs font-medium bg-slate-950 hover:bg-slate-800 text-slate-300 px-3 py-1.5 rounded-xl border border-slate-800 transition-colors flex items-center gap-1.5"
-          >
-            <Tag className="w-3.5 h-3.5 text-violet-400" /> Categorías ({categories.length})
-          </button>
-          <button
-            onClick={() => setIsSubmethodModalOpen(true)}
-            className="text-xs font-medium bg-slate-950 hover:bg-slate-800 text-slate-300 px-3 py-1.5 rounded-xl border border-slate-800 transition-colors flex items-center gap-1.5"
-          >
-            <CreditCard className="w-3.5 h-3.5 text-indigo-400" /> Submétodos ({submethods.length})
-          </button>
-        </div>
-      </div>
-
-      {/* Advanced Filter Bar (RF29) */}
-      <div className="w-full max-w-4xl">
-        <FilterBar
-          filters={filters}
-          onFilterChange={setFilters}
-          categories={categories}
-          submethods={submethods}
-          onReset={() => setFilters(DEFAULT_FILTERS)}
-        />
-      </div>
-
-      {/* MOBILE-FIRST SMARTPHONE FRAME */}
-      <div className="w-full max-w-[380px] h-[740px] bg-slate-950 rounded-[2.25rem] border-[6px] border-slate-800 shadow-2xl overflow-hidden flex flex-col md:hidden relative">
-        {/* Status bar */}
-        <div className="h-7 bg-slate-950 flex items-center justify-between px-5 shrink-0 border-b border-slate-900">
-          <span className="text-slate-200 text-[11px] font-medium">12:30</span>
-          <div className="flex items-center gap-1.5 text-slate-300">
-            <Signal className="w-3 h-3" />
-            <Wifi className="w-3 h-3" />
-            <BatteryFull className="w-3.5 h-3.5" />
-          </div>
-        </div>
-
-        {/* Header */}
-        <Header
-          interfaceId={interfaceId}
-          interfaceName={interfaceData?.nombre}
-          activeSection={activeSection}
-          onSectionChange={(sec) => setActiveSection(sec as typeof activeSection)}
-          userInitials={userInitials}
-          userRole={userRole}
-          onMenuClick={() => (window.location.href = '/dashboard')}
-          onOpenCategories={() => setIsCategoryModalOpen(true)}
-          onOpenSubmethods={() => setIsSubmethodModalOpen(true)}
-          onOpenAudit={() => handleOpenAuditModal('todos')}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSortSelect={handleSortSelect}
-        />
-
-        {/* Dynamic Content */}
-        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 bg-slate-950/60 pb-16">
-          {activeSection === 'Resúmenes' ? (
-            <div className="space-y-3">
-              <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
+              <div className="flex justify-between items-center text-xs font-medium text-slate-400 mb-1">
+                <span className="uppercase tracking-wider font-semibold text-slate-300">
+                  {activeSection === 'Gastos'
+                    ? 'GASTOS DEL MES'
+                    : activeSection === 'Ingresos'
+                    ? 'INGRESOS DEL MES'
+                    : activeSection === 'Ahorros'
+                    ? 'AHORROS ACUMULADOS'
+                    : 'BALANCE GENERAL'}
+                </span>
                 <button
-                  onClick={() => setSummarySubTab('comparative')}
-                  className={`flex-1 py-1.5 rounded-lg font-semibold transition-all ${
-                    summarySubTab === 'comparative'
-                      ? 'bg-violet-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
+                  onClick={() => setIsBalanceVisible(!isBalanceVisible)}
+                  className="flex items-center gap-1.5 text-slate-300 hover:text-indigo-300 transition-colors bg-slate-800/40 px-2.5 py-1 rounded-full border border-slate-700/40"
                 >
-                  Reportes (RF13/14)
-                </button>
-                <button
-                  onClick={() => setSummarySubTab('user')}
-                  className={`flex-1 py-1.5 rounded-lg font-semibold transition-all ${
-                    summarySubTab === 'user'
-                      ? 'bg-violet-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Por Integrante
+                  {isBalanceVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  <span className="text-[11px]">{isBalanceVisible ? 'Ocultar' : 'Mostrar'}</span>
                 </button>
               </div>
 
-              {summarySubTab === 'comparative' ? (
-                <ComparativeReportsDashboard interfaceId={interfaceId} categories={categories} />
-              ) : (
-                <UserExpenseChart transactions={transactions} title="Distribución de Movimientos" />
-              )}
+              <div className="my-2 flex items-center justify-between gap-2">
+                <h2 className="text-3xl font-extrabold text-white tracking-tight flex items-baseline gap-1.5">
+                  {isBalanceVisible ? (
+                    <>
+                      <span className="text-xl font-bold text-indigo-400">{currencySymbol}</span>
+                      {totalBalanceAmount.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                    </>
+                  ) : (
+                    '••••••••'
+                  )}
+                </h2>
+
+                {/* Currency Selector Pills */}
+                <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800/90 shadow-inner">
+                  {(['ARS', 'USD', 'UYU'] as const).map((curr) => (
+                    <button
+                      key={curr}
+                      onClick={() => setSelectedCurrency(curr)}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold transition-all ${
+                        selectedCurrency === curr
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                      }`}
+                      title={`Ver balance en ${curr}`}
+                    >
+                      {curr}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <span className="inline-block text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                ↓ 12% respecto al mes pasado
+              </span>
+
+              {/* Quick Action Grid Buttons */}
+              <div className="grid grid-cols-4 gap-2 pt-4 border-t border-slate-800/80 mt-4">
+                <button
+                  onClick={() => { setEditingIngreso(null); setIsIngresoModalOpen(true); }}
+                  className="flex flex-col items-center gap-1.5 group"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
+                    <Plus className="w-5 h-5" />
+                  </div>
+                  <span className="text-[11px] font-semibold text-slate-300 group-hover:text-white">Ingreso</span>
+                </button>
+
+                <button
+                  onClick={() => { setEditingGasto(null); setIsGastoModalOpen(true); }}
+                  className="flex flex-col items-center gap-1.5 group"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 group-hover:bg-rose-600 group-hover:text-white transition-all shadow-sm">
+                    <Minus className="w-5 h-5" />
+                  </div>
+                  <span className="text-[11px] font-semibold text-slate-300 group-hover:text-white">Gasto</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveSection('Resúmenes')}
+                  className="flex flex-col items-center gap-1.5 group"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-slate-800 border border-slate-700/60 flex items-center justify-center text-slate-300 group-hover:bg-slate-700 group-hover:text-white transition-all shadow-sm">
+                    <PieChart className="w-5 h-5" />
+                  </div>
+                  <span className="text-[11px] font-semibold text-slate-300 group-hover:text-white">Resumen</span>
+                </button>
+
+                <button
+                  onClick={() => setIsFilterBarOpen(!isFilterBarOpen)}
+                  className="flex flex-col items-center gap-1.5 group"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-slate-800 border border-slate-700/60 flex items-center justify-center text-slate-300 group-hover:bg-slate-700 group-hover:text-white transition-all shadow-sm">
+                    <Sliders className="w-5 h-5" />
+                  </div>
+                  <span className="text-[11px] font-semibold text-slate-300 group-hover:text-white">Filtros</span>
+                </button>
+              </div>
             </div>
-          ) : (
-            <>
-              {isLoading ? (
-                <div className="text-center py-12 text-xs text-slate-400 flex items-center justify-center gap-2">
-                  <RefreshCw className="w-4 h-4 animate-spin text-violet-400" />
-                  Cargando {activeSection}...
+
+            {/* Filter Bar (Collapsible) */}
+            {isFilterBarOpen && (
+              <div className="animate-in fade-in duration-150">
+                <FilterBar
+                  filters={filters}
+                  onFilterChange={setFilters}
+                  categories={categories}
+                  submethods={submethods}
+                  onReset={() => setFilters(DEFAULT_FILTERS)}
+                />
+              </div>
+            )}
+
+            {/* RECENT ACTIVITY SECTION */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h3 className="text-sm font-bold text-slate-200">Actividad Reciente</h3>
+                <div className="flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-[11px]">
+                  {['Gastos', 'Ingresos', 'Ahorros', 'Resúmenes'].map((sec) => (
+                    <button
+                      key={sec}
+                      onClick={() => setActiveSection(sec as typeof activeSection)}
+                      className={`px-2 py-0.5 rounded-lg font-semibold transition-all ${
+                        activeSection === sec
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {sec}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {activeSection === 'Resúmenes' ? (
+                <div className="space-y-3">
+                  <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+                    <button
+                      onClick={() => setSummarySubTab('comparative')}
+                      className={`flex-1 py-1.5 rounded-lg font-semibold transition-all ${
+                        summarySubTab === 'comparative'
+                          ? 'bg-indigo-600 text-white shadow-md'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      Reportes
+                    </button>
+                    <button
+                      onClick={() => setSummarySubTab('user')}
+                      className={`flex-1 py-1.5 rounded-lg font-semibold transition-all ${
+                        summarySubTab === 'user'
+                          ? 'bg-indigo-600 text-white shadow-md'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      Por Integrante
+                    </button>
+                  </div>
+
+                  {summarySubTab === 'comparative' ? (
+                    <ComparativeReportsDashboard interfaceId={interfaceId} categories={categories} />
+                  ) : (
+                    <UserExpenseChart transactions={transactions} title="Distribución de Movimientos" />
+                  )}
                 </div>
               ) : (
-                <>
-                  {sortedTransactions.map((tx) => (
-                    <TransactionCard
-                      key={tx.id}
-                      transaction={tx}
-                      isOpen={expandedId === tx.id}
-                      onToggle={() => setExpandedId(expandedId === tx.id ? null : tx.id)}
-                      onEdit={handleEditClick}
-                      onDelete={handleDeleteTransaction}
-                      onViewHistory={(transaction) =>
-                        handleOpenAuditModal(
-                          activeSection === 'Gastos'
-                            ? 'gasto'
-                            : activeSection === 'Ingresos'
-                            ? 'ingreso'
-                            : 'ahorro',
-                          transaction.id,
-                          transaction.comment || transaction.user
-                        )
-                      }
-                    />
-                  ))}
-
-                  {sortedTransactions.length === 0 && (
-                    <div className="text-center py-10 text-xs text-slate-500">
-                      No encontramos registros de {activeSection} que coincidan con la búsqueda.
+                <div className="bg-slate-900/60 rounded-2xl border border-slate-800/80 divide-y divide-slate-800/60 overflow-hidden shadow-lg">
+                  {isLoading ? (
+                    <div className="p-8 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" />
+                      Cargando movimientos...
                     </div>
+                  ) : sortedTransactions.length === 0 ? (
+                    <div className="p-8 text-center text-slate-500 text-xs">
+                      No hay movimientos registrados en esta sección.
+                    </div>
+                  ) : (
+                    sortedTransactions.map((tx) => (
+                      <TransactionCard
+                        key={tx.id}
+                        transaction={tx}
+                        onSelect={(transaction) => setSelectedTransactionForModal(transaction)}
+                      />
+                    ))
                   )}
-                </>
+                </div>
               )}
-            </>
-          )}
+
+              {totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                />
+              )}
+            </div>
+          </main>
         </div>
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-        />
-
+        {/* Bottom Navigation */}
         <BottomNav
           activeSection={activeSection}
           onSectionChange={(sec) => setActiveSection(sec as typeof activeSection)}
         />
       </div>
 
-      {/* DESKTOP / TABLET RESPONSIVE VIEW (md:) */}
-      <div className="hidden md:flex flex-col w-full max-w-4xl bg-slate-900/60 rounded-2xl border border-slate-800/80 overflow-hidden shadow-2xl backdrop-blur-md">
-        <Header
-          activeSection={activeSection}
-          onSectionChange={(sec) => setActiveSection(sec as typeof activeSection)}
-          userInitials={userInitials}
-          userRole={userRole}
-          onMenuClick={() => (window.location.href = '/dashboard')}
-          onOpenCategories={() => setIsCategoryModalOpen(true)}
-          onOpenSubmethods={() => setIsSubmethodModalOpen(true)}
-          onOpenAudit={() => handleOpenAuditModal('todos')}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSortSelect={handleSortSelect}
-        />
+      {/* Transaction Detail Bottom Sheet Modal */}
+      <TransactionDetailModal
+        transaction={selectedTransactionForModal}
+        isOpen={!!selectedTransactionForModal}
+        onClose={() => setSelectedTransactionForModal(null)}
+        onEdit={handleEditClick}
+        onDelete={handleDeleteTransaction}
+        onViewHistory={(tx) =>
+          handleOpenAuditModal(
+            activeSection === 'Gastos'
+              ? 'gasto'
+              : activeSection === 'Ingresos'
+              ? 'ingreso'
+              : 'ahorro',
+            tx.id,
+            tx.comment || tx.user
+          )
+        }
+      />
 
-        <div className="p-6 space-y-6">
-          {activeSection === 'Resúmenes' ? (
-            <div className="space-y-6">
-              <div className="flex bg-slate-950/80 p-1 rounded-xl border border-slate-800 text-xs w-fit">
-                <button
-                  onClick={() => setSummarySubTab('comparative')}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                    summarySubTab === 'comparative'
-                      ? 'bg-violet-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Reportes Comparativos de Períodos (RF13, RF14)
-                </button>
-                <button
-                  onClick={() => setSummarySubTab('user')}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                    summarySubTab === 'user'
-                      ? 'bg-violet-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Distribución por Integrante
-                </button>
-              </div>
-
-              {summarySubTab === 'comparative' ? (
-                <ComparativeReportsDashboard interfaceId={interfaceId} categories={categories} />
-              ) : (
-                <UserExpenseChart
-                  transactions={transactions}
-                  title={`Estadísticas por Usuario — ${activeSection}`}
-                />
-              )}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-bold text-white tracking-tight">
-                    Registros de {activeSection}
-                  </h2>
-                  <span className="text-xs text-slate-400 font-medium bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
-                    {sortedTransactions.length} items
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => {
-                    if (activeSection === 'Gastos') {
-                      setEditingGasto(null);
-                      setIsGastoModalOpen(true);
-                    } else if (activeSection === 'Ingresos') {
-                      setEditingIngreso(null);
-                      setIsIngresoModalOpen(true);
-                    } else {
-                      setEditingAhorro(null);
-                      setIsAhorroModalOpen(true);
-                    }
-                  }}
-                  className="text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white px-3.5 py-2 rounded-xl shadow-lg shadow-violet-600/30 transition-all flex items-center gap-1.5"
-                >
-                  <Plus className="w-4 h-4" /> Agregar {activeSection.slice(0, -1)}
-                </button>
-              </div>
-
-              {isLoading ? (
-                <div className="bg-slate-900/80 rounded-2xl border border-slate-800 p-12 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                  <RefreshCw className="w-5 h-5 animate-spin text-violet-400" />
-                  Cargando {activeSection}...
-                </div>
-              ) : sortedTransactions.length > 0 ? (
-                <TransactionTable
-                  transactions={sortedTransactions}
-                  expandedId={expandedId}
-                  onToggle={(id) => setExpandedId(expandedId === id ? null : id)}
-                  onDelete={handleDeleteTransaction}
-                  onEdit={handleEditClick}
-                  onViewHistory={(transaction) =>
-                    handleOpenAuditModal(
-                      activeSection === 'Gastos'
-                        ? 'gasto'
-                        : activeSection === 'Ingresos'
-                        ? 'ingreso'
-                        : 'ahorro',
-                      transaction.id,
-                      transaction.comment || transaction.user
-                    )
-                  }
-                  sortBy={sortBy}
-                  sortOrder={sortOrder}
-                  onSortChange={handleSortChange}
-                />
-              ) : (
-                <div className="bg-slate-900/80 rounded-2xl border border-slate-800 p-10 text-center text-xs text-slate-500">
-                  No encontramos registros de {activeSection} que coincidan con la búsqueda.
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-        />
-      </div>
-
-      {/* ABM Form Modals with dynamic keys for clean mount initialization */}
+      {/* ABM Form Modals */}
       <GastoFormModal
         key={editingGasto?.idgasto || (isGastoModalOpen ? 'new-gasto-open' : 'new-gasto-closed')}
         isOpen={isGastoModalOpen}
