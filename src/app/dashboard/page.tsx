@@ -13,10 +13,14 @@ import {
   Sparkles,
   ShieldCheck,
   Eye,
+  User,
+  Trash2,
 } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { NotificationBell } from '@/components/interface/NotificationBell';
 
 interface InterfazItem {
   id: string;
@@ -72,6 +76,31 @@ export default function Dashboard() {
       setLoading(false);
     }
   }, []);
+
+  const handleDeleteInterface = async (interfaceId: string, nombre: string) => {
+    if (
+      !confirm(
+        `¿Estás seguro de que deseas eliminar la interfaz "${nombre}"? Esta acción eliminará permanentemente la interfaz y todas sus operaciones.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/interfaces/${interfaceId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        fetchInterfaces();
+      } else {
+        alert(data.error || 'Error al eliminar la interfaz');
+      }
+    } catch (err) {
+      console.error('Error deleting interface:', err);
+      alert('Error al conectar con el servidor para eliminar la interfaz');
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -179,30 +208,41 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans relative overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans relative overflow-hidden flex flex-col transition-colors duration-200">
       {/* Background Radial Glow Effects */}
       <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl -z-10 pointer-events-none" />
       <div className="absolute bottom-10 left-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-3xl -z-10 pointer-events-none" />
 
       {/* Header Navbar */}
-      <nav className="border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md sticky top-0 z-50">
+      <nav className="border-b border-slate-200 dark:border-slate-800/80 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md sticky top-0 z-50 transition-colors">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center shadow-md shadow-violet-600/25">
               <span className="font-extrabold text-white text-base">E</span>
             </div>
-            <span className="font-bold tracking-tight text-xl text-white">Expenzzi</span>
+            <span className="font-bold tracking-tight text-xl text-slate-900 dark:text-white">Expenzzi</span>
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="text-xs font-semibold text-slate-300 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl hidden sm:inline">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-xl hidden sm:inline">
               {user ? user.name || user.email : 'Cargando sesión...'}
             </span>
+            <NotificationBell onNotificationHandled={fetchInterfaces} />
+            <ThemeToggle variant="compact" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { window.location.href = '/dashboard/perfil'; }}
+              className="gap-1.5 border-indigo-500/30 hover:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+            >
+              <User className="w-3.5 h-3.5" />
+              Mi Perfil
+            </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={handleSignOut}
-              className="gap-1.5"
+              className="gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             >
               <LogOut className="w-3.5 h-3.5" />
               Cerrar Sesión
@@ -233,15 +273,15 @@ export default function Dashboard() {
         )}
 
         {/* Welcome Section Banner */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/60 p-6 rounded-2xl border border-slate-800/80 backdrop-blur-md shadow-xl">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 dark:bg-slate-900/60 p-6 rounded-2xl border border-slate-200 dark:border-slate-800/80 backdrop-blur-md shadow-xl transition-colors">
           <div>
             <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-violet-400" />
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              <Sparkles className="w-5 h-5 text-violet-500 dark:text-violet-400" />
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
                 Mis Interfaces de Operación
               </h1>
             </div>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">
               Gestiona tus grupos de gastos compartidos, crea nuevos o únete con un código de invitación.
             </p>
           </div>
@@ -252,7 +292,7 @@ export default function Dashboard() {
               onClick={() => setShowJoinModal(true)}
               className="flex-1 sm:flex-initial gap-2"
             >
-              <Link2 className="w-4 h-4 text-violet-400" />
+              <Link2 className="w-4 h-4 text-violet-500 dark:text-violet-400" />
               Unirse con Código
             </Button>
             <Button
@@ -267,18 +307,18 @@ export default function Dashboard() {
 
         {/* Loading Spinner */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
+          <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-500 dark:text-slate-400">
             <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
             <span className="text-xs font-medium">Cargando interfaces desde Neon Auth...</span>
           </div>
         ) : interfaces.length === 0 ? (
           /* Empty State */
-          <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-12 text-center space-y-4 max-w-lg mx-auto">
-            <div className="w-12 h-12 rounded-2xl bg-violet-500/10 text-violet-400 flex items-center justify-center mx-auto border border-violet-500/20">
+          <div className="bg-white/60 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-12 text-center space-y-4 max-w-lg mx-auto shadow-sm">
+            <div className="w-12 h-12 rounded-2xl bg-violet-500/10 text-violet-500 dark:text-violet-400 flex items-center justify-center mx-auto border border-violet-500/20">
               <Users className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-white">Sin interfaces asociadas</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Sin interfaces asociadas</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
               Actualmente no perteneces a ninguna interfaz de operación. Crea tu primer grupo de gastos o ingresa un código UUID de invitación.
             </p>
             <div className="flex justify-center gap-3 pt-2">
@@ -294,17 +334,17 @@ export default function Dashboard() {
             {interfaces.map((item) => (
               <div
                 key={item.id}
-                className="bg-slate-900/80 border border-slate-800/80 hover:border-violet-500/40 rounded-2xl p-6 transition-all duration-200 flex flex-col justify-between group shadow-xl hover:shadow-violet-600/5 relative"
+                className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800/80 hover:border-violet-500/40 rounded-2xl p-6 transition-all duration-200 flex flex-col justify-between group shadow-lg hover:shadow-violet-600/10 relative"
               >
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span
                       className={`px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 ${
                         item.rol === 'Administrador'
-                          ? 'bg-violet-500/15 text-violet-300 border border-violet-500/30'
+                          ? 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-500/30'
                           : item.rol === 'Invitado'
-                          ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                          : 'bg-slate-800 text-slate-300 border border-slate-700'
+                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
                       }`}
                     >
                       {item.rol === 'Administrador' && <ShieldCheck className="w-3 h-3" />}
@@ -312,19 +352,33 @@ export default function Dashboard() {
                       {item.rol}
                     </span>
 
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                        {item.estado ? 'Activa' : 'Inactiva'}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                          {item.estado ? 'Activa' : 'Inactiva'}
+                        </span>
+                      </div>
+                      {item.rol === 'Administrador' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteInterface(item.id, item.nombre);
+                          }}
+                          className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                          title="Eliminar Interfaz"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-bold text-white group-hover:text-violet-400 transition-colors">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
                       {item.nombre}
                     </h3>
-                    <p className="text-xs text-slate-400 line-clamp-2 mt-1 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 mt-1 leading-relaxed">
                       {item.descripcion || 'Sin descripción.'}
                     </p>
                   </div>

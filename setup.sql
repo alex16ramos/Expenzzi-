@@ -27,14 +27,49 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'timportemoneda') THEN
     CREATE TYPE "timportemoneda" AS (importe numeric(12,2), moneda tmoneda);
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'testadoamistad') THEN
+    CREATE TYPE "testadoamistad" AS ENUM('Pendiente', 'Aceptado', 'Rechazado');
+  END IF;
 END $$;
 
 -- 3. Create Tables
 CREATE TABLE IF NOT EXISTS "usuario" (
   "idusuario" uuid PRIMARY KEY,
   "nombreusuario" varchar NOT NULL,
-  "email" varchar NOT NULL CONSTRAINT "usuario_email_key" UNIQUE
+  "email" varchar NOT NULL CONSTRAINT "usuario_email_key" UNIQUE,
+  "fotoperfil" varchar,
+  "biografia" varchar,
+  "telefono" varchar
 );
+
+ALTER TABLE "usuario" ADD COLUMN IF NOT EXISTS "fotoperfil" varchar;
+ALTER TABLE "usuario" ADD COLUMN IF NOT EXISTS "biografia" varchar;
+ALTER TABLE "usuario" ADD COLUMN IF NOT EXISTS "telefono" varchar;
+ALTER TABLE "usuario" ADD COLUMN IF NOT EXISTS "temapreferido" varchar(20) DEFAULT 'system';
+
+CREATE TABLE IF NOT EXISTS "notificacion" (
+  "idnotificacion" bigserial PRIMARY KEY,
+  "idreceptor" uuid NOT NULL REFERENCES "usuario"("idusuario") ON DELETE CASCADE,
+  "idemisor" uuid NOT NULL REFERENCES "usuario"("idusuario") ON DELETE CASCADE,
+  "tipo" varchar(50) DEFAULT 'INVITACION_INTERFAZ' NOT NULL,
+  "titulo" varchar(100) NOT NULL,
+  "mensaje" text,
+  "idinterfazoperacion" bigint REFERENCES "interfazoperacion"("idinterfazoperacion") ON DELETE CASCADE,
+  "rol_propuesto" trol DEFAULT 'Invitado'::trol,
+  "estado" varchar(20) DEFAULT 'Pendiente' NOT NULL,
+  "leido" boolean DEFAULT false NOT NULL,
+  "fechacreacion" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "amistad" (
+  "idamistad" bigserial PRIMARY KEY,
+  "idremitente" uuid NOT NULL REFERENCES "usuario"("idusuario") ON DELETE CASCADE,
+  "iddestinatario" uuid NOT NULL REFERENCES "usuario"("idusuario") ON DELETE CASCADE,
+  "estado" testadoamistad DEFAULT 'Pendiente'::testadoamistad NOT NULL,
+  "fechacreacion" date DEFAULT CURRENT_DATE NOT NULL,
+  CONSTRAINT "amistad_remitente_destinatario_key" UNIQUE("idremitente", "iddestinatario")
+);
+
 
 CREATE TABLE IF NOT EXISTS "interfazoperacion" (
   "idinterfazoperacion" bigserial PRIMARY KEY,
@@ -178,6 +213,7 @@ ALTER TABLE "historialahorro" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "historialgasto" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "historialingreso" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "historiallimite" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "amistad" ENABLE ROW LEVEL SECURITY;
 
 -- 5. Create Missing Indexes for Performance
 CREATE UNIQUE INDEX IF NOT EXISTS "ahorro_pkey" ON "ahorro" ("idahorro");
@@ -207,6 +243,9 @@ CREATE INDEX IF NOT EXISTS "idx_usuariointerfaz_idusuario" ON "usuariointerfaz" 
 CREATE INDEX IF NOT EXISTS "idx_usuariointerfaz_idinterfaz_idusuario" ON "usuariointerfaz" ("idinterfazoperacion","idusuario");
 CREATE INDEX IF NOT EXISTS "idx_gasto_submetodopago" ON "gasto" ("idsubmetodopago");
 CREATE INDEX IF NOT EXISTS "idx_submetodopago_idinterfazoperacion" ON "submetodopago" ("idinterfazoperacion");
+CREATE UNIQUE INDEX IF NOT EXISTS "amistad_pkey" ON "amistad" ("idamistad");
+CREATE INDEX IF NOT EXISTS "idx_amistad_idremitente" ON "amistad" ("idremitente");
+CREATE INDEX IF NOT EXISTS "idx_amistad_iddestinatario" ON "amistad" ("iddestinatario");
 
 -- 6. Trigger to Sync Neon Auth Users to Public.Usuario
 CREATE OR REPLACE FUNCTION public.sync_usuario_fn()
@@ -662,3 +701,88 @@ CREATE POLICY select_historialingreso ON "historialingreso" FOR SELECT TO authen
 
 CREATE POLICY select_historiallimite ON "historiallimite" FOR SELECT TO authenticated, anon
   USING (true);
+
+-- K. Policies for "amistad"
+CREATE POLICY select_amistad ON "amistad" FOR SELECT TO authenticated, anon
+  USING (true);
+
+CREATE POLICY manage_amistad ON "amistad" FOR ALL TO authenticated, anon
+  USING (true);
+
+-- L. Policies for "notificacion"
+ALTER TABLE "notificacion" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY select_notificacion ON "notificacion" FOR SELECT TO authenticated, anon
+  USING (true);
+
+CREATE POLICY manage_notificacion ON "notificacion" FOR ALL TO authenticated, anon
+  USING (true);
+
+-- Stored procedure to send interface invitation
+CREATE OR REPLACE FUNCTION public.enviar_invitacion_interfaz(
+  p_idemisor uuid,
+  p_idreceptor uuid,
+  p_idinterfaz bigint,
+  p_rol trol DEFAULT 'Invitado'::trol
+) RETURNS bigint AS $$
+DECLARE
+  v_emisor_nombre varchar;
+  v_interfaz_nombre varchar;
+  v_idnotificacion bigint;
+BEGIN
+  SELECT nombreusuario INTO v_emisor_nombre FROM public.usuario WHERE idusuario = p_idemisor;
+  SELECT nombre INTO v_interfaz_nombre FROM public.interfazoperacion WHERE idinterfazoperacion = p_idinterfaz;
+
+  INSERT INTO public.notificacion (
+    idreceptor, idemisor, tipo, titulo, mensaje, idinterfazoperacion, rol_propuesto, estado, leido, fechacreacion
+  ) VALUES (
+    p_idreceptor,
+    p_idemisor,
+    'INVITACION_INTERFAZ',
+    'Invitación a ' || COALESCE(v_interfaz_nombre, 'Interfaz de Operación'),
+    COALESCE(v_emisor_nombre, 'Un usuario') || ' te ha invitado a unirte a "' || COALESCE(v_interfaz_nombre, 'Interfaz') || '" como ' || p_rol || '.',
+    p_idinterfaz,
+    p_rol,
+    'Pendiente',
+    false,
+    CURRENT_TIMESTAMP
+  ) RETURNING idnotificacion INTO v_idnotificacion;
+
+  RETURN v_idnotificacion;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Stored procedure to respond to interface invitation
+CREATE OR REPLACE FUNCTION public.responder_invitacion_interfaz(
+  p_idnotificacion bigint,
+  p_aceptar boolean
+) RETURNS boolean AS $$
+DECLARE
+  v_notif record;
+BEGIN
+  SELECT * INTO v_notif FROM public.notificacion WHERE idnotificacion = p_idnotificacion;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Notificación no encontrada';
+  END IF;
+
+  IF p_aceptar THEN
+    -- Insert or update usuariointerfaz
+    INSERT INTO public.usuariointerfaz (idinterfazoperacion, idusuario, rol, fechaunion)
+    VALUES (v_notif.idinterfazoperacion, v_notif.idreceptor, v_notif.rol_propuesto, CURRENT_DATE)
+    ON CONFLICT (idinterfazoperacion, idusuario)
+    DO UPDATE SET rol = EXCLUDED.rol, fechaunion = CURRENT_DATE;
+
+    UPDATE public.notificacion
+    SET estado = 'Aceptada', leido = true
+    WHERE idnotificacion = p_idnotificacion;
+  ELSE
+    UPDATE public.notificacion
+    SET estado = 'Rechazada', leido = true
+    WHERE idnotificacion = p_idnotificacion;
+  END IF;
+
+  RETURN true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+

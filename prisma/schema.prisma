@@ -52,6 +52,10 @@ model Usuario {
   nombreusuario String   @map("nombreusuario") @db.VarChar
   email         String   @unique(map: "usuario_email_key") @map("email") @db.VarChar
   contrasena    String?  @map("contrasena") @db.VarChar
+  fotoperfil    String?  @map("fotoperfil") @db.VarChar
+  biografia     String?  @map("biografia") @db.VarChar
+  telefono      String?  @map("telefono") @db.VarChar
+  temapreferido String?  @default("system") @map("temapreferido") @db.VarChar(20)
 
   usuarioInterfaces          UsuarioInterfaz[]
   gastosResponsable          Gasto[]            @relation("GastoResponsable")
@@ -60,6 +64,10 @@ model Usuario {
   ingresosIngresador         Ingreso[]          @relation("IngresoIngresador")
   historialGastosCambio      HistorialGasto[]   @relation("HistorialGastoCambio")
   historialIngresosCambio    HistorialIngreso[] @relation("HistorialIngresoCambio")
+  amigosEnviados             Amistad[]          @relation("AmistadRemitente")
+  amigosRecibidos            Amistad[]          @relation("AmistadDestinatario")
+  notificacionesRecibidas    Notificacion[]     @relation("NotificacionReceptor")
+  notificacionesEnviadas     Notificacion[]     @relation("NotificacionEmisor")
 
   @@index([email], map: "idx_email")
   @@index([email], map: "idx_usuario_email")
@@ -80,6 +88,7 @@ model InterfazOperacion {
   categorias        Categoria[]
   submetodospago    SubMetodoPago[]
   ingresos          Ingreso[]
+  notificaciones    Notificacion[]
 
   @@index([nombre, estado], map: "idx_io_nombre_estado")
   @@map("interfazoperacion")
@@ -265,3 +274,51 @@ model HistorialLimite {
   @@index([idcategoria], map: "idx_idcategoria")
   @@map("historiallimite")
 }
+
+enum TEstadoAmistad {
+  Pendiente
+  Aceptado
+  Rechazado
+
+  @@map("testadoamistad")
+}
+
+model Amistad {
+  idamistad      BigInt         @id @default(autoincrement()) @map("idamistad")
+  idremitente    String         @map("idremitente") @db.Uuid
+  iddestinatario String         @map("iddestinatario") @db.Uuid
+  estado         TEstadoAmistad @default(Pendiente) @map("estado")
+  fechacreacion  DateTime       @default(now()) @map("fechacreacion") @db.Date
+
+  remitente      Usuario        @relation("AmistadRemitente", fields: [idremitente], references: [idusuario], onDelete: Cascade)
+  destinatario   Usuario        @relation("AmistadDestinatario", fields: [iddestinatario], references: [idusuario], onDelete: Cascade)
+
+  @@unique([idremitente, iddestinatario], map: "amistad_remitente_destinatario_key")
+  @@index([idremitente])
+  @@index([iddestinatario])
+  @@map("amistad")
+}
+
+model Notificacion {
+  idnotificacion      BigInt             @id @default(autoincrement()) @map("idnotificacion")
+  idreceptor          String             @map("idreceptor") @db.Uuid
+  idemisor            String             @map("idemisor") @db.Uuid
+  tipo                String             @default("INVITACION_INTERFAZ") @map("tipo") @db.VarChar(50)
+  titulo              String             @map("titulo") @db.VarChar(100)
+  mensaje             String?            @map("mensaje") @db.Text
+  idinterfazoperacion BigInt?            @map("idinterfazoperacion")
+  rolPropuesto        TRol?              @default(Invitado) @map("rol_propuesto")
+  estado              String             @default("Pendiente") @map("estado") @db.VarChar(20)
+  leido               Boolean            @default(false) @map("leido")
+  fechacreacion       DateTime           @default(now()) @map("fechacreacion")
+
+  receptor            Usuario            @relation("NotificacionReceptor", fields: [idreceptor], references: [idusuario], onDelete: Cascade)
+  emisor              Usuario            @relation("NotificacionEmisor", fields: [idemisor], references: [idusuario], onDelete: Cascade)
+  interfazoperacion   InterfazOperacion? @relation(fields: [idinterfazoperacion], references: [idinterfazoperacion], onDelete: Cascade)
+
+  @@index([idreceptor, leido, estado])
+  @@index([idemisor])
+  @@index([idinterfazoperacion])
+  @@map("notificacion")
+}
+

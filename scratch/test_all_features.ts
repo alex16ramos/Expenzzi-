@@ -22,7 +22,7 @@ async function testAllFeatures() {
     // TEST 2: Dashboard & Interfaces de Operación (Punto 2)
     // ----------------------------------------------------
     console.log('\n[TEST 2] Verificando Interfaces de Operación y Triggers (Punto 2)...');
-    let interfaces = await prisma.interfazOperacion.findMany();
+    const interfaces = await prisma.interfazOperacion.findMany();
     console.log(`✅ Interfaces encontradas: ${interfaces.length}`);
 
     let testInterfaceId: bigint;

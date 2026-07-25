@@ -1,6 +1,7 @@
 import React from 'react';
 import { Menu, ChevronDown, Tag, CreditCard, History } from 'lucide-react';
 import { SortField, SortOrder } from './TransactionTable';
+import { NotificationBell } from './NotificationBell';
 
 interface HeaderProps {
   query?: string;
@@ -13,6 +14,9 @@ interface HeaderProps {
   onOpenCategories?: () => void;
   onOpenSubmethods?: () => void;
   onOpenAudit?: () => void;
+  onNotificationHandled?: () => void;
+  interfaceId?: string | number | null;
+  interfaceName?: string | null;
   sortBy?: SortField;
   sortOrder?: SortOrder;
   onSortSelect?: (sortBy: SortField, sortOrder: SortOrder) => void;
@@ -27,11 +31,14 @@ export function Header({
   onOpenCategories,
   onOpenSubmethods,
   onOpenAudit,
+  onNotificationHandled,
+  interfaceId,
+  interfaceName,
 }: HeaderProps) {
   const sections = ['Gastos', 'Ingresos', 'Ahorros', 'Resúmenes'];
 
   return (
-    <div className="bg-slate-950/90 border-b border-slate-800/80 px-4 pt-3 pb-3 shrink-0">
+    <div className="bg-white/90 dark:bg-slate-950/90 border-b border-slate-200 dark:border-slate-800/80 px-4 pt-3 pb-3 shrink-0 transition-colors">
       <div className="flex items-center justify-between">
         <button
           onClick={onMenuClick}
@@ -56,7 +63,7 @@ export function Header({
           </button>
         </div>
 
-        {/* Config ABM Buttons & User Avatar */}
+        {/* Config ABM Buttons, Notification Bell & User Avatar */}
         <div className="flex items-center gap-1.5">
           {onOpenAudit && (
             <button
@@ -88,8 +95,14 @@ export function Header({
             </button>
           )}
 
+          <NotificationBell
+            interfaceId={interfaceId}
+            interfaceName={interfaceName}
+            onNotificationHandled={onNotificationHandled}
+          />
+
           <div
-            className="w-8 h-8 rounded-full bg-violet-600 text-white text-[11px] font-semibold flex items-center justify-center shadow-md shadow-violet-600/30 ml-1"
+            className="w-8 h-8 rounded-full bg-violet-600 text-white text-[11px] font-semibold flex items-center justify-center shadow-md shadow-violet-600/30 ml-0.5"
             title={`Rol: ${userRole}`}
           >
             {userInitials}

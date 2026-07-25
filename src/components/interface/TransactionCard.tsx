@@ -1,11 +1,13 @@
 import React from 'react';
 import { ChevronDown, Pencil, Trash2, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getAvatarBg, getAvatarClass } from '@/app/dashboard/perfil/page';
 
 export interface Transaction {
   id: string | number;
   date: string;
   user: string;
+  avatar?: string | null;
   initials: string;
   amount: number;
   currency: 'ARS' | 'USD' | 'UYU' | string;
@@ -43,13 +45,25 @@ export function TransactionCard({
     CURRENCY_STYLE[tx.currency] || 'bg-slate-800 text-slate-300 border border-slate-700';
 
   return (
-    <div className="bg-slate-900/80 rounded-2xl border border-slate-800/80 overflow-hidden shadow-md transition-all hover:border-slate-700">
+    <div className="bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-800/80 overflow-hidden shadow-md transition-all hover:border-slate-400 dark:hover:border-slate-700">
       <button
         onClick={onToggle}
         className="w-full flex items-center gap-3 p-3 text-left active:bg-slate-800/50 transition-colors"
       >
-        <div className="w-9 h-9 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-bold flex items-center justify-center shrink-0">
-          {tx.initials}
+        <div className={`w-9 h-9 rounded-full ${getAvatarBg(tx.avatar)} border border-slate-700 flex items-center justify-center overflow-hidden shrink-0`}>
+          {tx.avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={tx.avatar}
+              alt={tx.user}
+              className={getAvatarClass(tx.avatar)}
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            <span className="text-violet-400 text-xs font-bold">{tx.initials}</span>
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-slate-100 truncate">

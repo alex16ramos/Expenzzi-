@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { TMoneda } from '@prisma/client';
+import { notifyInterfaceMembers } from '@/lib/notify-members';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,6 +123,7 @@ export async function GET(
         fecha: g.fecha.toISOString().split('T')[0],
         responsablegasto: g.responsablegasto,
         responsableNombre: g.usuarioResponsable?.nombreusuario || 'Usuario',
+        responsableFotoPerfil: g.usuarioResponsable?.fotoperfil || null,
         moneda: g.moneda,
         importe: Number(g.importe),
         comentario: g.comentario || '',
@@ -151,13 +153,17 @@ export async function GET(
  * Create a new Gasto (CU12 / RF5, RF6, RF7)
  */
 export async function POST(
-  req: Request
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromSession();
     if (!userId) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
+
+    const resolvedParams = await params;
+    const interfaceId = BigInt(resolvedParams.id);
 
     const body = await req.json();
 
@@ -204,6 +210,20 @@ export async function POST(
         categoria: true,
         submetodopago: true,
       },
+    });
+
+    const emisor = await prisma.usuario.findUnique({ where: { idusuario: userId } });
+    const interfaz = await prisma.interfazOperacion.findUnique({ where: { idinterfazoperacion: interfaceId } });
+    const emisorNombre = emisor?.nombreusuario || 'Un usuario';
+    const interfazNombre = interfaz?.nombre || 'la interfaz';
+    const formattedAmount = `${Number(importe).toLocaleString('es-AR')} ${moneda}`;
+
+    notifyInterfaceMembers({
+      idinterfazoperacion: interfaceId,
+      idemisor: userId,
+      tipo: 'NUEVO_GASTO',
+      titulo: 'Nuevo Gasto Registrado',
+      mensaje: `${emisorNombre} registró un gasto de ${formattedAmount}${comentario ? ` ("${comentario}")` : ''} en "${interfazNombre}".`,
     });
 
     return NextResponse.json({

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { TMoneda } from '@prisma/client';
+import { notifyInterfaceMembers } from '@/lib/notify-members';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,6 +101,7 @@ export async function GET(
         fecha: i.fecha.toISOString().split('T')[0],
         responsableingreso: i.responsableingreso,
         responsableNombre: i.usuarioResponsable?.nombreusuario || 'Usuario',
+        responsableFotoPerfil: i.usuarioResponsable?.fotoperfil || null,
         moneda: i.moneda,
         importe: Number(i.importe),
         comentario: i.comentario || '',
@@ -176,6 +178,20 @@ export async function POST(
       include: {
         usuarioResponsable: true,
       },
+    });
+
+    const emisor = await prisma.usuario.findUnique({ where: { idusuario: userId } });
+    const interfaz = await prisma.interfazOperacion.findUnique({ where: { idinterfazoperacion: interfaceId } });
+    const emisorNombre = emisor?.nombreusuario || 'Un usuario';
+    const interfazNombre = interfaz?.nombre || 'la interfaz';
+    const formattedAmount = `${Number(importe).toLocaleString('es-AR')} ${moneda}`;
+
+    notifyInterfaceMembers({
+      idinterfazoperacion: interfaceId,
+      idemisor: userId,
+      tipo: 'NUEVO_INGRESO',
+      titulo: 'Nuevo Ingreso Registrado',
+      mensaje: `${emisorNombre} registró un ingreso de ${formattedAmount}${comentario ? ` ("${comentario}")` : ''} en "${interfazNombre}".`,
     });
 
     return NextResponse.json({

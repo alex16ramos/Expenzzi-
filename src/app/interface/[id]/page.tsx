@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, use } from 'react';
-import { Signal, Wifi, BatteryFull, Plus, RefreshCw, Tag, CreditCard, Shield, History } from 'lucide-react';
+import { Signal, Wifi, BatteryFull, Plus, RefreshCw, Tag, CreditCard, Shield, History, UserPlus, Trash2 } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { Header } from '@/components/interface/Header';
+import { InviteModal } from '@/components/interface/InviteModal';
 import { TransactionCard, Transaction } from '@/components/interface/TransactionCard';
 import { TransactionTable, SortField, SortOrder } from '@/components/interface/TransactionTable';
 import { Pagination } from '@/components/interface/Pagination';
@@ -83,6 +85,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isSubmethodModalOpen, setIsSubmethodModalOpen] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   // Audit History Modal state
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
@@ -99,6 +102,31 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     setAuditEntityId(entityId ? String(entityId) : null);
     setAuditTitle(title);
     setIsAuditModalOpen(true);
+  };
+
+  const handleDeleteInterface = async () => {
+    if (
+      !confirm(
+        `¿Estás seguro de que deseas eliminar la interfaz "${interfaceData?.nombre || interfaceId}"? Esta acción eliminará permanentemente la interfaz y todas sus operaciones.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/interfaces/${interfaceId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        window.location.href = '/dashboard';
+      } else {
+        alert(data.error || 'Error al eliminar la interfaz');
+      }
+    } catch (err) {
+      console.error('Error deleting interface:', err);
+      alert('Error de conexión al eliminar la interfaz');
+    }
   };
 
   // User initials
@@ -181,8 +209,9 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
           const curr = String(item.moneda || 'ARS');
           return {
             id: String(item.id),
-            date: item.fecha ? String(item.fecha).split('T')[0] : '',
+            date: item.fecha ? String(item.fecha).split('T')[0] : (item.fechadesde ? String(item.fechadesde).split('T')[0] : ''),
             user: String(item.responsableNombre || 'Usuario'),
+            avatar: item.responsableFotoPerfil ? String(item.responsableFotoPerfil) : null,
             initials: String(item.responsableNombre || 'U').slice(0, 2).toUpperCase(),
             amount: amt,
             currency: curr,
@@ -437,30 +466,48 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
   });
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col items-center gap-6 p-3 sm:p-8 font-sans relative overflow-x-hidden">
+    <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col items-center gap-6 p-3 sm:p-8 font-sans relative overflow-x-hidden transition-colors duration-200">
       {/* Background Radial Glow Effects */}
       <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl -z-10 pointer-events-none" />
       <div className="absolute bottom-10 left-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-3xl -z-10 pointer-events-none" />
 
       {/* Top Navigation Bar */}
-      <div className="w-full max-w-4xl flex justify-between items-center bg-slate-900/80 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-slate-800 shadow-xl">
+      <div className="w-full max-w-4xl flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl transition-colors">
         <div className="flex items-center gap-3">
           <button
             onClick={() => (window.location.href = '/dashboard')}
-            className="text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+            className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
           >
             &larr; Dashboard
           </button>
-          <span className="text-slate-800">|</span>
-          <span className="text-xs text-slate-300 font-medium bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-lg truncate max-w-[150px]">
+          <span className="text-slate-300 dark:text-slate-800">|</span>
+          <span className="text-xs text-slate-700 dark:text-slate-300 font-medium bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded-lg truncate max-w-[150px]">
             {interfaceData?.nombre || `Interfaz #${interfaceId}`}
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsInviteModalOpen(true)}
+            className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-xl bg-violet-600 hover:bg-violet-500 text-white shadow-sm transition-colors"
+            title="Invitar Usuarios o Amigos"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Invitar</span>
+          </button>
+          <ThemeToggle variant="compact" />
           <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-violet-500/10 text-violet-300 border border-violet-500/20 flex items-center gap-1">
             <Shield className="w-3 h-3 text-violet-400" />
             {userRole}
           </span>
+          {userRole === 'Administrador' && (
+            <button
+              onClick={handleDeleteInterface}
+              className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+              title="Eliminar esta Interfaz"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={handleSignOut}
             className="text-xs text-rose-400 hover:text-rose-300 font-semibold px-2 py-1 rounded-lg hover:bg-rose-500/10 border border-rose-500/20 transition-colors"
@@ -556,6 +603,8 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
         {/* Header */}
         <Header
+          interfaceId={interfaceId}
+          interfaceName={interfaceData?.nombre}
           activeSection={activeSection}
           onSectionChange={(sec) => setActiveSection(sec as typeof activeSection)}
           userInitials={userInitials}
@@ -841,6 +890,13 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         initialTypeFilter={auditTypeFilter}
         entityIdFilter={auditEntityId}
         titleFilter={auditTitle}
+      />
+
+      <InviteModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        interfaceId={interfaceId}
+        interfaceName={interfaceData?.nombre}
       />
     </div>
   );

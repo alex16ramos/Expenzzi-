@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { authClient } from '@/lib/auth-client';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
+  const [activeTab, setActiveTab] = useState<'login' | 'signup' | 'reset'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -18,7 +18,20 @@ export default function Home() {
     setMessage('');
 
     try {
-      if (activeTab === 'login') {
+      if (activeTab === 'reset') {
+        const res = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'forgot', email, newPassword: password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setMessage(`Error: ${data.error || 'No se pudo restablecer la contraseña'}`);
+        } else {
+          setMessage(data.message || 'Contraseña restablecida exitosamente');
+          setActiveTab('login');
+        }
+      } else if (activeTab === 'login') {
         const res = await authClient.signIn.email({
           email,
           password,
@@ -126,7 +139,7 @@ export default function Home() {
           <div className="flex p-1 bg-slate-950/80 rounded-xl mb-8 border border-slate-800/50">
             <button
               onClick={() => { setActiveTab('login'); setMessage(''); }}
-              className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
                 activeTab === 'login' 
                   ? 'bg-gradient-to-tr from-indigo-500 to-indigo-600 text-white shadow-md' 
                   : 'text-slate-400 hover:text-white'
@@ -136,13 +149,23 @@ export default function Home() {
             </button>
             <button
               onClick={() => { setActiveTab('signup'); setMessage(''); }}
-              className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
                 activeTab === 'signup' 
                   ? 'bg-gradient-to-tr from-indigo-500 to-indigo-600 text-white shadow-md' 
                   : 'text-slate-400 hover:text-white'
               }`}
             >
               Registrarse
+            </button>
+            <button
+              onClick={() => { setActiveTab('reset'); setMessage(''); }}
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+                activeTab === 'reset' 
+                  ? 'bg-gradient-to-tr from-indigo-500 to-indigo-600 text-white shadow-md' 
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Olvidé Clave
             </button>
           </div>
 
@@ -175,7 +198,20 @@ export default function Home() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Contraseña</label>
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  {activeTab === 'reset' ? 'Nueva Contraseña' : 'Contraseña'}
+                </label>
+                {activeTab === 'login' && (
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('reset'); setMessage(''); }}
+                    className="text-[11px] text-indigo-400 hover:underline"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                )}
+              </div>
               <input
                 type="password"
                 required
@@ -195,8 +231,10 @@ export default function Home() {
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : activeTab === 'login' ? (
                 'Entrar a la Aplicación'
-              ) : (
+              ) : activeTab === 'signup' ? (
                 'Crear Cuenta'
+              ) : (
+                'Restablecer Contraseña'
               )}
             </button>
           </form>

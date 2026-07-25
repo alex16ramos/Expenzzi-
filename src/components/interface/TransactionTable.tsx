@@ -2,6 +2,7 @@ import React from 'react';
 import { ChevronDown, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Transaction, CURRENCY_STYLE } from './TransactionCard';
+import { getAvatarBg, getAvatarClass } from '@/app/dashboard/perfil/page';
 
 export type SortField = 'date' | 'amount' | 'user';
 export type SortOrder = 'asc' | 'desc';
@@ -39,9 +40,9 @@ export function TransactionTable({
   };
 
   return (
-    <div className="bg-slate-900/80 rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
+    <div className="bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl transition-colors">
       <table className="w-full text-left text-xs border-collapse">
-        <thead className="bg-slate-950 border-b border-slate-800 text-slate-400 uppercase font-semibold text-[11px] tracking-wider select-none">
+        <thead className="bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 uppercase font-semibold text-[11px] tracking-wider select-none">
           <tr>
             <th className="py-3.5 px-4">
               <button
@@ -86,8 +87,20 @@ export function TransactionTable({
                 >
                   <td className="py-3.5 px-4 font-semibold text-slate-100">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-[11px] font-bold flex items-center justify-center shrink-0">
-                        {tx.initials}
+                      <div className={`w-8 h-8 rounded-full ${getAvatarBg(tx.avatar)} border border-slate-700 flex items-center justify-center overflow-hidden shrink-0`}>
+                        {tx.avatar ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={tx.avatar}
+                            alt={tx.user}
+                            className={getAvatarClass(tx.avatar)}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <span className="text-violet-400 text-[11px] font-bold">{tx.initials}</span>
+                        )}
                       </div>
                       <span>{tx.user}</span>
                     </div>
