@@ -13,7 +13,7 @@ const emptySubscribe = () => () => {};
 
 export function ThemeToggle({ variant = 'buttons', onThemeSaved }: ThemeToggleProps) {
   const { theme, setTheme, resolvedTheme } = useTheme();
-  
+
   const mounted = useSyncExternalStore(
     emptySubscribe,
     () => true,
@@ -21,25 +21,17 @@ export function ThemeToggle({ variant = 'buttons', onThemeSaved }: ThemeTogglePr
   );
 
   if (!mounted) {
-    return <div className="w-9 h-9 bg-slate-800/40 rounded-xl animate-pulse" />;
+    return <div className="w-9 h-9 bg-slate-200 dark:bg-slate-800/40 rounded-xl animate-pulse" />;
   }
 
   const activeTheme = resolvedTheme || theme;
 
-  const handleSelectTheme = async (newTheme: string) => {
+  const handleSelectTheme = (newTheme: string) => {
     setTheme(newTheme);
+    // Store in cookie for server hydration if needed
+    document.cookie = `theme=${newTheme}; path=/; max-age=31536000`;
     if (onThemeSaved) {
       onThemeSaved(newTheme);
-    }
-
-    try {
-      await fetch('/api/perfil', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ temapreferido: newTheme }),
-      });
-    } catch {
-      // Ignored if offline or unauthenticated
     }
   };
 
@@ -48,8 +40,9 @@ export function ThemeToggle({ variant = 'buttons', onThemeSaved }: ThemeTogglePr
     return (
       <button
         onClick={() => handleSelectTheme(isDark ? 'light' : 'dark')}
-        className="p-2 rounded-xl bg-slate-200 dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-800 hover:bg-slate-300 dark:hover:bg-slate-800 transition-colors shadow-sm"
+        className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors shadow-sm cursor-pointer"
         title={`Cambiar tema (Actual: ${isDark ? 'Oscuro' : 'Claro'})`}
+        aria-label={`Cambiar tema. Modo actual: ${isDark ? 'Oscuro' : 'Claro'}`}
       >
         {isDark ? (
           <Moon className="w-4 h-4 text-indigo-400" />
@@ -61,11 +54,11 @@ export function ThemeToggle({ variant = 'buttons', onThemeSaved }: ThemeTogglePr
   }
 
   return (
-    <div className="inline-flex p-1 bg-slate-200 dark:bg-slate-950 rounded-2xl border border-slate-300 dark:border-slate-800/80 shadow-inner">
+    <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-inner">
       <button
         type="button"
         onClick={() => handleSelectTheme('light')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
           theme === 'light'
             ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -78,7 +71,7 @@ export function ThemeToggle({ variant = 'buttons', onThemeSaved }: ThemeTogglePr
       <button
         type="button"
         onClick={() => handleSelectTheme('dark')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
           theme === 'dark'
             ? 'bg-slate-800 text-white shadow-sm border border-slate-700'
             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -91,9 +84,9 @@ export function ThemeToggle({ variant = 'buttons', onThemeSaved }: ThemeTogglePr
       <button
         type="button"
         onClick={() => handleSelectTheme('system')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
           theme === 'system'
-            ? 'bg-slate-300 dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-400 dark:border-slate-700'
+            ? 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-300 dark:border-slate-700'
             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
         }`}
       >
