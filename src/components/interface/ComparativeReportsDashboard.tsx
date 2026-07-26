@@ -81,9 +81,10 @@ export function ComparativeReportsDashboard({
       if (selectedCurrency !== 'ALL') queryParams.set('moneda', selectedCurrency);
 
       const res = await fetch(`/api/interfaces/${interfaceId}/reportes?${queryParams.toString()}`);
+      if (!res.ok) return;
       const data = await res.json();
 
-      if (res.ok && data.success) {
+      if (data.success) {
         setSummary(data.summary);
         setMonthlyData(data.monthlyEvolution || []);
         setCategoryData(data.categoryBreakdown || []);
@@ -137,9 +138,10 @@ export function ComparativeReportsDashboard({
 
         {/* Refresh button */}
         <button
+          type="button"
           onClick={fetchReports}
           disabled={isLoading}
-          className="self-start sm:self-center p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all flex items-center gap-1.5 text-xs font-semibold"
+          className="self-start sm:self-center p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors flex items-center gap-1.5 text-xs font-semibold"
           title="Actualizar gráficos"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-violet-400' : ''}`} />
@@ -151,10 +153,11 @@ export function ComparativeReportsDashboard({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-slate-950/70 p-3 rounded-xl border border-slate-800/80">
         {/* Target Year */}
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+          <label htmlFor="report-year" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
             <Calendar className="w-3 h-3 text-violet-400" /> Año Principal
           </label>
           <select
+            id="report-year"
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
             className="w-full bg-slate-900 border border-slate-800 text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-violet-500 font-semibold"
@@ -169,10 +172,11 @@ export function ComparativeReportsDashboard({
 
         {/* Compare Year */}
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+          <label htmlFor="report-compare-year" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
             <Calendar className="w-3 h-3 text-indigo-400" /> Comparar vs
           </label>
           <select
+            id="report-compare-year"
             value={compareYear}
             onChange={(e) => setCompareYear(Number(e.target.value))}
             className="w-full bg-slate-900 border border-slate-800 text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 font-semibold"
@@ -187,10 +191,11 @@ export function ComparativeReportsDashboard({
 
         {/* Category Filter */}
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+          <label htmlFor="report-categoria" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
             <Filter className="w-3 h-3 text-emerald-400" /> Categoría
           </label>
           <select
+            id="report-categoria"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
             className="w-full bg-slate-900 border border-slate-800 text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-emerald-500 font-medium truncate"
@@ -206,10 +211,11 @@ export function ComparativeReportsDashboard({
 
         {/* Currency Filter */}
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+          <label htmlFor="report-currency" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
             <DollarSign className="w-3 h-3 text-amber-400" /> Moneda
           </label>
           <select
+            id="report-currency"
             value={selectedCurrency}
             onChange={(e) => setSelectedCurrency(e.target.value)}
             className="w-full bg-slate-900 border border-slate-800 text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-500 font-semibold"
@@ -291,8 +297,9 @@ export function ComparativeReportsDashboard({
       {/* Navigation Sub-Tabs inside Chart */}
       <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
         <button
+          type="button"
           onClick={() => setActiveTab('evolution')}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 ${
             activeTab === 'evolution'
               ? 'bg-violet-600 text-white shadow-md shadow-violet-600/20'
               : 'bg-slate-950/60 text-slate-400 hover:text-white border border-slate-800'
@@ -302,8 +309,9 @@ export function ComparativeReportsDashboard({
           Evolución Mensual Comparativa
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('categories')}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 ${
             activeTab === 'categories'
               ? 'bg-violet-600 text-white shadow-md shadow-violet-600/20'
               : 'bg-slate-950/60 text-slate-400 hover:text-white border border-slate-800'
@@ -321,152 +329,186 @@ export function ComparativeReportsDashboard({
           <span>Generando informe estadístico...</span>
         </div>
       ) : activeTab === 'evolution' ? (
-        <div className="space-y-4">
-          {/* Chart Legend */}
-          <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 px-1 gap-2">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-sm bg-violet-500 shadow-sm" />
-                <span className="font-semibold text-slate-200">Año {selectedYear}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-sm bg-slate-600 shadow-sm" />
-                <span className="text-slate-400">Año {compareYear}</span>
-              </div>
-            </div>
-            <span className="text-[11px] text-slate-500 italic">
-              *Pasa el cursor o presiona sobre un mes para ver detalles
-            </span>
-          </div>
-
-          {/* SVG Grouped Bar Chart */}
-          <div className="bg-slate-950/80 border border-slate-800/80 rounded-xl p-4 overflow-x-auto relative min-w-[300px]">
-            <div className="flex items-end justify-between gap-2 h-[200px] pt-6 pb-2 px-1 border-b border-slate-800">
-              {monthlyData.map((d, index) => {
-                const targetBarH = Math.max((d.targetAmount / maxAmount) * chartHeight, d.targetAmount > 0 ? 6 : 2);
-                const compareBarH = Math.max((d.compareAmount / maxAmount) * chartHeight, d.compareAmount > 0 ? 6 : 2);
-                const isHovered = hoveredMonthIndex === index;
-
-                return (
-                  <div
-                    key={d.monthName}
-                    className="flex-1 flex flex-col items-center justify-end h-full group cursor-pointer"
-                    onMouseEnter={() => setHoveredMonthIndex(index)}
-                    onMouseLeave={() => setHoveredMonthIndex(null)}
-                  >
-                    {/* Tooltip on Hover */}
-                    {isHovered && (
-                      <div className="absolute -top-2 bg-slate-900 border border-slate-700 rounded-lg p-2 shadow-2xl text-[11px] z-20 pointer-events-none min-w-[140px] text-left space-y-1">
-                        <p className="font-bold text-violet-300 border-b border-slate-800 pb-1">
-                          {d.monthName} ({selectedYear} vs {compareYear})
-                        </p>
-                        <div className="flex justify-between text-slate-200">
-                          <span>{selectedYear}:</span>
-                          <span className="font-bold text-violet-400">${d.targetAmount.toLocaleString('es-AR')}</span>
-                        </div>
-                        <div className="flex justify-between text-slate-400">
-                          <span>{compareYear}:</span>
-                          <span className="font-bold text-slate-300">${d.compareAmount.toLocaleString('es-AR')}</span>
-                        </div>
-                        <div className="flex justify-between border-t border-slate-800 pt-1 text-[10px]">
-                          <span>Diferencia:</span>
-                          <span className={d.diffAmount >= 0 ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}>
-                            {d.diffAmount >= 0 ? `+${d.diffAmount}` : d.diffAmount} ({d.diffPercent}%)
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Grouped Bars Container */}
-                    <div className="flex items-end gap-1 w-full justify-center">
-                      {/* Target Year Bar */}
-                      <div
-                        style={{ height: `${targetBarH}px` }}
-                        className={`w-3.5 sm:w-5 rounded-t-sm transition-all duration-300 ${
-                          isHovered
-                            ? 'bg-violet-400 shadow-lg shadow-violet-500/50 scale-105'
-                            : 'bg-violet-600/90 hover:bg-violet-500'
-                        }`}
-                      />
-                      {/* Compare Year Bar */}
-                      <div
-                        style={{ height: `${compareBarH}px` }}
-                        className={`w-3.5 sm:w-5 rounded-t-sm transition-all duration-300 ${
-                          isHovered ? 'bg-slate-400 scale-105' : 'bg-slate-700/80 hover:bg-slate-600'
-                        }`}
-                      />
-                    </div>
-
-                    {/* Month Label */}
-                    <span
-                      className={`text-[10px] mt-2 font-medium transition-colors ${
-                        isHovered ? 'text-violet-300 font-bold' : 'text-slate-400'
-                      }`}
-                    >
-                      {d.monthName}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+        <ComparativeEvolutionChart
+          monthlyData={monthlyData}
+          selectedYear={selectedYear}
+          compareYear={compareYear}
+          hoveredMonthIndex={hoveredMonthIndex}
+          setHoveredMonthIndex={setHoveredMonthIndex}
+          maxAmount={maxAmount}
+          chartHeight={chartHeight}
+        />
       ) : (
-        /* Category Breakdown View */
-        <div className="space-y-3">
-          {categoryData.length === 0 ? (
-            <div className="text-center py-10 text-xs text-slate-500">
-              No hay gastos registrados por categoría en el período seleccionado.
-            </div>
-          ) : (
-            categoryData.map((cat, idx) => {
-              const COLORS = [
-                'bg-violet-500 text-violet-300 border-violet-500/30',
-                'bg-indigo-500 text-indigo-300 border-indigo-500/30',
-                'bg-emerald-500 text-emerald-300 border-emerald-500/30',
-                'bg-amber-500 text-amber-300 border-amber-500/30',
-                'bg-rose-500 text-rose-300 border-rose-500/30',
-                'bg-cyan-500 text-cyan-300 border-cyan-500/30',
-              ];
-              const themeColor = COLORS[idx % COLORS.length];
-
-              return (
-                <div
-                  key={cat.id}
-                  className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 space-y-2 hover:bg-slate-800/40 transition-colors"
-                >
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-full ${themeColor.split(' ')[0]}`} />
-                      <span className="font-semibold text-white">{cat.name}</span>
-                      <span className="text-[10px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
-                        {cat.count} operaciones
-                      </span>
-                    </div>
-
-                    <div className="text-right">
-                      <span className="font-extrabold text-white mr-2">
-                        ${cat.total.toLocaleString('es-AR')}
-                      </span>
-                      <span className={`text-[10px] font-bold ${themeColor.split(' ')[1]}`}>
-                        {cat.percentage}%
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-                    <div
-                      style={{ width: `${Math.min(cat.percentage, 100)}%` }}
-                      className={`h-full rounded-full transition-all duration-500 ${themeColor.split(' ')[0]}`}
-                    />
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+        <CategoryBreakdownList categoryData={categoryData} />
       )}
+    </div>
+  );
+}
+
+function ComparativeEvolutionChart({
+  monthlyData,
+  selectedYear,
+  compareYear,
+  hoveredMonthIndex,
+  setHoveredMonthIndex,
+  maxAmount,
+  chartHeight,
+}: {
+  monthlyData: MonthlyData[];
+  selectedYear: number;
+  compareYear: number;
+  hoveredMonthIndex: number | null;
+  setHoveredMonthIndex: (idx: number | null) => void;
+  maxAmount: number;
+  chartHeight: number;
+}) {
+  return (
+    <div className="space-y-4">
+      {/* Chart Legend */}
+      <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 px-1 gap-2">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-sm bg-violet-500 shadow-sm" />
+            <span className="font-semibold text-slate-200">Año {selectedYear}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-sm bg-slate-600 shadow-sm" />
+            <span className="text-slate-400">Año {compareYear}</span>
+          </div>
+        </div>
+        <span className="text-[11px] text-slate-500 italic">
+          *Pasa el cursor o presiona sobre un mes para ver detalles
+        </span>
+      </div>
+
+      {/* SVG Grouped Bar Chart */}
+      <div className="bg-slate-950/80 border border-slate-800/80 rounded-xl p-4 overflow-x-auto relative min-w-[300px]">
+        <div className="flex items-end justify-between gap-2 h-[200px] pt-6 pb-2 px-1 border-b border-slate-800">
+          {monthlyData.map((d, index) => {
+            const targetBarH = Math.max((d.targetAmount / maxAmount) * chartHeight, d.targetAmount > 0 ? 6 : 2);
+            const compareBarH = Math.max((d.compareAmount / maxAmount) * chartHeight, d.compareAmount > 0 ? 6 : 2);
+            const isHovered = hoveredMonthIndex === index;
+
+            return (
+              <div
+                key={d.monthName}
+                className="flex-1 flex flex-col items-center justify-end h-full group cursor-pointer"
+                onMouseEnter={() => setHoveredMonthIndex(index)}
+                onMouseLeave={() => setHoveredMonthIndex(null)}
+              >
+                {/* Tooltip on Hover */}
+                {isHovered && (
+                  <div className="absolute -top-2 bg-slate-900 border border-slate-700 rounded-lg p-2 shadow-2xl text-[11px] z-20 pointer-events-none min-w-[140px] text-left space-y-1">
+                    <p className="font-bold text-violet-300 border-b border-slate-800 pb-1">
+                      {d.monthName} ({selectedYear} vs {compareYear})
+                    </p>
+                    <div className="flex justify-between text-slate-200">
+                      <span>{selectedYear}:</span>
+                      <span className="font-bold text-violet-400">${d.targetAmount.toLocaleString('es-AR')}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span>{compareYear}:</span>
+                      <span className="font-bold text-slate-300">${d.compareAmount.toLocaleString('es-AR')}</span>
+                    </div>
+                    <div className="flex justify-between border-t border-slate-800 pt-1 text-[10px]">
+                      <span>Diferencia:</span>
+                      <span className={d.diffAmount >= 0 ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}>
+                        {d.diffAmount >= 0 ? `+${d.diffAmount}` : d.diffAmount} ({d.diffPercent}%)
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Grouped Bars Container */}
+                <div className="flex items-end gap-1 w-full justify-center">
+                  {/* Target Year Bar */}
+                  <div
+                    style={{ height: `${targetBarH}px` }}
+                    className={`w-3.5 sm:w-5 rounded-t-sm transition-colors duration-300 ${
+                      isHovered
+                        ? 'bg-violet-400 shadow-lg shadow-violet-500/50 scale-105'
+                        : 'bg-violet-600/90 hover:bg-violet-500'
+                    }`}
+                  />
+                  {/* Compare Year Bar */}
+                  <div
+                    style={{ height: `${compareBarH}px` }}
+                    className={`w-3.5 sm:w-5 rounded-t-sm transition-colors duration-300 ${
+                      isHovered ? 'bg-slate-400 scale-105' : 'bg-slate-700/80 hover:bg-slate-600'
+                    }`}
+                  />
+                </div>
+
+                {/* Month Label */}
+                <span
+                  className={`text-[10px] mt-2 font-medium transition-colors ${
+                    isHovered ? 'text-violet-300 font-bold' : 'text-slate-400'
+                  }`}
+                >
+                  {d.monthName}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const CATEGORY_COLORS = [
+  'bg-violet-500 text-violet-300 border-violet-500/30',
+  'bg-indigo-500 text-indigo-300 border-indigo-500/30',
+  'bg-emerald-500 text-emerald-300 border-emerald-500/30',
+  'bg-amber-500 text-amber-300 border-amber-500/30',
+  'bg-rose-500 text-rose-300 border-rose-500/30',
+  'bg-cyan-500 text-cyan-300 border-cyan-500/30',
+];
+
+function CategoryBreakdownList({ categoryData }: { categoryData: CategoryData[] }) {
+  if (categoryData.length === 0) {
+    return (
+      <div className="text-center py-10 text-xs text-slate-500">
+        No hay gastos registrados por categoría en el período seleccionado.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {categoryData.map((cat, idx) => {
+        const themeColor = CATEGORY_COLORS[idx % CATEGORY_COLORS.length];
+
+        return (
+          <div
+            key={cat.id}
+            className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 space-y-2 hover:bg-slate-800/40 transition-colors"
+          >
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full ${themeColor.split(' ')[0]}`} />
+                <span className="font-semibold text-white">{cat.name}</span>
+                <span className="text-[10px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
+                  {cat.count} operaciones
+                </span>
+              </div>
+
+              <div className="text-right">
+                <span className="font-extrabold text-white mr-2">${cat.total.toLocaleString('es-AR')}</span>
+                <span className={`text-[10px] font-bold ${themeColor.split(' ')[1]}`}>{cat.percentage}%</span>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+              <div
+                style={{ width: `${Math.min(cat.percentage, 100)}%` }}
+                className={`h-full rounded-full transition-colors duration-500 ${themeColor.split(' ')[0]}`}
+              />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

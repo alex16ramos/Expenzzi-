@@ -76,7 +76,9 @@ export function IngresoFormModal({
             {initialData?.idingreso ? 'Editar Ingreso (RF9-RF11)' : 'Nuevo Ingreso (RF9-RF11)'}
           </h3>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Cerrar modal de ingreso"
             className="p-1 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
@@ -93,8 +95,9 @@ export function IngresoFormModal({
         <form onSubmit={handleSubmit} className="space-y-3">
           {/* Fecha */}
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-300">Fecha</label>
+            <label htmlFor="ingreso-fecha" className="text-xs font-medium text-slate-300">Fecha</label>
             <Input
+              id="ingreso-fecha"
               type="date"
               required
               value={fecha}
@@ -105,9 +108,10 @@ export function IngresoFormModal({
 
           {/* Importe y Moneda */}
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-300">Importe y Moneda *</label>
+            <label htmlFor="ingreso-importe" className="text-xs font-medium text-slate-300">Importe y Moneda *</label>
             <div className="flex gap-2">
               <Input
+                id="ingreso-importe"
                 type="number"
                 step="any"
                 required
@@ -119,6 +123,7 @@ export function IngresoFormModal({
               <select
                 value={moneda}
                 onChange={(e) => setMoneda(e.target.value)}
+                aria-label="Moneda del ingreso"
                 className="h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-xs font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="ARS">ARS ($)</option>
@@ -131,8 +136,9 @@ export function IngresoFormModal({
           {/* Responsable */}
           {members.length > 0 && (
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Responsable del Ingreso</label>
+              <label htmlFor="ingreso-responsable" className="text-xs font-medium text-slate-300">Responsable del Ingreso</label>
               <select
+                id="ingreso-responsable"
                 value={responsableingreso}
                 onChange={(e) => setResponsableingreso(e.target.value)}
                 className="w-full h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-xs font-medium text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -149,8 +155,9 @@ export function IngresoFormModal({
 
           {/* Comentario */}
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-300">Comentario</label>
+            <label htmlFor="ingreso-comentario" className="text-xs font-medium text-slate-300">Comentario</label>
             <Input
+              id="ingreso-comentario"
               type="text"
               placeholder="Ej: Sueldo, Transferencia, Venta..."
               value={comentario}

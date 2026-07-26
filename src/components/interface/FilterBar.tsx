@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Filter, X, Search, RotateCcw, Calendar, DollarSign, Tag, CreditCard, ChevronDown, ChevronUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
@@ -40,15 +40,23 @@ export function FilterBar({
     setLocalSearch(filters.search);
   }
 
+  const onFilterChangeRef = useRef(onFilterChange);
+  const filtersRef = useRef(filters);
+
+  useEffect(() => {
+    onFilterChangeRef.current = onFilterChange;
+    filtersRef.current = filters;
+  });
+
   // Debounce search API calls by 350ms
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (localSearch !== filters.search) {
-        onFilterChange({ ...filters, search: localSearch });
+      if (localSearch !== filtersRef.current.search) {
+        onFilterChangeRef.current({ ...filtersRef.current, search: localSearch });
       }
     }, 350);
     return () => clearTimeout(timer);
-  }, [localSearch, filters, onFilterChange]);
+  }, [localSearch]);
 
   const activeFiltersCount = [
     ...filters.categoryIds,
@@ -60,6 +68,11 @@ export function FilterBar({
     filters.minImporte,
     filters.maxImporte,
   ].filter(Boolean).length;
+
+  const categorySet = React.useMemo(() => new Set(filters.categoryIds), [filters.categoryIds]);
+  const submethodSet = React.useMemo(() => new Set(filters.submethodIds), [filters.submethodIds]);
+  const metodoSet = React.useMemo(() => new Set(filters.metodos), [filters.metodos]);
+  const monedaSet = React.useMemo(() => new Set(filters.monedas), [filters.monedas]);
 
   const handleSearchChange = (val: string) => {
     setLocalSearch(val);
@@ -77,7 +90,7 @@ export function FilterBar({
   };
 
   return (
-    <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm space-y-3 transition-all">
+    <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm space-y-3 transition-colors">
       {/* Top Search Bar & Main Controls */}
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
         <div className="relative flex-1">
@@ -91,6 +104,7 @@ export function FilterBar({
           />
           {localSearch && (
             <button
+              type="button"
               onClick={() => handleSearchChange('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white"
               aria-label="Limpiar búsqueda"
@@ -104,13 +118,13 @@ export function FilterBar({
         <div className="flex items-center gap-1.5 overflow-x-auto py-1 justify-between">
           <div className="flex items-center gap-1.5 overflow-x-auto py-1">
           {(['ARS', 'USD', 'UYU'] as const).map((curr) => {
-            const isSelected = filters.monedas.includes(curr);
+            const isSelected = monedaSet.has(curr);
             return (
               <button
                 key={curr}
                 type="button"
                 onClick={() => toggleArrayItem('monedas', curr)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all border ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-colors border ${
                   isSelected
                     ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-600/20'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -126,7 +140,7 @@ export function FilterBar({
           <button
             type="button"
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`flex items-center gap-1.5 px-3.5 h-10 rounded-xl text-xs font-bold border transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 h-10 rounded-xl text-xs font-bold border transition-colors ${
               activeFiltersCount > 0
                 ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-600/20'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -167,13 +181,13 @@ export function FilterBar({
             </label>
             <div className="flex flex-wrap gap-1.5">
               {categories.map((cat) => {
-                const isSelected = filters.categoryIds.includes(cat.id);
+                const isSelected = categorySet.has(cat.id);
                 return (
                   <button
                     key={cat.id}
                     type="button"
                     onClick={() => toggleArrayItem('categoryIds', cat.id)}
-                    className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all border ${
+                    className={`px-3 py-1 rounded-xl text-xs font-semibold transition-colors border ${
                       isSelected
                         ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -192,13 +206,13 @@ export function FilterBar({
               </label>
               <div className="flex flex-wrap gap-1.5">
                 {submethods.map((sub) => {
-                  const isSelected = filters.submethodIds.includes(sub.id);
+                  const isSelected = submethodSet.has(sub.id);
                   return (
                     <button
                       key={sub.id}
                       type="button"
                       onClick={() => toggleArrayItem('submethodIds', sub.id)}
-                      className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all border ${
+                      className={`px-3 py-1 rounded-xl text-xs font-semibold transition-colors border ${
                         isSelected
                           ? 'bg-purple-600 text-white border-purple-500 shadow-sm'
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -220,13 +234,13 @@ export function FilterBar({
             <div className="flex flex-wrap gap-1.5">
               {(['Efectivo', 'Debito', 'Credito'] as const).map((m) => {
                 const label = m === 'Debito' ? 'Débito' : m === 'Credito' ? 'Crédito' : 'Efectivo';
-                const isSelected = filters.metodos.includes(m);
+                const isSelected = metodoSet.has(m);
                 return (
                   <button
                     key={m}
                     type="button"
                     onClick={() => toggleArrayItem('metodos', m)}
-                    className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all border ${
+                    className={`px-3 py-1 rounded-xl text-xs font-semibold transition-colors border ${
                       isSelected
                         ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -242,56 +256,56 @@ export function FilterBar({
           {/* Range Inputs: Fechas & Montos */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800/60">
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+              <label htmlFor="filter-fecha-desde" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-amber-500" /> Fecha Desde
               </label>
               <Input
+                id="filter-fecha-desde"
                 type="date"
                 value={filters.fechaDesde}
                 onChange={(e) => handleFieldChange('fechaDesde', e.target.value)}
                 className="h-9 text-xs bg-slate-50 dark:bg-slate-950 rounded-xl"
-                aria-label="Fecha desde"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+              <label htmlFor="filter-fecha-hasta" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-amber-500" /> Fecha Hasta
               </label>
               <Input
+                id="filter-fecha-hasta"
                 type="date"
                 value={filters.fechaHasta}
                 onChange={(e) => handleFieldChange('fechaHasta', e.target.value)}
                 className="h-9 text-xs bg-slate-50 dark:bg-slate-950 rounded-xl"
-                aria-label="Fecha hasta"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+              <label htmlFor="filter-min-importe" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                 <DollarSign className="w-3.5 h-3.5 text-indigo-500" /> Monto Mínimo
               </label>
               <Input
+                id="filter-min-importe"
                 type="number"
                 placeholder="0.00"
                 value={filters.minImporte}
                 onChange={(e) => handleFieldChange('minImporte', e.target.value)}
                 className="h-9 text-xs bg-slate-50 dark:bg-slate-950 rounded-xl"
-                aria-label="Monto mínimo"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+              <label htmlFor="filter-max-importe" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                 <DollarSign className="w-3.5 h-3.5 text-indigo-500" /> Monto Máximo
               </label>
               <Input
+                id="filter-max-importe"
                 type="number"
                 placeholder="100000..."
                 value={filters.maxImporte}
                 onChange={(e) => handleFieldChange('maxImporte', e.target.value)}
                 className="h-9 text-xs bg-slate-50 dark:bg-slate-950 rounded-xl"
-                aria-label="Monto máximo"
               />
             </div>
           </div>

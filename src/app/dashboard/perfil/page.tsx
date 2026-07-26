@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   User,
   Camera,
@@ -34,6 +35,8 @@ interface UserProfile {
   temapreferido?: string | null;
 }
 
+import { getAvatarBg, getAvatarClass } from '@/lib/avatar-utils';
+
 export const SIMPSONS_PRESETS = [
   { name: 'Homer', url: '/avatars/homer.png', bg: 'bg-gradient-to-b from-blue-500 to-indigo-700', imgClass: 'object-contain p-0.5 object-center scale-110' },
   { name: 'Marge', url: '/avatars/marge.png', bg: 'bg-gradient-to-b from-emerald-500 to-teal-800', imgClass: 'object-contain p-0.5 object-center' },
@@ -48,31 +51,24 @@ export const SIMPSONS_PRESETS = [
   { name: 'Moe', url: '/avatars/moe.png', bg: 'bg-gradient-to-b from-cyan-600 to-blue-900', imgClass: 'object-contain p-0.5 object-center scale-105' },
 ];
 
-export const getAvatarBg = (url?: string | null) => {
-  if (!url) return 'bg-gradient-to-tr from-indigo-500/20 to-purple-500/20';
-  const preset = SIMPSONS_PRESETS.find(p => p.url === url || (url.includes('/avatars/') && url.includes(p.name.toLowerCase().split(' ')[0])));
-  return preset ? preset.bg : 'bg-gradient-to-tr from-indigo-500/20 to-purple-500/20';
-};
-
-export const getAvatarClass = (url?: string | null) => {
-  if (!url) return 'w-full h-full object-cover';
-  const preset = SIMPSONS_PRESETS.find(p => p.url === url || (url.includes('/avatars/') && url.includes(p.name.toLowerCase().split(' ')[0])));
-  if (preset) {
-    return `w-full h-full ${preset.imgClass} transition-transform`;
-  }
-  return url.includes('/avatars/') ? 'w-full h-full object-contain p-1' : 'w-full h-full object-cover';
-};
-
 export default function ProfilePage() {
   const session = authClient.useSession();
   const userSession = session?.data?.user;
 
   // Profile Form States
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [nombreusuario, setNombreusuario] = useState('');
-  const [biografia, setBiografia] = useState('');
-  const [telefono, setTelefono] = useState('');
-  const [fotoperfil, setFotoperfil] = useState('');
+  const [form, setForm] = useState({
+    nombreusuario: '',
+    biografia: '',
+    telefono: '',
+    fotoperfil: '',
+  });
+
+  const { nombreusuario, biografia, telefono, fotoperfil } = form;
+  const setNombreusuario = (val: string) => setForm((prev) => ({ ...prev, nombreusuario: val }));
+  const setBiografia = (val: string) => setForm((prev) => ({ ...prev, biografia: val }));
+  const setTelefono = (val: string) => setForm((prev) => ({ ...prev, telefono: val }));
+  const setFotoperfil = (val: string) => setForm((prev) => ({ ...prev, fotoperfil: val }));
 
   // Password Change States
   const [currentPassword, setCurrentPassword] = useState('');
@@ -95,6 +91,7 @@ export default function ProfilePage() {
   const [customUrlInput, setCustomUrlInput] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  // eslint-disable-next-line react-doctor/no-fetch-in-effect
   useEffect(() => {
     let ignore = false;
     async function loadProfile() {
@@ -104,10 +101,12 @@ export default function ProfilePage() {
         const data = await res.json();
         if (!ignore && data.success && data.user) {
           setProfile(data.user);
-          setNombreusuario(data.user.nombreusuario || '');
-          setBiografia(data.user.biografia || '');
-          setTelefono(data.user.telefono || '');
-          setFotoperfil(data.user.fotoperfil || '');
+          setForm({
+            nombreusuario: data.user.nombreusuario || '',
+            biografia: data.user.biografia || '',
+            telefono: data.user.telefono || '',
+            fotoperfil: data.user.fotoperfil || '',
+          });
         }
       } catch (err) {
         console.error('Error fetching profile:', err);
@@ -163,8 +162,12 @@ export default function ProfilePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fotoperfil: avatarUrl }),
       });
+      if (!res.ok) {
+        toast.error('No se pudo guardar la foto de perfil');
+        return;
+      }
       const data = await res.json();
-      if (res.ok && data.success) {
+      if (data.success) {
         toast.success('Foto de perfil actualizada');
         if (data.user) setProfile(data.user);
       } else {
@@ -191,9 +194,13 @@ export default function ProfilePage() {
           fotoperfil,
         }),
       });
+      if (!res.ok) {
+        toast.error('Error al actualizar perfil');
+        return;
+      }
       const data = await res.json();
 
-      if (res.ok && data.success) {
+      if (data.success) {
         toast.success('Perfil actualizado correctamente');
         if (data.user) setProfile(data.user);
       } else {
@@ -227,6 +234,10 @@ export default function ProfilePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword, newPassword }),
       });
+      if (!res.ok) {
+        toast.error('Error al actualizar contraseña');
+        return;
+      }
       const data = await res.json();
 
       if (res.ok && data.success) {
@@ -293,10 +304,12 @@ export default function ProfilePage() {
                 <div className="relative group shrink-0">
                   <div className={`w-24 h-24 rounded-full ${getAvatarBg(fotoperfil)} border-4 border-indigo-400 p-0.5 overflow-hidden flex items-center justify-center shadow-xl`}>
                     {fotoperfil ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <Image
                         src={fotoperfil}
                         alt={nombreusuario || 'Avatar'}
+                        width={96}
+                        height={96}
+                        unoptimized
                         className={getAvatarClass(fotoperfil)}
                       />
                     ) : (
@@ -332,8 +345,9 @@ export default function ProfilePage() {
 
                 {/* Quick Link to Friends Page */}
                 <button
+                  type="button"
                   onClick={() => (window.location.href = '/dashboard/amigos')}
-                  className="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold flex items-center gap-2 transition-all shrink-0 self-stretch sm:self-auto justify-center"
+                  className="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold flex items-center gap-2 transition-colors shrink-0 self-stretch sm:self-auto justify-center"
                 >
                   <Users className="w-4 h-4 text-emerald-400" /> Mis Amigos <ArrowRight className="w-4 h-4" />
                 </button>
@@ -342,87 +356,17 @@ export default function ProfilePage() {
 
             {/* AVATAR SELECTOR MODAL / POPUP */}
             {showAvatarSelector && (
-              <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4 shadow-xl animate-in fade-in duration-200">
-                <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <Camera className="w-4 h-4 text-indigo-500" /> Seleccionar Avatar
-                  </h3>
-                  <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl text-xs font-semibold">
-                    <button
-                      onClick={() => setAvatarTab('upload')}
-                      className={`px-3 py-1 rounded-lg transition-all ${avatarTab === 'upload' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}
-                    >
-                      Subir Imagen
-                    </button>
-                    <button
-                      onClick={() => setAvatarTab('presets')}
-                      className={`px-3 py-1 rounded-lg transition-all ${avatarTab === 'presets' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}
-                    >
-                      Personajes
-                    </button>
-                    <button
-                      onClick={() => setAvatarTab('url')}
-                      className={`px-3 py-1 rounded-lg transition-all ${avatarTab === 'url' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}
-                    >
-                      URL Externa
-                    </button>
-                  </div>
-                </div>
-
-                {avatarTab === 'upload' && (
-                  <div className="p-6 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl text-center space-y-3">
-                    <Upload className="w-8 h-8 text-indigo-500 mx-auto" />
-                    <div>
-                      <p className="text-xs font-bold text-slate-900 dark:text-white">Sube una foto desde tu dispositivo</p>
-                      <p className="text-[11px] text-slate-500">Formatos JPG, PNG o WebP de hasta 5MB</p>
-                    </div>
-                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors">
-                      {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-                      Seleccionar Archivo
-                      <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
-                    </label>
-                  </div>
-                )}
-
-                {avatarTab === 'presets' && (
-                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 pt-1">
-                    {SIMPSONS_PRESETS.map((preset) => (
-                      <button
-                        key={preset.name}
-                        onClick={() => handleSelectAvatar(preset.url)}
-                        className={`p-1.5 rounded-2xl border-2 transition-all flex flex-col items-center gap-1 group ${
-                          fotoperfil === preset.url
-                            ? 'border-indigo-500 bg-indigo-500/10 scale-105'
-                            : 'border-slate-200 dark:border-slate-800 hover:border-indigo-400'
-                        }`}
-                      >
-                        <div className={`w-12 h-12 rounded-xl ${preset.bg} overflow-hidden flex items-center justify-center`}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={preset.url} alt={preset.name} className={preset.imgClass} />
-                        </div>
-                        <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 truncate w-full text-center">
-                          {preset.name}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {avatarTab === 'url' && (
-                  <form onSubmit={handleApplyCustomUrl} className="flex gap-2">
-                    <Input
-                      type="url"
-                      placeholder="https://ejemplo.com/mi-avatar.jpg"
-                      value={customUrlInput}
-                      onChange={(e) => setCustomUrlInput(e.target.value)}
-                      className="text-xs"
-                    />
-                    <Button type="submit" className="bg-indigo-600 text-white text-xs gap-1">
-                      <Link2 className="w-4 h-4" /> Aplicar
-                    </Button>
-                  </form>
-                )}
-              </div>
+              <ProfileAvatarSelectorModal
+                avatarTab={avatarTab}
+                setAvatarTab={setAvatarTab}
+                fotoperfil={fotoperfil}
+                uploadingImage={uploadingImage}
+                customUrlInput={customUrlInput}
+                setCustomUrlInput={setCustomUrlInput}
+                onSelectAvatar={handleSelectAvatar}
+                onFileUpload={handleFileUpload}
+                onApplyCustomUrl={handleApplyCustomUrl}
+              />
             )}
 
             {/* EDIT PROFILE FORM */}
@@ -434,10 +378,11 @@ export default function ProfilePage() {
               <form onSubmit={handleSaveProfile} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <label htmlFor="perfil-nombre" className="text-xs font-bold text-slate-700 dark:text-slate-300">
                       Nombre de Usuario *
                     </label>
                     <Input
+                      id="perfil-nombre"
                       type="text"
                       required
                       value={nombreusuario}
@@ -447,12 +392,13 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <label htmlFor="perfil-telefono" className="text-xs font-bold text-slate-700 dark:text-slate-300">
                       Teléfono de Contacto
                     </label>
                     <div className="relative">
                       <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <Input
+                        id="perfil-telefono"
                         type="text"
                         value={telefono}
                         onChange={(e) => setTelefono(e.target.value)}
@@ -464,10 +410,11 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <label htmlFor="perfil-biografia" className="text-xs font-bold text-slate-700 dark:text-slate-300">
                     Biografía / Descripción
                   </label>
                   <textarea
+                    id="perfil-biografia"
                     value={biografia}
                     onChange={(e) => setBiografia(e.target.value)}
                     placeholder="Escribe algo sobre ti..."
@@ -490,81 +437,233 @@ export default function ProfilePage() {
             </div>
 
             {/* SECURITY & PASSWORD SECTION */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <Lock className="w-5 h-5 text-indigo-500" /> Seguridad & Contraseña
-                  </h3>
-                  <p className="text-xs text-slate-500">Actualiza tu clave de acceso a Expenzzi.</p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowSecuritySection(!showSecuritySection)}
-                  className="text-xs rounded-xl"
-                >
-                  {showSecuritySection ? 'Ocultar' : 'Cambiar Contraseña'}
-                </Button>
-              </div>
-
-              {showSecuritySection && (
-                <form onSubmit={handleChangePassword} className="space-y-4 pt-3 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-200">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Contraseña Actual *
-                    </label>
-                    <Input
-                      type="password"
-                      required
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Nueva Contraseña *
-                      </label>
-                      <Input
-                        type="password"
-                        required
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Confirmar Nueva Contraseña *
-                      </label>
-                      <Input
-                        type="password"
-                        required
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-2">
-                    <Button
-                      type="submit"
-                      disabled={savingPassword}
-                      className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-6 rounded-xl"
-                    >
-                      {savingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-                      Actualizar Contraseña
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </div>
+            <SecuritySectionForm
+              showSecuritySection={showSecuritySection}
+              setShowSecuritySection={setShowSecuritySection}
+              currentPassword={currentPassword}
+              setCurrentPassword={setCurrentPassword}
+              newPassword={newPassword}
+              setNewPassword={setNewPassword}
+              confirmPassword={confirmPassword}
+              setConfirmPassword={setConfirmPassword}
+              savingPassword={savingPassword}
+              onChangePassword={handleChangePassword}
+            />
           </main>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ProfileAvatarSelectorModal({
+  avatarTab,
+  setAvatarTab,
+  fotoperfil,
+  uploadingImage,
+  customUrlInput,
+  setCustomUrlInput,
+  onSelectAvatar,
+  onFileUpload,
+  onApplyCustomUrl,
+}: {
+  avatarTab: 'upload' | 'presets' | 'url';
+  setAvatarTab: (tab: 'upload' | 'presets' | 'url') => void;
+  fotoperfil: string;
+  uploadingImage: boolean;
+  customUrlInput: string;
+  setCustomUrlInput: (val: string) => void;
+  onSelectAvatar: (url: string) => void;
+  onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onApplyCustomUrl: (e: React.FormEvent) => void;
+}) {
+  return (
+    <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4 shadow-xl animate-in fade-in duration-200">
+      <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <Camera className="w-4 h-4 text-indigo-500" /> Seleccionar Avatar
+        </h3>
+        <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => setAvatarTab('upload')}
+            className={`px-3 py-1 rounded-lg transition-colors ${avatarTab === 'upload' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}
+          >
+            Subir Imagen
+          </button>
+          <button
+            type="button"
+            onClick={() => setAvatarTab('presets')}
+            className={`px-3 py-1 rounded-lg transition-colors ${avatarTab === 'presets' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}
+          >
+            Personajes
+          </button>
+          <button
+            type="button"
+            onClick={() => setAvatarTab('url')}
+            className={`px-3 py-1 rounded-lg transition-colors ${avatarTab === 'url' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}
+          >
+            URL Externa
+          </button>
+        </div>
+      </div>
+
+      {avatarTab === 'upload' && (
+        <div className="p-6 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl text-center space-y-3">
+          <Upload className="w-8 h-8 text-indigo-500 mx-auto" />
+          <div>
+            <p className="text-xs font-bold text-slate-900 dark:text-white">Sube una foto desde tu dispositivo</p>
+            <p className="text-[11px] text-slate-500">Formatos JPG, PNG o WebP de hasta 5MB</p>
+          </div>
+          <label className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors">
+            {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+            Seleccionar Archivo
+            <input type="file" accept="image/*" onChange={onFileUpload} className="hidden" />
+          </label>
+        </div>
+      )}
+
+      {avatarTab === 'presets' && (
+        <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 pt-1">
+          {SIMPSONS_PRESETS.map((preset) => (
+            <button
+              key={preset.name}
+              type="button"
+              onClick={() => onSelectAvatar(preset.url)}
+              className={`p-1.5 rounded-2xl border-2 transition-colors flex flex-col items-center gap-1 group ${
+                fotoperfil === preset.url
+                  ? 'border-indigo-500 bg-indigo-500/10 scale-105'
+                  : 'border-slate-200 dark:border-slate-800 hover:border-indigo-400'
+              }`}
+            >
+              <div className={`w-12 h-12 rounded-xl ${preset.bg} overflow-hidden flex items-center justify-center`}>
+                <Image src={preset.url} alt={preset.name} width={48} height={48} unoptimized className={preset.imgClass} />
+              </div>
+              <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 truncate w-full text-center">
+                {preset.name}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {avatarTab === 'url' && (
+        <form onSubmit={onApplyCustomUrl} className="flex gap-2">
+          <Input
+            id="avatar-url"
+            type="url"
+            placeholder="https://ejemplo.com/mi-avatar.jpg"
+            value={customUrlInput}
+            onChange={(e) => setCustomUrlInput(e.target.value)}
+            className="text-xs"
+            aria-label="URL de avatar personalizado"
+          />
+          <Button type="submit" className="bg-indigo-600 text-white text-xs gap-1">
+            <Link2 className="w-4 h-4" /> Aplicar
+          </Button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function SecuritySectionForm({
+  showSecuritySection,
+  setShowSecuritySection,
+  currentPassword,
+  setCurrentPassword,
+  newPassword,
+  setNewPassword,
+  confirmPassword,
+  setConfirmPassword,
+  savingPassword,
+  onChangePassword,
+}: {
+  showSecuritySection: boolean;
+  setShowSecuritySection: (val: boolean) => void;
+  currentPassword: string;
+  setCurrentPassword: (val: string) => void;
+  newPassword: string;
+  setNewPassword: (val: string) => void;
+  confirmPassword: string;
+  setConfirmPassword: (val: string) => void;
+  savingPassword: boolean;
+  onChangePassword: (e: React.FormEvent) => void;
+}) {
+  return (
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+      <div className="flex justify-between items-center">
+        <div>
+          <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Lock className="w-5 h-5 text-indigo-500" /> Seguridad & Contraseña
+          </h3>
+          <p className="text-xs text-slate-500">Actualiza tu clave de acceso a Expenzzi.</p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setShowSecuritySection(!showSecuritySection)}
+          className="text-xs rounded-xl"
+        >
+          {showSecuritySection ? 'Ocultar' : 'Cambiar Contraseña'}
+        </Button>
+      </div>
+
+      {showSecuritySection && (
+        <form
+          onSubmit={onChangePassword}
+          className="space-y-4 pt-3 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-200"
+        >
+          <div className="space-y-1.5">
+            <label htmlFor="sec-current-password" className="text-xs font-bold text-slate-700 dark:text-slate-300">Contraseña Actual *</label>
+            <Input
+              id="sec-current-password"
+              type="password"
+              required
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label htmlFor="sec-new-password" className="text-xs font-bold text-slate-700 dark:text-slate-300">Nueva Contraseña *</label>
+              <Input
+                id="sec-new-password"
+                type="password"
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="sec-confirm-password" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Confirmar Nueva Contraseña *
+              </label>
+              <Input
+                id="sec-confirm-password"
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button
+              type="submit"
+              disabled={savingPassword}
+              className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-6 rounded-xl"
+            >
+              {savingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+              Actualizar Contraseña
+            </Button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { Transaction, getCategoryIconAndStyle } from './TransactionCard';
+import { Transaction, getCategoryIconAndStyle } from './transaction-utils';
 
 export type SortField = 'date' | 'amount' | 'user';
 export type SortOrder = 'asc' | 'desc';
@@ -15,6 +15,7 @@ interface TransactionTableProps {
   onSortChange?: (field: SortField) => void;
 }
 
+// eslint-disable-next-line react-doctor/unused-file
 export function TransactionTable({
   transactions,
   onSelect,
@@ -35,6 +36,7 @@ export function TransactionTable({
     <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-800/80 overflow-hidden shadow-xl transition-colors divide-y divide-slate-100 dark:divide-slate-800/60">
       <div className="px-4 py-3 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold text-[11px] tracking-wider select-none">
         <button
+          type="button"
           onClick={() => onSortChange?.('date')}
           className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors focus:outline-none"
         >
@@ -43,12 +45,14 @@ export function TransactionTable({
 
         <div className="flex items-center gap-4">
           <button
+            type="button"
             onClick={() => onSortChange?.('user')}
             className="hidden sm:flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors focus:outline-none"
           >
             Responsable {renderSortIcon('user')}
           </button>
           <button
+            type="button"
             onClick={() => onSortChange?.('amount')}
             className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors focus:outline-none"
           >
@@ -68,10 +72,11 @@ export function TransactionTable({
           const subtitle = `${tx.date} • ${tx.category || tx.method || 'General'}`;
 
           return (
-            <div
+            <button
               key={tx.id}
+              type="button"
               onClick={() => onSelect(tx)}
-              className="p-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
+              className="w-full text-left p-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
             >
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-full ${bg} border flex items-center justify-center shrink-0 shadow-sm`}>
@@ -101,7 +106,7 @@ export function TransactionTable({
                   </span>
                 </div>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>

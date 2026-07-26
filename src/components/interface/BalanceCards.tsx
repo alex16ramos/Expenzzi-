@@ -31,6 +31,43 @@ const DEFAULT_BALANCES: GeneralBalances = {
   UYU: { ingresos: 0, gastos: 0, ahorros: 0, net: 0 },
 };
 
+const CURRENCY_CONFIGS = [
+  {
+    code: 'ARS' as const,
+    label: 'Pesos Argentinos',
+    symbol: '$',
+    tabColor: 'bg-indigo-600 dark:bg-indigo-700 text-white',
+    inactiveTabColor: 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/60',
+    bgGradient: 'from-indigo-600/10 via-blue-600/5 to-transparent',
+    border: 'border-indigo-500/30 dark:border-indigo-500/40',
+    accent: 'text-indigo-600 dark:text-indigo-400',
+  },
+  {
+    code: 'USD' as const,
+    label: 'Dólares Estadounidenses',
+    symbol: 'US$',
+    tabColor: 'bg-emerald-600 dark:bg-emerald-700 text-white',
+    inactiveTabColor: 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/60',
+    bgGradient: 'from-emerald-600/10 via-teal-600/5 to-transparent',
+    border: 'border-emerald-500/30 dark:border-emerald-500/40',
+    accent: 'text-emerald-600 dark:text-emerald-400',
+  },
+  {
+    code: 'UYU' as const,
+    label: 'Pesos Uruguayos',
+    symbol: '$U',
+    tabColor: 'bg-amber-600 dark:bg-amber-700 text-white',
+    inactiveTabColor: 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/60',
+    bgGradient: 'from-amber-600/10 via-orange-600/5 to-transparent',
+    border: 'border-amber-500/30 dark:border-amber-500/40',
+    accent: 'text-amber-600 dark:text-amber-400',
+  },
+];
+
+const formatMoney = (val: number, symbol: string) => {
+  return `${symbol} ${val.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
 export function BalanceCards({
   balances = DEFAULT_BALANCES,
   isLoading = false,
@@ -47,44 +84,7 @@ export function BalanceCards({
     }
   };
 
-  const currencyConfigs = [
-    {
-      code: 'ARS' as const,
-      label: 'Pesos Argentinos',
-      symbol: '$',
-      tabColor: 'bg-indigo-600 dark:bg-indigo-700 text-white',
-      inactiveTabColor: 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/60',
-      bgGradient: 'from-indigo-600/10 via-blue-600/5 to-transparent',
-      border: 'border-indigo-500/30 dark:border-indigo-500/40',
-      accent: 'text-indigo-600 dark:text-indigo-400',
-    },
-    {
-      code: 'USD' as const,
-      label: 'Dólares Estadounidenses',
-      symbol: 'US$',
-      tabColor: 'bg-emerald-600 dark:bg-emerald-700 text-white',
-      inactiveTabColor: 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/60',
-      bgGradient: 'from-emerald-600/10 via-teal-600/5 to-transparent',
-      border: 'border-emerald-500/30 dark:border-emerald-500/40',
-      accent: 'text-emerald-600 dark:text-emerald-400',
-    },
-    {
-      code: 'UYU' as const,
-      label: 'Pesos Uruguayos',
-      symbol: '$U',
-      tabColor: 'bg-amber-600 dark:bg-amber-700 text-white',
-      inactiveTabColor: 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/60',
-      bgGradient: 'from-amber-600/10 via-orange-600/5 to-transparent',
-      border: 'border-amber-500/30 dark:border-amber-500/40',
-      accent: 'text-amber-600 dark:text-amber-400',
-    },
-  ];
-
-  const formatMoney = (val: number, symbol: string) => {
-    return `${symbol} ${val.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
-
-  const activeConfig = currencyConfigs.find((c) => c.code === activeCurrency) || currencyConfigs[0];
+  const activeConfig = CURRENCY_CONFIGS.find((c) => c.code === activeCurrency) || CURRENCY_CONFIGS[0];
   const activeData = balances[activeConfig.code] || DEFAULT_BALANCES[activeConfig.code];
   const isPositive = activeData.net >= 0;
 
@@ -94,13 +94,14 @@ export function BalanceCards({
       {/* FOLDER TABS HEADER BAR */}
       <div className="relative pt-2">
         <div className="flex items-end gap-1.5 relative z-10 -mb-[2px]">
-          {currencyConfigs.map((cfg) => {
+          {CURRENCY_CONFIGS.map((cfg) => {
             const isActive = activeCurrency === cfg.code;
             return (
               <button
+                type="button"
                 key={cfg.code}
                 onClick={() => handleSelectCurrency(cfg.code)}
-                className={`relative px-4 py-2 text-xs font-extrabold rounded-t-2xl transition-all duration-200 flex items-center gap-1.5 ${
+                className={`relative px-4 py-2 text-xs font-extrabold rounded-t-2xl transition-colors duration-200 flex items-center gap-1.5 ${
                   isActive
                     ? `bg-white dark:bg-slate-900 bg-gradient-to-t ${cfg.bgGradient} border-t border-x ${cfg.border} rounded-t-xl p-5 -translate-y-[0.7px] z-20`
                     : `${cfg.inactiveTabColor} opacity-85 hover:opacity-100 z-10 -translate-y-[1.5px] cursor-pointer`
@@ -128,7 +129,7 @@ export function BalanceCards({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -4 }}
               transition={{ duration: 0.20, ease: 'easeInOut', type: 'tween' }}
-              className={`bg-white dark:bg-slate-900 bg-gradient-to-br ${activeConfig.bgGradient} rounded-b-3xl rounded-tr-3xl p-5 border ${activeConfig.border} shadow-lg relative overflow-hidden transition-all`}
+              className={`bg-white dark:bg-slate-900 bg-gradient-to-br ${activeConfig.bgGradient} rounded-b-3xl rounded-tr-3xl p-5 border ${activeConfig.border} shadow-lg relative overflow-hidden transition-colors`}
             >
               {/* Net Balance Display */}
               <div className="py-2">

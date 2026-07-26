@@ -115,7 +115,7 @@ export function UserExpenseChart({ transactions, title = 'Resumen por Usuario' }
                       strokeWidth={isHovered ? strokeWidth + 4 : strokeWidth}
                       strokeDasharray={seg.strokeDasharray}
                       strokeDashoffset={seg.strokeDashoffset}
-                      className="transition-all duration-300 cursor-pointer hover:opacity-90"
+                      className="transition-colors duration-300 cursor-pointer hover:opacity-90"
                       onMouseEnter={() => setActiveUser(seg.user)}
                       onMouseLeave={() => setActiveUser(null)}
                     />
@@ -142,7 +142,7 @@ export function UserExpenseChart({ transactions, title = 'Resumen por Usuario' }
                   key={seg.user}
                   onMouseEnter={() => setActiveUser(seg.user)}
                   onMouseLeave={() => setActiveUser(null)}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                  className={`p-3 rounded-xl border transition-colors cursor-pointer flex items-center justify-between ${
                     isHovered
                       ? `${seg.color.border} bg-slate-800/80 shadow-md`
                       : 'border-slate-800/60 bg-slate-950/40 hover:bg-slate-800/40'

@@ -81,30 +81,20 @@ export async function GET(
       // Fallback ignore if raw query unavailable
     }
 
-    // Fetch active submethods for this interface
-    const submethods = await prisma.subMetodoPago.findMany({
-      where: {
-        idinterfazoperacion: interfaceId,
-        estado: true,
-      },
-      orderBy: { nombre: 'asc' },
-    });
-
-    // Fetch members of this interface
-    const members = await prisma.usuarioInterfaz.findMany({
-      where: {
-        idinterfazoperacion: interfaceId,
-        fechasalida: null,
-      },
-      include: {
-        usuario: true,
-      },
-    });
-
-    // Fetch latest exchange rate
-    const latestCambio = await prisma.cambio.findFirst({
-      orderBy: [{ fecha: 'desc' }, { idcambio: 'desc' }],
-    });
+    // Fetch submethods, members, and latest exchange rate concurrently
+    const [submethods, members, latestCambio] = await Promise.all([
+      prisma.subMetodoPago.findMany({
+        where: { idinterfazoperacion: interfaceId, estado: true },
+        orderBy: { nombre: 'asc' },
+      }),
+      prisma.usuarioInterfaz.findMany({
+        where: { idinterfazoperacion: interfaceId, fechasalida: null },
+        include: { usuario: true },
+      }),
+      prisma.cambio.findFirst({
+        orderBy: [{ fecha: 'desc' }, { idcambio: 'desc' }],
+      }),
+    ]);
 
     return NextResponse.json({
       interface: {

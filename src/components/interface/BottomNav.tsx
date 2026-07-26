@@ -17,6 +17,7 @@ export function BottomNav({ activeSection, onSectionChange }: BottomNavProps) {
 
         return (
           <button
+            type="button"
             key={item.label}
             onClick={() => {onSectionChange(item.label)}}
             className="flex flex-col items-center gap-0.5 py-1 px-10 rounded-xl transition-colors hover:bg-slate-100 dark:hover:bg-slate-900 cursor-pointer"

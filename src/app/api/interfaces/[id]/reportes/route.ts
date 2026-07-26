@@ -5,6 +5,17 @@ import { TMoneda } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
+const getArsEquivalent = (importe: number, curr: string) => {
+  if (curr === 'USD') return importe * 1100;
+  if (curr === 'UYU') return importe * 28;
+  return importe;
+};
+
+const MONTH_NAMES = [
+  'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+  'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+];
+
 async function getUserIdFromSession(): Promise<string | null> {
   try {
     const session = await auth.getSession();
@@ -87,19 +98,6 @@ export async function GET(
       },
       orderBy: { fecha: 'asc' },
     });
-
-    // Helper for approximate ARS conversion scale when 'ALL' currencies are selected
-    const getArsEquivalent = (importe: number, curr: string) => {
-      if (curr === 'USD') return importe * 1100;
-      if (curr === 'UYU') return importe * 28;
-      return importe;
-    };
-
-    // Prepare 12 months arrays (Index 0 = Jan, ..., 11 = Dec)
-    const MONTH_NAMES = [
-      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
-    ];
 
     const monthlyDataTarget = Array(12).fill(0);
     const monthlyDataCompare = Array(12).fill(0);

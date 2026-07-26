@@ -183,8 +183,10 @@ export async function POST(
       },
     });
 
-    const emisor = await prisma.usuario.findUnique({ where: { idusuario: userId } });
-    const interfaz = await prisma.interfazOperacion.findUnique({ where: { idinterfazoperacion: interfaceId } });
+    const [emisor, interfaz] = await Promise.all([
+      prisma.usuario.findUnique({ where: { idusuario: userId } }),
+      prisma.interfazOperacion.findUnique({ where: { idinterfazoperacion: interfaceId } }),
+    ]);
     const emisorNombre = emisor?.nombreusuario || 'Un usuario';
     const interfazNombre = interfaz?.nombre || 'la interfaz';
     const formattedAmount = `${Number(importe).toLocaleString('es-AR')} ${moneda}`;

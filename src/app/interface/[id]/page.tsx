@@ -48,16 +48,29 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
   const interfaceId = resolvedParams.id;
 
   // Interface state
-  const [interfaceData, setInterfaceData] = useState<{ nombre: string; descripcion?: string } | null>(null);
-  const [userRole, setUserRole] = useState<string>('Visualizador');
-  const [categories, setCategories] = useState<CategoriaItem[]>([]);
-  const [submethods, setSubmethods] = useState<SubmetodoItem[]>([]);
-  const [members, setMembers] = useState<{ idusuario: string; nombreusuario: string }[]>([]);
-  const [balances, setBalances] = useState<GeneralBalances>({
-    ARS: { ingresos: 0, gastos: 0, ahorros: 0, net: 0 },
-    USD: { ingresos: 0, gastos: 0, ahorros: 0, net: 0 },
-    UYU: { ingresos: 0, gastos: 0, ahorros: 0, net: 0 },
+  const [detailsState, setDetailsState] = useState({
+    interfaceData: null as { nombre: string; descripcion?: string } | null,
+    userRole: 'Visualizador',
+    categories: [] as CategoriaItem[],
+    submethods: [] as SubmetodoItem[],
+    members: [] as { idusuario: string; nombreusuario: string }[],
+    balances: {
+      ARS: { ingresos: 0, gastos: 0, ahorros: 0, net: 0 },
+      USD: { ingresos: 0, gastos: 0, ahorros: 0, net: 0 },
+      UYU: { ingresos: 0, gastos: 0, ahorros: 0, net: 0 },
+    } as GeneralBalances,
   });
+
+  const { interfaceData, userRole, categories, submethods, members, balances } = detailsState;
+
+  const setInterfaceData = (val: { nombre: string; descripcion?: string } | null) =>
+    setDetailsState((prev) => ({ ...prev, interfaceData: val }));
+  const setUserRole = (val: string) => setDetailsState((prev) => ({ ...prev, userRole: val }));
+  const setCategories = (val: CategoriaItem[]) => setDetailsState((prev) => ({ ...prev, categories: val }));
+  const setSubmethods = (val: SubmetodoItem[]) => setDetailsState((prev) => ({ ...prev, submethods: val }));
+  const setMembers = (val: { idusuario: string; nombreusuario: string }[]) =>
+    setDetailsState((prev) => ({ ...prev, members: val }));
+  const setBalances = (val: GeneralBalances) => setDetailsState((prev) => ({ ...prev, balances: val }));
 
   // Selected Currency for Folder Tabs
   const [selectedCurrency, setSelectedCurrency] = useState<'ARS' | 'USD' | 'UYU'>('ARS');
@@ -84,18 +97,29 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   // Modals state
-  const [isGastoModalOpen, setIsGastoModalOpen] = useState(false);
-  const [editingGasto, setEditingGasto] = useState<GastoFormData | null>(null);
+  const [modalsState, setModalsState] = useState({
+    isGastoModalOpen: false,
+    editingGasto: null as GastoFormData | null,
+    isIngresoModalOpen: false,
+    editingIngreso: null as IngresoFormData | null,
+    isAhorroModalOpen: false,
+    editingAhorro: null as AhorroFormData | null,
+    isCategoryModalOpen: false,
+    isSubmethodModalOpen: false,
+    selectedTransactionForModal: null as Transaction | null,
+  });
 
-  const [isIngresoModalOpen, setIsIngresoModalOpen] = useState(false);
-  const [editingIngreso, setEditingIngreso] = useState<IngresoFormData | null>(null);
+  const { selectedTransactionForModal } = modalsState;
 
-  const [isAhorroModalOpen, setIsAhorroModalOpen] = useState(false);
-  const [editingAhorro, setEditingAhorro] = useState<AhorroFormData | null>(null);
-
-  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [isSubmethodModalOpen, setIsSubmethodModalOpen] = useState(false);
-  const [selectedTransactionForModal, setSelectedTransactionForModal] = useState<Transaction | null>(null);
+  const setIsGastoModalOpen = (val: boolean) => setModalsState((prev) => ({ ...prev, isGastoModalOpen: val }));
+  const setEditingGasto = (val: GastoFormData | null) => setModalsState((prev) => ({ ...prev, editingGasto: val }));
+  const setIsIngresoModalOpen = (val: boolean) => setModalsState((prev) => ({ ...prev, isIngresoModalOpen: val }));
+  const setEditingIngreso = (val: IngresoFormData | null) => setModalsState((prev) => ({ ...prev, editingIngreso: val }));
+  const setIsAhorroModalOpen = (val: boolean) => setModalsState((prev) => ({ ...prev, isAhorroModalOpen: val }));
+  const setEditingAhorro = (val: AhorroFormData | null) => setModalsState((prev) => ({ ...prev, editingAhorro: val }));
+  const setIsCategoryModalOpen = (val: boolean) => setModalsState((prev) => ({ ...prev, isCategoryModalOpen: val }));
+  const setIsSubmethodModalOpen = (val: boolean) => setModalsState((prev) => ({ ...prev, isSubmethodModalOpen: val }));
+  const setSelectedTransactionForModal = (val: Transaction | null) => setModalsState((prev) => ({ ...prev, selectedTransactionForModal: val }));
 
   // Delete Confirm Dialog state
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -317,8 +341,12 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       const res = await fetch(`/api/interfaces/${interfaceId}`, {
         method: 'DELETE',
       });
+      if (!res.ok) {
+        toast.error('Error al procesar la solicitud');
+        return;
+      }
       const data = await res.json();
-      if (res.ok && data.success) {
+      if (data.success) {
         toast.success(data.message || (isAdmin ? 'Interfaz eliminada correctamente' : 'Has salido de la interfaz'));
         window.location.href = '/dashboard';
       } else {
@@ -407,8 +435,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Error al guardar gasto');
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Error al guardar gasto');
+    }
+    await res.json();
 
     toast.success(isEdit ? 'Gasto modificado correctamente' : 'Gasto registrado correctamente');
     loadSectionRecords();
@@ -423,8 +454,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Error al guardar ingreso');
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Error al guardar ingreso');
+    }
+    await res.json();
 
     toast.success(isEdit ? 'Ingreso modificado correctamente' : 'Ingreso registrado correctamente');
     loadSectionRecords();
@@ -439,8 +473,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Error al guardar ahorro');
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Error al guardar ahorro');
+    }
+    await res.json();
 
     toast.success(isEdit ? 'Ahorro modificado correctamente' : 'Ahorro registrado correctamente');
     loadSectionRecords();
@@ -454,8 +491,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Error al crear categoría');
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Error al crear categoría');
+    }
+    await res.json();
     toast.success('Categoría creada correctamente');
     loadInterfaceDetails();
   };
@@ -466,8 +506,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idcategoria: data.id, ...data }),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Error al actualizar categoría');
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Error al actualizar categoría');
+    }
+    await res.json();
     toast.success('Categoría actualizada');
     loadInterfaceDetails();
   };
@@ -476,8 +519,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     const res = await fetch(`/api/interfaces/${interfaceId}/categorias?idcategoria=${id}`, {
       method: 'DELETE',
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Error al eliminar categoría');
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Error al eliminar categoría');
+    }
+    await res.json();
     toast.success('Categoría eliminada');
     loadInterfaceDetails();
   };
@@ -489,8 +535,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Error al crear submétodo');
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Error al crear submétodo');
+    }
+    await res.json();
     toast.success('Submétodo de pago creado');
     loadInterfaceDetails();
   };
@@ -501,8 +550,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idsubmetodopago: data.id, ...data }),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Error al actualizar submétodo');
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Error al actualizar submétodo');
+    }
+    await res.json();
     toast.success('Submétodo de pago actualizado');
     loadInterfaceDetails();
   };
@@ -511,8 +563,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     const res = await fetch(`/api/interfaces/${interfaceId}/submetodos?idsubmetodopago=${id}`, {
       method: 'DELETE',
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Error al eliminar submétodo');
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Error al eliminar submétodo');
+    }
+    await res.json();
     toast.success('Submétodo de pago eliminado');
     loadInterfaceDetails();
   };
@@ -564,9 +619,9 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
           <main className="py-2 px-4 pb-40 sm:py-4 lg:py-6">
             {/* GRID LAYOUT: 1 COLUMN DEFAULT, 2 COLUMNS ON DESKTOP WHEN TRANSACTION DETAIL IS ACTIVE */}
-            <div className={`grid grid-cols-1 ${hasSelectedDetail ? 'lg:grid-cols-12 gap-6' : 'gap-6'} transition-all duration-300`}>
+            <div className={`grid grid-cols-1 ${hasSelectedDetail ? 'lg:grid-cols-12 gap-6' : 'gap-6'} transition-colors duration-300`}>
               {/* COLUMN 1: MAIN INTERFACE CONTENT */}
-              <div className={`${hasSelectedDetail ? 'lg:col-span-7' : 'w-full'} space-y-6 transition-all duration-300`}>
+              <div className={`${hasSelectedDetail ? 'lg:col-span-7' : 'w-full'} space-y-6 transition-colors duration-300`}>
                 {/* HERO FOLDER TABS BALANCE CARDS */}
                 <BalanceCards
                   balances={balances}
@@ -583,9 +638,10 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
                   <div className="flex hidden lg:block bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs">
                     {itemsNav.map((item) => (
                       <button
+                        type="button"
                         key={item.label}
                         onClick={() => setActiveSection(item.label as typeof activeSection)}
-                        className={`px-3 py-1.5 rounded-xl font-bold transition-all ${activeSection === item.label
+                        className={`px-3 py-1.5 rounded-xl font-bold transition-colors ${activeSection === item.label
                           ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                           }`}>
@@ -612,8 +668,9 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
                     <div className="space-y-4">
                       <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs">
                         <button
+                          type="button"
                           onClick={() => setSummarySubTab('comparative')}
-                          className={`flex-1 py-2 rounded-xl font-bold transition-all ${summarySubTab === 'comparative'
+                          className={`flex-1 py-2 rounded-xl font-bold transition-colors ${summarySubTab === 'comparative'
                             ? 'bg-indigo-600 text-white shadow-md'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                             }`}
@@ -621,8 +678,9 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
                           Reportes Comparativos
                         </button>
                         <button
+                          type="button"
                           onClick={() => setSummarySubTab('user')}
-                          className={`flex-1 py-2 rounded-xl font-bold transition-all ${summarySubTab === 'user'
+                          className={`flex-1 py-2 rounded-xl font-bold transition-colors ${summarySubTab === 'user'
                             ? 'bg-indigo-600 text-white shadow-md'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                             }`}
@@ -753,12 +811,137 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         />
       </div>
 
+      {/* ABM FORM MODALS & DIALOGS */}
+      <InterfaceModalsContainer
+        interfaceId={interfaceId}
+        userRole={userRole}
+        interfaceData={interfaceData}
+        categories={categories}
+        submethods={submethods}
+        members={members}
+        modalsState={modalsState}
+        setIsGastoModalOpen={setIsGastoModalOpen}
+        setIsIngresoModalOpen={setIsIngresoModalOpen}
+        setIsAhorroModalOpen={setIsAhorroModalOpen}
+        setIsCategoryModalOpen={setIsCategoryModalOpen}
+        setIsSubmethodModalOpen={setIsSubmethodModalOpen}
+        isDeleteConfirmOpen={isDeleteConfirmOpen}
+        setIsDeleteConfirmOpen={setIsDeleteConfirmOpen}
+        isDeletingInterface={isDeletingInterface}
+        onExecuteDeleteOrLeaveInterface={executeDeleteOrLeaveInterface}
+        isAuditModalOpen={isAuditModalOpen}
+        setIsAuditModalOpen={setIsAuditModalOpen}
+        auditTypeFilter={auditTypeFilter}
+        auditEntityId={auditEntityId}
+        auditTitle={auditTitle}
+        onSaveGasto={handleSaveGasto}
+        onSaveIngreso={handleSaveIngreso}
+        onSaveAhorro={handleSaveAhorro}
+        onCreateCategory={handleCreateCategory}
+        onUpdateCategory={handleUpdateCategory}
+        onDeleteCategory={handleDeleteCategory}
+        onCreateSubmethod={handleCreateSubmethod}
+        onUpdateSubmethod={handleUpdateSubmethod}
+        onDeleteSubmethod={handleDeleteSubmethod}
+        onOpenAuditModal={handleOpenAuditModal}
+      />
+    </div>
+  );
+}
+
+function InterfaceModalsContainer({
+  interfaceId,
+  userRole,
+  interfaceData,
+  categories,
+  submethods,
+  members,
+  modalsState,
+  setIsGastoModalOpen,
+  setIsIngresoModalOpen,
+  setIsAhorroModalOpen,
+  setIsCategoryModalOpen,
+  setIsSubmethodModalOpen,
+  isDeleteConfirmOpen,
+  setIsDeleteConfirmOpen,
+  isDeletingInterface,
+  onExecuteDeleteOrLeaveInterface,
+  isAuditModalOpen,
+  setIsAuditModalOpen,
+  auditTypeFilter,
+  auditEntityId,
+  auditTitle,
+  onSaveGasto,
+  onSaveIngreso,
+  onSaveAhorro,
+  onCreateCategory,
+  onUpdateCategory,
+  onDeleteCategory,
+  onCreateSubmethod,
+  onUpdateSubmethod,
+  onDeleteSubmethod,
+  onOpenAuditModal,
+}: {
+  interfaceId: string;
+  userRole: string;
+  interfaceData: { nombre: string; descripcion?: string } | null;
+  categories: CategoriaItem[];
+  submethods: SubmetodoItem[];
+  members: { idusuario: string; nombreusuario: string }[];
+  modalsState: {
+    isGastoModalOpen: boolean;
+    editingGasto: GastoFormData | null;
+    isIngresoModalOpen: boolean;
+    editingIngreso: IngresoFormData | null;
+    isAhorroModalOpen: boolean;
+    editingAhorro: AhorroFormData | null;
+    isCategoryModalOpen: boolean;
+    isSubmethodModalOpen: boolean;
+  };
+  setIsGastoModalOpen: (val: boolean) => void;
+  setIsIngresoModalOpen: (val: boolean) => void;
+  setIsAhorroModalOpen: (val: boolean) => void;
+  setIsCategoryModalOpen: (val: boolean) => void;
+  setIsSubmethodModalOpen: (val: boolean) => void;
+  isDeleteConfirmOpen: boolean;
+  setIsDeleteConfirmOpen: (val: boolean) => void;
+  isDeletingInterface: boolean;
+  onExecuteDeleteOrLeaveInterface: () => void;
+  isAuditModalOpen: boolean;
+  setIsAuditModalOpen: (val: boolean) => void;
+  auditTypeFilter: 'todos' | 'gasto' | 'ingreso' | 'ahorro' | 'limite';
+  auditEntityId: string | null;
+  auditTitle: string | undefined;
+  onSaveGasto: (data: GastoFormData) => Promise<void>;
+  onSaveIngreso: (data: IngresoFormData) => Promise<void>;
+  onSaveAhorro: (data: AhorroFormData) => Promise<void>;
+  onCreateCategory: (data: Omit<CategoriaItem, 'id'>) => Promise<void>;
+  onUpdateCategory: (data: CategoriaItem) => Promise<void>;
+  onDeleteCategory: (id: string) => Promise<void>;
+  onCreateSubmethod: (data: Omit<SubmetodoItem, 'id'>) => Promise<void>;
+  onUpdateSubmethod: (data: SubmetodoItem) => Promise<void>;
+  onDeleteSubmethod: (id: string) => Promise<void>;
+  onOpenAuditModal: (type: 'todos' | 'gasto' | 'ingreso' | 'ahorro' | 'limite', entityId?: string | number | null, title?: string) => void;
+}) {
+  const {
+    isGastoModalOpen,
+    editingGasto,
+    isIngresoModalOpen,
+    editingIngreso,
+    isAhorroModalOpen,
+    editingAhorro,
+    isCategoryModalOpen,
+    isSubmethodModalOpen,
+  } = modalsState;
+
+  return (
+    <>
       {/* ABM FORM MODALS */}
       <GastoFormModal
         key={editingGasto?.idgasto || (isGastoModalOpen ? 'new-gasto-open' : 'new-gasto-closed')}
         isOpen={isGastoModalOpen}
         onClose={() => setIsGastoModalOpen(false)}
-        onSave={handleSaveGasto}
+        onSave={onSaveGasto}
         initialData={editingGasto}
         categories={categories}
         submethods={submethods}
@@ -769,7 +952,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         key={editingIngreso?.idingreso || (isIngresoModalOpen ? 'new-ingreso-open' : 'new-ingreso-closed')}
         isOpen={isIngresoModalOpen}
         onClose={() => setIsIngresoModalOpen(false)}
-        onSave={handleSaveIngreso}
+        onSave={onSaveIngreso}
         initialData={editingIngreso}
         members={members}
       />
@@ -778,7 +961,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         key={editingAhorro?.idahorro || (isAhorroModalOpen ? 'new-ahorro-open' : 'new-ahorro-closed')}
         isOpen={isAhorroModalOpen}
         onClose={() => setIsAhorroModalOpen(false)}
-        onSave={handleSaveAhorro}
+        onSave={onSaveAhorro}
         initialData={editingAhorro}
         userRole={userRole}
       />
@@ -787,10 +970,10 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         isOpen={isCategoryModalOpen}
         onClose={() => setIsCategoryModalOpen(false)}
         categories={categories}
-        onCreate={handleCreateCategory}
-        onUpdate={handleUpdateCategory}
-        onDelete={handleDeleteCategory}
-        onViewHistory={(cat) => handleOpenAuditModal('limite', cat.id, cat.nombre)}
+        onCreate={onCreateCategory}
+        onUpdate={onUpdateCategory}
+        onDelete={onDeleteCategory}
+        onViewHistory={(cat) => onOpenAuditModal('limite', cat.id, cat.nombre)}
         userRole={userRole}
       />
 
@@ -798,9 +981,9 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         isOpen={isSubmethodModalOpen}
         onClose={() => setIsSubmethodModalOpen(false)}
         submethods={submethods}
-        onCreate={handleCreateSubmethod}
-        onUpdate={handleUpdateSubmethod}
-        onDelete={handleDeleteSubmethod}
+        onCreate={onCreateSubmethod}
+        onUpdate={onUpdateSubmethod}
+        onDelete={onDeleteSubmethod}
       />
 
       <AuditHistoryModal
@@ -817,7 +1000,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       <CustomDialog
         isOpen={isDeleteConfirmOpen}
         onClose={() => setIsDeleteConfirmOpen(false)}
-        onConfirm={executeDeleteOrLeaveInterface}
+        onConfirm={onExecuteDeleteOrLeaveInterface}
         isLoading={isDeletingInterface}
         title={userRole === 'Administrador' ? 'Eliminar Interfaz' : 'Salir de la Interfaz'}
         description={
@@ -829,6 +1012,6 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         confirmText={userRole === 'Administrador' ? 'Sí, Eliminar' : 'Sí, Salir'}
         cancelText="Cancelar"
       />
-    </div >
+    </>
   );
 }

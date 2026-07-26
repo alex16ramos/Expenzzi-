@@ -39,6 +39,7 @@ export function ThemeToggle({ variant = 'buttons', onThemeSaved }: ThemeTogglePr
     const isDark = activeTheme === 'dark';
     return (
       <button
+        type="button"
         onClick={() => handleSelectTheme(isDark ? 'light' : 'dark')}
         className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors shadow-sm cursor-pointer"
         title={`Cambiar tema (Actual: ${isDark ? 'Oscuro' : 'Claro'})`}
@@ -58,7 +59,7 @@ export function ThemeToggle({ variant = 'buttons', onThemeSaved }: ThemeTogglePr
       <button
         type="button"
         onClick={() => handleSelectTheme('light')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
           theme === 'light'
             ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -71,7 +72,7 @@ export function ThemeToggle({ variant = 'buttons', onThemeSaved }: ThemeTogglePr
       <button
         type="button"
         onClick={() => handleSelectTheme('dark')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
           theme === 'dark'
             ? 'bg-slate-800 text-white shadow-sm border border-slate-700'
             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -84,7 +85,7 @@ export function ThemeToggle({ variant = 'buttons', onThemeSaved }: ThemeTogglePr
       <button
         type="button"
         onClick={() => handleSelectTheme('system')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
           theme === 'system'
             ? 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-300 dark:border-slate-700'
             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'

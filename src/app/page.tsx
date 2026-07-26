@@ -10,6 +10,12 @@ import { toast } from 'sonner';
 
 type AuthTab = 'login' | 'register' | 'forgot';
 
+const AUTH_TABS: { id: AuthTab; label: string; icon: React.ReactNode; color: string }[] = [
+  { id: 'login', label: 'Iniciar Sesión', icon: <LogIn className="w-4 h-4" />, color: 'from-indigo-600 to-indigo-700' },
+  { id: 'register', label: 'Registrarse', icon: <UserPlus className="w-4 h-4" />, color: 'from-purple-600 to-purple-700' },
+  { id: 'forgot', label: 'Olvidé Clave', icon: <KeyRound className="w-4 h-4" />, color: 'from-amber-600 to-amber-700' },
+];
+
 export default function LandingAuthPage() {
   const session = authClient.useSession();
   const user = session?.data?.user;
@@ -96,22 +102,11 @@ export default function LandingAuthPage() {
     }
   };
 
-  const tabs: { id: AuthTab; label: string; icon: React.ReactNode; color: string }[] = [
-    { id: 'login', label: 'Iniciar Sesión', icon: <LogIn className="w-4 h-4" />, color: 'from-indigo-600 to-indigo-700' },
-    { id: 'register', label: 'Registrarse', icon: <UserPlus className="w-4 h-4" />, color: 'from-purple-600 to-purple-700' },
-    { id: 'forgot', label: 'Olvidé Clave', icon: <KeyRound className="w-4 h-4" />, color: 'from-amber-600 to-amber-700' },
-  ];
-
   return (
     <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col justify-between p-4 sm:p-6 font-sans relative overflow-hidden">
       {/* Dynamic Background Glows */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-[350px] h-[350px] bg-purple-600/15 rounded-full blur-[100px] pointer-events-none" />
-
-      {/* Top Header Theme Toggle */}
-      <header className="w-full max-w-md mx-auto flex justify-end items-center z-20">
-        <ThemeToggle variant="compact" />
-      </header>
 
       {/* Main Content Body */}
       <main className="w-full max-w-md mx-auto my-auto z-10 space-y-6 py-8">
@@ -131,16 +126,18 @@ export default function LandingAuthPage() {
         <div className="relative pt-10">
           {/* Folder Index Tab Solapas Header Row */}
           <div className="absolute top-0 left-0 right-0 flex gap-1 z-20">
-            {tabs.map((tab) => {
+            {AUTH_TABS.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
                 <button
+                  type="button"
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-t-2xl text-xs font-bold transition-all duration-200 border-t border-x translate-y-1 ${isActive
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-t-2xl text-xs font-bold transition-colors duration-200 border-t border-x translate-y-1 ${
+                    isActive
                       ? 'bg-slate-900 text-white border-slate-800 z-30'
                       : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border-slate-800/30'
-                    }`}
+                  }`}
                 >
                   {tab.icon}
                   <span className="truncate">{tab.label}</span>
@@ -156,7 +153,7 @@ export default function LandingAuthPage() {
               type="button"
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-750 text-white text-xs font-bold py-3 px-4 rounded-2xl border border-slate-700 transition-all shadow-sm group"
+              className="w-full flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-750 text-white text-xs font-bold py-3 px-4 rounded-2xl border border-slate-700 transition-colors shadow-sm group"
             >
               <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                 <path
@@ -177,7 +174,7 @@ export default function LandingAuthPage() {
                 />
               </svg>
               <span>Continuar con Google</span>
-              <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+              <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-opacity" />
             </button>
 
             <div className="flex items-center gap-3 my-2">
@@ -190,26 +187,28 @@ export default function LandingAuthPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {activeTab === 'register' && (
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-300 block">Nombre Completo</label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <Input
-                      type="text"
-                      required
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Juan Pérez"
-                      className="pl-10 text-xs bg-slate-950/80 border-slate-800 rounded-xl h-11 text-white placeholder:text-slate-500"
-                    />
-                  </div>
+                <label htmlFor="auth-name" className="text-xs font-bold text-slate-300 block">Nombre Completo</label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Input
+                    id="auth-name"
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Juan Pérez"
+                    className="pl-10 text-xs bg-slate-950/80 border-slate-800 rounded-xl h-11 text-white placeholder:text-slate-500"
+                  />
                 </div>
+              </div>
               )}
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300 block">Correo Electrónico</label>
+                <label htmlFor="auth-email" className="text-xs font-bold text-slate-300 block">Correo Electrónico</label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <Input
+                    id="auth-email"
                     type="email"
                     required
                     value={email}
@@ -223,7 +222,7 @@ export default function LandingAuthPage() {
               {activeTab !== 'forgot' && (
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-slate-300 block">Contraseña</label>
+                    <label htmlFor="auth-password" className="text-xs font-bold text-slate-300 block">Contraseña</label>
                     {activeTab === 'login' && (
                       <button
                         type="button"
@@ -238,6 +237,7 @@ export default function LandingAuthPage() {
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <Input
+                      id="auth-password"
                       type={showPassword ? 'text' : 'password'}
                       required
                       value={password}
@@ -248,8 +248,8 @@ export default function LandingAuthPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
                       className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
-                      title={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -260,8 +260,8 @@ export default function LandingAuthPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className={`w-full h-11 mt-5 rounded-xl text-xs font-extrabold text-white shadow-lg cursor-pointer bg-gradient-to-r ${tabs.find((t) => t.id === activeTab)?.color
-                  } hover:brightness-110 transition-all gap-2`}
+                className={`w-full h-11 mt-5 rounded-xl text-xs font-extrabold text-white shadow-lg cursor-pointer bg-gradient-to-r ${AUTH_TABS.find((t) => t.id === activeTab)?.color
+                  } hover:brightness-110 transition-colors gap-2`}
               >
                 {loading
                   ? 'Procesando...'

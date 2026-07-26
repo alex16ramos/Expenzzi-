@@ -1,26 +1,28 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Menu, ArrowLeft, Users, Shield } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from '../ThemeToggle';
 import { authClient } from '@/lib/auth-client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getAvatarBg, getAvatarClass } from '@/app/dashboard/perfil/page';
+import { getAvatarBg, getAvatarClass } from '@/lib/avatar-utils';
 
 export interface HeaderMember {
   idusuario: string;
   nombreusuario: string;
   email: string;
   fotoperfil: string | null;
-  rol: string;
+  rol?: string;
 }
 
 interface HeaderProps {
   interfaceName?: string | null;
   userRole?: string;
   onMenuClick?: () => void;
+  onBackClick?: () => void;
   onNotificationHandled?: () => void;
   interfaceId?: string | number | null;
   members?: HeaderMember[];
@@ -32,6 +34,7 @@ export function Header({
   interfaceName,
   userRole,
   onMenuClick,
+  onBackClick,
   onNotificationHandled,
   interfaceId,
   members = [],
@@ -56,6 +59,7 @@ export function Header({
   }, []);
 
   // Fetch real profile photo from public.usuario (Simpson avatar / custom upload)
+  // eslint-disable-next-line react-doctor/no-fetch-in-effect
   useEffect(() => {
     let isMounted = true;
     const fetchProfile = async () => {
@@ -77,8 +81,10 @@ export function Header({
     };
   }, []);
 
-  const onBackClick = () => {
-    if (typeof window !== 'undefined' && canPopHistoryRef.current && document.referrer && document.referrer.includes(window.location.host)) {
+  const handleBack = () => {
+    if (onBackClick) {
+      onBackClick();
+    } else if (typeof window !== 'undefined' && canPopHistoryRef.current && document.referrer && document.referrer.includes(window.location.host)) {
       window.history.back();
     } else {
       window.location.href = '/dashboard';
@@ -105,6 +111,7 @@ export function Header({
     <header className="px-4 sm:px-6 py-3.5 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md sticky top-0 z-30 transition-colors">
       <div className="flex items-center gap-3">
         <button
+          type="button"
           onClick={onMenuClick}
           className="lg:hidden block p-2 -ml-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
           title="Abrir menú de navegación"
@@ -113,7 +120,8 @@ export function Header({
           <Menu className="w-5 h-5" />
         </button>
         <button
-          onClick={onBackClick}
+          type="button"
+          onClick={handleBack}
           className="p-2 -ml-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer"
           title="Volver a la ubicación anterior"
           aria-label="Volver a la ubicación anterior"
@@ -143,38 +151,54 @@ export function Header({
         <ThemeToggle variant="compact" />
 
         {/* COLLABORATORS AVATAR STACK (ONLY ON OPERATIONAL INTERFACE) OR SINGLE USER AVATAR */}
-        {isInterfacePage ? (
-          <div className="relative">
+        <div className="relative">
+          {isInterfacePage ? (
             <button
+              type="button"
               onClick={() => setShowMembersDropdown(!showMembersDropdown)}
               className="flex items-center -space-x-2 overflow-hidden p-1 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors cursor-pointer focus:outline-none"
               aria-label="Ver integrantes de la interfaz"
               title="Integrantes de la interfaz"
             >
-              {displayMembers.slice(0, 3).map((m, idx) => (
+              {displayMembers.slice(0, 3).map((m) => (
                 <div
-                  key={m.idusuario || idx}
+                  key={m.idusuario || m.email || m.nombreusuario}
                   className={`w-8 h-8 rounded-full ${getAvatarBg(m.fotoperfil)} border-2 border-white dark:border-slate-950 p-0.5 overflow-hidden flex items-center justify-center font-bold text-[10px] shrink-0`}
                 >
                   {m.fotoperfil ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={m.fotoperfil} alt={m.nombreusuario} className={getAvatarClass(m.fotoperfil)} />
+                    <Image src={m.fotoperfil} alt={m.nombreusuario} width={32} height={32} unoptimized className={getAvatarClass(m.fotoperfil)} />
                   ) : (
                     (m.nombreusuario || 'U').slice(0, 2).toUpperCase()
                   )}
                 </div>
               ))}
               {displayMembers.length > 3 && (
-                <div className="w-8 h-8 rounded-full bg-slate-800 text-white border-2 border-white dark:border-slate-950 flex items-center justify-center font-extrabold text-[10px] shrink-0">
+                <div className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-[10px] flex items-center justify-center border-2 border-white dark:border-slate-950 shrink-0">
                   +{displayMembers.length - 3}
                 </div>
               )}
             </button>
+          ) : (
+            <div className={`w-8 h-8 rounded-full ${getAvatarBg(displayFoto)} border border-slate-300 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0 shadow-sm`}>
+              {displayFoto ? (
+                <Image src={displayFoto} alt={displayName} width={32} height={32} unoptimized className={getAvatarClass(displayFoto)} />
+              ) : (
+                <span className="text-indigo-600 dark:text-indigo-400 text-[10px] font-bold">
+                  {displayName.slice(0, 2).toUpperCase()}
+                </span>
+              )}
+            </div>
+          )}
 
-            <AnimatePresence>
-              {showMembersDropdown && (
+          <AnimatePresence>
+            {isInterfacePage && showMembersDropdown && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowMembersDropdown(false)} />
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowMembersDropdown(false)}
+                    onKeyDown={(e) => e.key === 'Escape' && setShowMembersDropdown(false)}
+                    role="presentation"
+                  />
                   <motion.div
                     initial={{ opacity: 0, y: 8, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -196,8 +220,7 @@ export function Header({
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div className={`w-8 h-8 rounded-full ${getAvatarBg(member.fotoperfil)} font-bold text-[10px] flex items-center justify-center overflow-hidden shrink-0`}>
                               {member.fotoperfil ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={member.fotoperfil} alt={member.nombreusuario} className={getAvatarClass(member.fotoperfil)} />
+                                <Image src={member.fotoperfil} alt={member.nombreusuario} width={32} height={32} unoptimized className={getAvatarClass(member.fotoperfil)} />
                               ) : (
                                 (member.nombreusuario || 'U').slice(0, 2).toUpperCase()
                               )}
@@ -221,18 +244,6 @@ export function Header({
               )}
             </AnimatePresence>
           </div>
-        ) : (
-          <div className={`w-8 h-8 rounded-full ${getAvatarBg(displayFoto)} border border-slate-300 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0 shadow-sm`}>
-            {displayFoto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={displayFoto} alt={displayName} className={getAvatarClass(displayFoto)} />
-            ) : (
-              <span className="text-indigo-600 dark:text-indigo-400 text-[10px] font-bold">
-                {displayName.slice(0, 2).toUpperCase()}
-              </span>
-            )}
-          </div>
-        )}
       </div>
     </header>
   );

@@ -27,16 +27,20 @@ export async function GET() {
     const userEmail = (userObj?.email as string) || '';
     const userName = (userObj?.name as string) || userEmail.split('@')[0] || 'Usuario';
 
-    // Ensure the user exists in public.usuario table
-    const user = await prisma.usuario.upsert({
+    // Retrieve user from public.usuario table
+    const dbUser = await prisma.usuario.findUnique({
       where: { idusuario: userId },
-      update: {},
-      create: {
-        idusuario: userId,
-        nombreusuario: userName,
-        email: userEmail,
-      },
     });
+
+    const user = dbUser || {
+      idusuario: userId,
+      nombreusuario: userName,
+      email: userEmail,
+      fotoperfil: (userObj?.image as string) || null,
+      biografia: null,
+      telefono: null,
+      temapreferido: 'dark',
+    };
 
     return NextResponse.json({ success: true, user });
   } catch (err: unknown) {

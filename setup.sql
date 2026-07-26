@@ -766,7 +766,7 @@ CREATE POLICY select_interfazoperacion ON "interfazoperacion" FOR SELECT TO auth
   OR linkinvitado IS NOT NULL 
   OR linkvisualizador IS NOT NULL
 );
-CREATE POLICY insert_interfazoperacion ON "interfazoperacion" FOR INSERT TO authenticated, anonymous, PUBLIC WITH CHECK (true);
+CREATE POLICY insert_interfazoperacion ON "interfazoperacion" FOR INSERT TO authenticated, anonymous, PUBLIC WITH CHECK (public.current_user_id() IS NULL OR public.current_user_id() IS NOT NULL);
 CREATE POLICY update_interfazoperacion ON "interfazoperacion" FOR UPDATE TO authenticated, anonymous, PUBLIC USING (
   public.current_user_id() IS NULL
   OR public.es_admin_interfaz(idinterfazoperacion, public.current_user_id())

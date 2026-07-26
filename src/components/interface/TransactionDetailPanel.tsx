@@ -55,6 +55,7 @@ export function TransactionDetailPanel({
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
             aria-label="Cerrar detalles"
@@ -188,6 +189,8 @@ export function TransactionDetailPanel({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
+            onKeyDown={(e) => e.key === 'Escape' && onClose()}
+            role="presentation"
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
           />
 

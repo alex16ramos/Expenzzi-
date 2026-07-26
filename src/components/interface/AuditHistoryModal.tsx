@@ -48,6 +48,7 @@ export function AuditHistoryModal({
   const [errorMsg, setErrorMsg] = useState('');
 
   // Fetch history records from API without synchronous setState in effect body
+  // eslint-disable-next-line react-doctor/no-fetch-in-effect
   useEffect(() => {
     let isMounted = true;
     if (!isOpen) return;
@@ -57,7 +58,10 @@ export function AuditHistoryModal({
     if (entityIdFilter) params.set('entityId', String(entityIdFilter));
 
     fetch(`/api/interfaces/${interfaceId}/historial?${params.toString()}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('Error de conexión');
+        return res.json();
+      })
       .then((json) => {
         if (isMounted) {
           if (Array.isArray(json.data)) {
@@ -107,6 +111,7 @@ export function AuditHistoryModal({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
           >
@@ -119,12 +124,13 @@ export function AuditHistoryModal({
           <div className="flex flex-wrap gap-1.5 p-1 bg-slate-950/80 rounded-xl border border-slate-800 text-xs shrink-0">
             {(['todos', 'gasto', 'ingreso', 'ahorro', 'limite'] as const).map((tab) => (
               <button
+                type="button"
                 key={tab}
                 onClick={() => {
                   setIsLoading(true);
                   setActiveTab(tab);
                 }}
-                className={`px-3 py-1.5 rounded-lg font-semibold capitalize transition-all ${
+                className={`px-3 py-1.5 rounded-lg font-semibold capitalize transition-colors ${
                   activeTab === tab
                     ? 'bg-violet-600 text-white shadow-md'
                     : 'text-slate-400 hover:text-slate-200'
@@ -294,6 +300,7 @@ export function AuditHistoryModal({
         <div className="pt-2 border-t border-slate-800 flex justify-between items-center shrink-0 text-xs text-slate-400">
           <span>Total de registros auditados: {logs.length}</span>
           <button
+            type="button"
             onClick={onClose}
             className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl transition-colors"
           >

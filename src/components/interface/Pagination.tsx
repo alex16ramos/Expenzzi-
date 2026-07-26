@@ -19,6 +19,7 @@ export function Pagination({
       <span>{pageSize} por página</span>
       <div className="flex items-center gap-3">
         <button
+          type="button"
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage <= 1}
           className="p-1 rounded-lg hover:bg-slate-900 text-slate-300 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
@@ -30,6 +31,7 @@ export function Pagination({
           Página {currentPage} de {totalPages || 1}
         </span>
         <button
+          type="button"
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage >= totalPages}
           className="p-1 rounded-lg hover:bg-slate-900 text-slate-300 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors"

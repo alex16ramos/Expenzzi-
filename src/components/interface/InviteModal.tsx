@@ -1,17 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, UserPlus, Search, Check, Shield, Loader2, Sparkles, UserCheck } from 'lucide-react';
+import { X, UserPlus, Search, Check, Shield, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getAvatarBg, getAvatarClass } from '@/app/dashboard/perfil/page';
-
-interface FriendItem {
-  idusuario: string;
-  nombreusuario: string;
-  email: string;
-  fotoperfil: string | null;
-}
+import { FriendItem, UserListItemButton } from './UserListItemButton';
 
 interface InviteModalProps {
   isOpen: boolean;
@@ -44,8 +37,9 @@ export function InviteModal({
     setLoadingFriends(true);
     try {
       const res = await fetch('/api/amigos');
+      if (!res.ok) return;
       const data = await res.json();
-      if (res.ok && data.success) {
+      if (data.success) {
         setFriends(data.amigos || []);
       }
     } catch (err) {
@@ -69,6 +63,7 @@ export function InviteModal({
   }, [isOpen, fetchFriends]);
 
   // Search users by name/email
+  // eslint-disable-next-line react-doctor/no-fetch-in-effect
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 2) {
       const timer = setTimeout(() => {
@@ -81,8 +76,9 @@ export function InviteModal({
       setSearching(true);
       try {
         const res = await fetch(`/api/amigos/buscar?query=${encodeURIComponent(searchQuery)}`);
+        if (!res.ok) return;
         const data = await res.json();
-        if (res.ok && data.success) {
+        if (data.success) {
           setSearchResults(data.resultados || []);
         }
       } catch (err) {
@@ -120,6 +116,10 @@ export function InviteModal({
           rolPropuesto: selectedRole,
         }),
       });
+      if (!res.ok) {
+        setFeedback({ type: 'error', message: 'No se pudo enviar la invitación' });
+        return;
+      }
 
       const data = await res.json();
 
@@ -162,7 +162,9 @@ export function InviteModal({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Cerrar modal de invitación"
             className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -185,12 +187,13 @@ export function InviteModal({
 
         {/* Search Input */}
         <div className="space-y-2">
-          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+          <label htmlFor="invite-search" className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
             Buscar usuario por Nombre o Email
           </label>
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <Input
+              id="invite-search"
               type="text"
               placeholder="Ej. maria@ejemplo.com o Maria Perez..."
               value={searchQuery}
@@ -215,50 +218,14 @@ export function InviteModal({
                   No se encontraron usuarios coincidentes
                 </div>
               ) : (
-                searchResults.map((user) => {
-                  const isSelected = selectedUser?.idusuario === user.idusuario;
-                  const initials = user.nombreusuario.slice(0, 2).toUpperCase();
-
-                  return (
-                    <button
-                      key={user.idusuario}
-                      type="button"
-                      onClick={() => setSelectedUser(user)}
-                      className={`w-full flex items-center justify-between p-2.5 text-left transition-colors ${
-                        isSelected
-                          ? 'bg-violet-500/15 text-violet-900 dark:text-violet-200 font-medium'
-                          : 'hover:bg-slate-100 dark:hover:bg-slate-800/50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className={`w-8 h-8 rounded-full ${getAvatarBg(user.fotoperfil)} border border-slate-300 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0`}>
-                          {user.fotoperfil ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={user.fotoperfil}
-                              alt={user.nombreusuario}
-                              className={getAvatarClass(user.fotoperfil)}
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <span className="text-violet-600 dark:text-violet-400 text-[11px] font-bold">{initials}</span>
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <span className="text-xs font-semibold block truncate text-slate-900 dark:text-white">
-                            {user.nombreusuario}
-                          </span>
-                          <span className="text-[10px] text-slate-500 block truncate">
-                            {user.email}
-                          </span>
-                        </div>
-                      </div>
-                      {isSelected && <Check className="w-4 h-4 text-violet-500 shrink-0" />}
-                    </button>
-                  );
-                })
+                searchResults.map((user) => (
+                  <UserListItemButton
+                    key={user.idusuario}
+                    user={user}
+                    isSelected={selectedUser?.idusuario === user.idusuario}
+                    onSelect={() => setSelectedUser(user)}
+                  />
+                ))
               )}
             </div>
           </div>
@@ -283,58 +250,19 @@ export function InviteModal({
               </div>
             ) : (
               <div className="max-h-40 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-950/50">
-                {friends.map((friend) => {
-                  const isSelected = selectedUser?.idusuario === friend.idusuario;
-                  const initials = friend.nombreusuario.slice(0, 2).toUpperCase();
-
-                  return (
-                    <button
-                      key={friend.idusuario}
-                      type="button"
-                      onClick={() => setSelectedUser(friend)}
-                      className={`w-full flex items-center justify-between p-2.5 text-left transition-colors ${
-                        isSelected
-                          ? 'bg-violet-500/15 text-violet-900 dark:text-violet-200 font-medium'
-                          : 'hover:bg-slate-100 dark:hover:bg-slate-800/50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className={`w-8 h-8 rounded-full ${getAvatarBg(friend.fotoperfil)} border border-slate-300 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0`}>
-                          {friend.fotoperfil ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={friend.fotoperfil}
-                              alt={friend.nombreusuario}
-                              className={getAvatarClass(friend.fotoperfil)}
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <span className="text-violet-600 dark:text-violet-400 text-[11px] font-bold">{initials}</span>
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <span className="text-xs font-semibold block truncate text-slate-900 dark:text-white">
-                            {friend.nombreusuario}
-                          </span>
-                          <span className="text-[10px] text-slate-500 block truncate">
-                            {friend.email}
-                          </span>
-                        </div>
-                      </div>
-                      {isSelected ? (
-                        <Check className="w-4 h-4 text-violet-500 shrink-0" />
-                      ) : (
-                        <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+              {friends.map((friend) => (
+                <UserListItemButton
+                  key={friend.idusuario}
+                  user={friend}
+                  isSelected={selectedUser?.idusuario === friend.idusuario}
+                  onSelect={() => setSelectedUser(friend)}
+                  showQuickIcon
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
         {/* Selected User & Role Selection */}
         {selectedUser && (
@@ -349,7 +277,7 @@ export function InviteModal({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+              <label htmlFor="invite-rol" className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                 <Shield className="w-3 h-3 text-violet-500" /> Rol a Asignar en la Interfaz:
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -358,7 +286,7 @@ export function InviteModal({
                     key={role}
                     type="button"
                     onClick={() => setSelectedRole(role)}
-                    className={`py-1.5 text-xs font-semibold rounded-xl border transition-all ${
+                    className={`py-1.5 text-xs font-semibold rounded-xl border transition-colors ${
                       selectedRole === role
                         ? 'bg-violet-600 text-white border-violet-600 shadow-sm'
                         : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-400'

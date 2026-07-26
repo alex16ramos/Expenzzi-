@@ -4,6 +4,9 @@ import { auth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+const CURRENCIES = ['ARS', 'USD', 'UYU'] as const;
+type CurrencyKey = (typeof CURRENCIES)[number];
+
 async function getUserIdFromSession(): Promise<string | null> {
   try {
     const session = await auth.getSession();
@@ -47,47 +50,27 @@ export async function GET(
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
     }
 
-    // 1. Aggregate active Ingresos
-    const ingresos = await prisma.ingreso.findMany({
-      where: {
-        idinterfazoperacion: interfaceId,
-        estado: true,
-      },
-      select: {
-        moneda: true,
-        importe: true,
-      },
-    });
-
-    // 2. Aggregate active Ahorros
-    const ahorros = await prisma.ahorro.findMany({
-      where: {
-        idinterfazoperacion: interfaceId,
-        estado: true,
-      },
-      select: {
-        moneda: true,
-        importe: true,
-      },
-    });
-
-    // 3. Aggregate active Gastos (via Categoria or SubMetodoPago belonging to interface)
-    const gastos = await prisma.gasto.findMany({
-      where: {
-        estado: true,
-        OR: [
-          { categoria: { idinterfazoperacion: interfaceId } },
-          { submetodopago: { idinterfazoperacion: interfaceId } },
-        ],
-      },
-      select: {
-        moneda: true,
-        importe: true,
-      },
-    });
-
-    const currencies = ['ARS', 'USD', 'UYU'] as const;
-    type CurrencyKey = (typeof currencies)[number];
+    // Fetch active Ingresos, Ahorros, and Gastos concurrently
+    const [ingresos, ahorros, gastos] = await Promise.all([
+      prisma.ingreso.findMany({
+        where: { idinterfazoperacion: interfaceId, estado: true },
+        select: { moneda: true, importe: true },
+      }),
+      prisma.ahorro.findMany({
+        where: { idinterfazoperacion: interfaceId, estado: true },
+        select: { moneda: true, importe: true },
+      }),
+      prisma.gasto.findMany({
+        where: {
+          estado: true,
+          OR: [
+            { categoria: { idinterfazoperacion: interfaceId } },
+            { submetodopago: { idinterfazoperacion: interfaceId } },
+          ],
+        },
+        select: { moneda: true, importe: true },
+      }),
+    ]);
 
     const balances = {
       ARS: { ingresos: 0, gastos: 0, ahorros: 0, net: 0 },
@@ -116,7 +99,7 @@ export async function GET(
       }
     });
 
-    currencies.forEach((c) => {
+    CURRENCIES.forEach((c) => {
       // Net balance = Ingresos - Gastos + Ahorros
       balances[c].net = balances[c].ingresos - balances[c].gastos + balances[c].ahorros;
     });

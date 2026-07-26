@@ -102,7 +102,9 @@ export function SubmetodoManagerModal({
             Submétodos de Pago (RF25 - RF28)
           </h3>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Cerrar modal de submétodos"
             className="p-1 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
@@ -135,8 +137,9 @@ export function SubmetodoManagerModal({
 
           <div className="grid grid-cols-3 gap-2">
             <div className="col-span-2">
-              <label className="text-[10px] text-slate-400">Nombre del Submétodo</label>
+              <label htmlFor="nombreSubmetodo" className="text-[10px] text-slate-400">Nombre del Submétodo</label>
               <Input
+                id="nombreSubmetodo"
                 type="text"
                 required
                 placeholder="Ej: Visa Santander, Prex UY, Cuenta ARS..."
@@ -147,8 +150,10 @@ export function SubmetodoManagerModal({
             </div>
 
             <div>
-              <label className="text-[10px] text-slate-400">Método Base (RF25)</label>
+              <label htmlFor="metodoBase" className="text-[10px] text-slate-400">Método Base (RF25)</label>
               <select
+                id="metodoBase"
+                aria-label="Método Base (RF25)"
                 value={metodo}
                 onChange={(e) => setMetodo(e.target.value as 'Efectivo' | 'Credito' | 'Debito')}
                 className="w-full h-9 px-2 bg-slate-900 border border-slate-800 rounded-xl text-xs font-semibold text-slate-200"
@@ -191,16 +196,20 @@ export function SubmetodoManagerModal({
 
                 <div className="flex items-center gap-1">
                   <button
+                    type="button"
                     onClick={() => handleStartEdit(item)}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
                     title="Editar Submétodo"
+                    aria-label="Editar submétodo"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleDeleteItem(item.id)}
                     className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
                     title="Desactivar Submétodo (Baja Lógica)"
+                    aria-label="Desactivar submétodo"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

@@ -134,7 +134,9 @@ export function GastoFormModal({
             {initialData?.idgasto ? 'Editar Gasto (CU12)' : 'Nuevo Gasto (CU12)'}
           </h3>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Cerrar modal de gasto"
             className="p-1 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
@@ -168,8 +170,9 @@ export function GastoFormModal({
           <form onSubmit={handleSubmit} className="space-y-3">
             {/* Fecha */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Fecha</label>
+              <label htmlFor="gasto-fecha" className="text-xs font-medium text-slate-300">Fecha</label>
               <Input
+                id="gasto-fecha"
                 type="date"
                 required
                 value={fecha}
@@ -180,9 +183,10 @@ export function GastoFormModal({
 
             {/* Importe y Moneda */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Importe y Moneda *</label>
+              <label htmlFor="gasto-importe" className="text-xs font-medium text-slate-300">Importe y Moneda *</label>
               <div className="flex gap-2">
                 <Input
+                  id="gasto-importe"
                   type="number"
                   step="any"
                   required
@@ -194,6 +198,7 @@ export function GastoFormModal({
                 <select
                   value={moneda}
                   onChange={(e) => setMoneda(e.target.value)}
+                  aria-label="Moneda del gasto"
                   className="h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-xs font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
                 >
                   <option value="ARS">ARS ($)</option>
@@ -206,7 +211,7 @@ export function GastoFormModal({
             {/* Categoría */}
             <div className="space-y-1">
               <div className="flex justify-between items-center">
-                <label className="text-xs font-medium text-slate-300">Categoría</label>
+                <label htmlFor="gasto-categoria" className="text-xs font-medium text-slate-300">Categoría</label>
                 {selectedCategory?.estadolimite && (
                   <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
                     Límite {limitPeriod}: ${limitAmount.toLocaleString('es-AR')} {limitCurrency}
@@ -214,6 +219,7 @@ export function GastoFormModal({
                 )}
               </div>
               <select
+                id="gasto-categoria"
                 value={idcategoria}
                 onChange={(e) => setIdcategoria(e.target.value)}
                 className="w-full h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-xs font-medium text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
@@ -237,7 +243,7 @@ export function GastoFormModal({
                   </div>
                   <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-300 ${
+                      className={`h-full rounded-full transition-colors duration-300 ${
                         isLimitExceeded
                           ? 'bg-rose-500'
                           : (currentUsed / limitAmount) > 0.8
@@ -255,8 +261,9 @@ export function GastoFormModal({
 
             {/* Submétodo de Pago */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Submétodo de Pago</label>
+              <label htmlFor="gasto-submetodo" className="text-xs font-medium text-slate-300">Submétodo de Pago</label>
               <select
+                id="gasto-submetodo"
                 value={idsubmetodopago}
                 onChange={(e) => setIdsubmetodopago(e.target.value)}
                 className="w-full h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-xs font-medium text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
@@ -273,8 +280,9 @@ export function GastoFormModal({
             {/* Responsable (Optional) */}
             {members.length > 0 && (
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">Responsable del Gasto</label>
+                <label htmlFor="gasto-responsable" className="text-xs font-medium text-slate-300">Responsable del Gasto</label>
                 <select
+                  id="gasto-responsable"
                   value={responsablegasto}
                   onChange={(e) => setResponsablegasto(e.target.value)}
                   className="w-full h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-xs font-medium text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
@@ -291,8 +299,9 @@ export function GastoFormModal({
 
             {/* Comentario */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Comentario</label>
+              <label htmlFor="gasto-comentario" className="text-xs font-medium text-slate-300">Comentario</label>
               <Input
+                id="gasto-comentario"
                 type="text"
                 placeholder="Ej: Supermercado, Combustible, Cena..."
                 value={comentario}

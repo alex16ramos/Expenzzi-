@@ -104,7 +104,9 @@ export function AhorroFormModal({
             </span>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Cerrar modal de ahorro"
             className="p-1 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
@@ -133,10 +135,11 @@ export function AhorroFormModal({
         <form onSubmit={handleSubmit} className="space-y-3">
           {/* Periodo de Aporte (MANDATORIO RF15) */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-violet-300 flex items-center gap-1">
+            <label htmlFor="ahorro-periodo" className="text-xs font-semibold text-violet-300 flex items-center gap-1">
               Periodo de Aporte (Obligatorio) *
             </label>
             <select
+              id="ahorro-periodo"
               value={periodoaporte}
               disabled={!isAdmin}
               onChange={(e) =>
@@ -153,9 +156,10 @@ export function AhorroFormModal({
 
           {/* Importe y Moneda */}
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-300">Importe y Moneda *</label>
+            <label htmlFor="ahorro-importe" className="text-xs font-medium text-slate-300">Importe y Moneda *</label>
             <div className="flex gap-2">
               <Input
+                id="ahorro-importe"
                 type="number"
                 step="any"
                 required
@@ -169,6 +173,7 @@ export function AhorroFormModal({
                 value={moneda}
                 disabled={!isAdmin}
                 onChange={(e) => setMoneda(e.target.value)}
+                aria-label="Moneda del ahorro"
                 className="h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-xs font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50"
               >
                 <option value="USD">USD (US$)</option>
@@ -181,8 +186,9 @@ export function AhorroFormModal({
           {/* Fechas Desde y Hasta */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Fecha Desde</label>
+              <label htmlFor="ahorro-desde" className="text-xs font-medium text-slate-300">Fecha Desde</label>
               <Input
+                id="ahorro-desde"
                 type="date"
                 required
                 disabled={!isAdmin}
@@ -192,8 +198,9 @@ export function AhorroFormModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Fecha Hasta</label>
+              <label htmlFor="ahorro-hasta" className="text-xs font-medium text-slate-300">Fecha Hasta</label>
               <Input
+                id="ahorro-hasta"
                 type="date"
                 required
                 disabled={!isAdmin}
@@ -206,8 +213,9 @@ export function AhorroFormModal({
 
           {/* Comentario */}
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-300">Comentario / Destino</label>
+            <label htmlFor="ahorro-comentario" className="text-xs font-medium text-slate-300">Comentario / Destino</label>
             <Input
+              id="ahorro-comentario"
               type="text"
               disabled={!isAdmin}
               placeholder="Ej: Fondo de emergencia, Vacaciones..."

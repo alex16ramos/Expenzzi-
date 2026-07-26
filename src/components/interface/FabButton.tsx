@@ -39,11 +39,12 @@ export function FabButton({
             >
               {/* Option Ahorro */}
               <button
+                type="button"
                 onClick={() => {
                   setIsOpen(false);
                   onOpenAhorroModal();
                 }}
-                className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-500 transition-all font-bold text-xs group cursor-pointer"
+                className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-500 transition-colors font-bold text-xs group cursor-pointer"
               >
                 <span>Nuevo Ahorro</span>
                 <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -53,11 +54,12 @@ export function FabButton({
 
               {/* Option Ingreso */}
               <button
+                type="button"
                 onClick={() => {
                   setIsOpen(false);
                   onOpenIngresoModal();
                 }}
-                className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition-all font-bold text-xs group cursor-pointer"
+                className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition-colors font-bold text-xs group cursor-pointer"
               >
                 <span>Nuevo Ingreso</span>
                 <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -67,11 +69,12 @@ export function FabButton({
 
               {/* Option Gasto */}
               <button
+                type="button"
                 onClick={() => {
                   setIsOpen(false);
                   onOpenGastoModal();
                 }}
-                className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl border border-slate-200 dark:border-slate-800 hover:border-rose-500 transition-all font-bold text-xs group cursor-pointer"
+                className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl border border-slate-200 dark:border-slate-800 hover:border-rose-500 transition-colors font-bold text-xs group cursor-pointer"
               >
                 <span>Nuevo Gasto</span>
                 <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -85,8 +88,9 @@ export function FabButton({
 
       {/* Main Trigger FAB */}
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-13 h-13 rounded-2xl text-white shadow-xl shadow-indigo-600/30 flex items-center justify-center transition-all z-40 cursor-pointer ${
+        className={`w-13 h-13 rounded-2xl text-white shadow-xl shadow-indigo-600/30 flex items-center justify-center transition-colors z-40 cursor-pointer ${
           isOpen
             ? 'bg-slate-800 dark:bg-slate-700 rotate-45 scale-95 hover:bg-red-600/80 dark:hover:bg-red-500/80'
             : 'bg-indigo-600 hover:bg-indigo-500 hover:scale-105 active:scale-95'

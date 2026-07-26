@@ -67,6 +67,8 @@ export function CustomDialog({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
+            onKeyDown={(e) => e.key === 'Escape' && onClose()}
+            role="presentation"
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
           />
 
@@ -80,6 +82,7 @@ export function CustomDialog({
           >
             {/* Close Button */}
             <button
+              type="button"
               onClick={onClose}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1 rounded-lg"
               aria-label="Cerrar modal"

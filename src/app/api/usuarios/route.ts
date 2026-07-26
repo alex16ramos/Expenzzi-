@@ -27,16 +27,6 @@ export async function GET(req: Request) {
       );
     }
 
-    const userEmail = (userObj?.email as string) || `${userId}@expenzzi.local`;
-    const userName = (userObj?.name as string) || userEmail.split('@')[0] || 'Usuario';
-
-    // Ensure session user exists in public.usuario
-    await prisma.usuario.upsert({
-      where: { idusuario: userId },
-      update: { nombreusuario: userName, email: userEmail },
-      create: { idusuario: userId, nombreusuario: userName, email: userEmail },
-    });
-
     if (!q.trim()) {
       return NextResponse.json({ success: true, usuarios: [] });
     }

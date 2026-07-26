@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import { Bell, Check, X, Shield, Sparkles, Loader2, RefreshCw, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { getAvatarBg, getAvatarClass } from '@/app/dashboard/perfil/page';
+import { getAvatarBg, getAvatarClass } from '@/lib/avatar-utils';
 
 export interface NotificacionItem {
   idnotificacion: string;
@@ -35,6 +36,14 @@ interface NotificationBellProps {
   interfaceName?: string | null;
   onNotificationHandled?: () => void;
 }
+
+const isGeneralNotif = (n: NotificacionItem) =>
+  n.tipo === 'SOLICITUD_AMISTAD' || n.tipo === 'INVITACION_INTERFAZ' || !n.idinterfazoperacion;
+
+const isCurrentInterfaceNotif = (n: NotificacionItem, interfaceId?: string | number | null) =>
+  interfaceId
+    ? String(n.idinterfazoperacion) === String(interfaceId)
+    : n.tipo.startsWith('NUEVO_') || !!n.idinterfazoperacion;
 
 export function NotificationBell({
   interfaceId,
@@ -69,43 +78,39 @@ export function NotificationBell({
     }
   }, []);
 
+  const loadNotifs = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notificaciones');
+      if (res.status === 401) {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        if (!isMountedRef.current) return;
+        const retryRes = await fetch('/api/notificaciones');
+        if (retryRes.ok) {
+          const data = await retryRes.json();
+          if (isMountedRef.current && data.success) {
+            setNotificaciones(data.notificaciones || []);
+            setUnreadCount(data.unreadCount || 0);
+          }
+        }
+        return;
+      }
+
+      if (!res.ok) return;
+      const data = await res.json();
+      if (isMountedRef.current && data.success) {
+        setNotificaciones(data.notificaciones || []);
+        setUnreadCount(data.unreadCount || 0);
+      }
+    } catch (err) {
+      console.error('Error loading notifications:', err);
+    }
+  }, []);
+
   useEffect(() => {
     isMountedRef.current = true;
-
-    const loadNotifs = async () => {
-      try {
-        const res = await fetch('/api/notificaciones');
-        if (res.status === 401) {
-          setTimeout(async () => {
-            if (!isMountedRef.current) return;
-            try {
-              const retryRes = await fetch('/api/notificaciones');
-              if (retryRes.ok) {
-                const data = await retryRes.json();
-                if (isMountedRef.current && data.success) {
-                  setNotificaciones(data.notificaciones || []);
-                  setUnreadCount(data.unreadCount || 0);
-                }
-              }
-            } catch {
-              // Ignore
-            }
-          }, 400);
-          return;
-        }
-
-        if (!res.ok) return;
-        const data = await res.json();
-        if (isMountedRef.current && data.success) {
-          setNotificaciones(data.notificaciones || []);
-          setUnreadCount(data.unreadCount || 0);
-        }
-      } catch (err) {
-        console.error('Error loading notifications:', err);
-      }
-    };
-
-    loadNotifs();
+    Promise.resolve().then(() => {
+      if (isMountedRef.current) loadNotifs();
+    });
 
     // Pause polling when document is hidden to save memory and network calls
     const interval = setInterval(() => {
@@ -118,7 +123,7 @@ export function NotificationBell({
       isMountedRef.current = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [loadNotifs]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -139,9 +144,10 @@ export function NotificationBell({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idnotificacion, aceptar }),
       });
+      if (!res.ok) return;
       const data = await res.json();
 
-      if (res.ok && data.success && isMountedRef.current) {
+      if (data.success && isMountedRef.current) {
         setNotificaciones((prev) =>
           prev.map((n) =>
             n.idnotificacion === idnotificacion
@@ -171,8 +177,9 @@ export function NotificationBell({
       const res = await fetch(`/api/notificaciones?id=${idnotificacion}`, {
         method: 'DELETE',
       });
+      if (!res.ok) return;
       const data = await res.json();
-      if (res.ok && data.success && isMountedRef.current) {
+      if (data.success && isMountedRef.current) {
         if (target && !target.leido) {
           setUnreadCount((count) => Math.max(0, count - 1));
         }
@@ -187,20 +194,12 @@ export function NotificationBell({
     }
   };
 
-  const isGeneralNotif = (n: NotificacionItem) =>
-    n.tipo === 'SOLICITUD_AMISTAD' || n.tipo === 'INVITACION_INTERFAZ' || !n.idinterfazoperacion;
-
-  const isCurrentInterfaceNotif = (n: NotificacionItem) =>
-    interfaceId
-      ? String(n.idinterfazoperacion) === String(interfaceId)
-      : n.tipo.startsWith('NUEVO_') || !!n.idinterfazoperacion;
-
   const unreadGeneral = notificaciones.filter((n) => !n.leido && isGeneralNotif(n)).length;
-  const unreadInterfaz = notificaciones.filter((n) => !n.leido && isCurrentInterfaceNotif(n)).length;
+  const unreadInterfaz = notificaciones.filter((n) => !n.leido && isCurrentInterfaceNotif(n, interfaceId)).length;
 
   const filteredNotificaciones = notificaciones.filter((n) => {
     if (activeTab === 'general') return isGeneralNotif(n);
-    if (activeTab === 'interfaz') return isCurrentInterfaceNotif(n);
+    if (activeTab === 'interfaz') return isCurrentInterfaceNotif(n, interfaceId);
     return true;
   });
 
@@ -208,6 +207,7 @@ export function NotificationBell({
     <div className="relative inline-block" ref={dropdownRef}>
       {/* Bell Button */}
       <button
+        type="button"
         onClick={() => {
           setIsOpen(!isOpen);
           if (!isOpen) fetchNotificaciones();
@@ -239,9 +239,10 @@ export function NotificationBell({
               )}
             </div>
             <button
+              type="button"
               onClick={fetchNotificaciones}
+              aria-label="Actualizar notificaciones"
               className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg transition-colors"
-              title="Actualizar"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -250,8 +251,9 @@ export function NotificationBell({
           {/* Navigation Tabs Bar */}
           <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-950/60 p-1 gap-1 text-[11px] font-semibold">
             <button
+              type="button"
               onClick={() => setActiveTab('general')}
-              className={`flex-1 py-1.5 px-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
                 activeTab === 'general'
                   ? 'bg-white dark:bg-slate-900 text-violet-600 dark:text-violet-400 shadow-sm border border-slate-200 dark:border-slate-800 font-bold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -264,8 +266,9 @@ export function NotificationBell({
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveTab('interfaz')}
-              className={`flex-1 py-1.5 px-2 rounded-lg transition-all flex items-center justify-center gap-1.5 truncate ${
+              className={`flex-1 py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 truncate ${
                 activeTab === 'interfaz'
                   ? 'bg-white dark:bg-slate-900 text-violet-600 dark:text-violet-400 shadow-sm border border-slate-200 dark:border-slate-800 font-bold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -278,8 +281,9 @@ export function NotificationBell({
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveTab('todas')}
-              className={`flex-1 py-1.5 px-2.5 rounded-lg transition-all flex items-center justify-center gap-1 ${
+              className={`flex-1 py-1.5 px-2.5 rounded-lg transition-colors flex items-center justify-center gap-1 ${
                 activeTab === 'todas'
                   ? 'bg-white dark:bg-slate-900 text-violet-600 dark:text-violet-400 shadow-sm border border-slate-200 dark:border-slate-800 font-bold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -313,161 +317,179 @@ export function NotificationBell({
                 </p>
               </div>
             ) : (
-              filteredNotificaciones.map((n) => {
-                const emisorNombre = n.emisor?.nombreusuario || 'Un usuario';
-                const initials = emisorNombre.slice(0, 2).toUpperCase();
-
-                return (
-                  <div key={n.idnotificacion} className="relative overflow-hidden bg-rose-500/10 group">
-                    {/* Background Delete Button visible when sliding */}
-                    <div className="absolute inset-y-0 right-0 w-20 bg-rose-600 flex items-center justify-center text-white z-0">
-                      <button
-                        onClick={() => handleDeleteNotification(n.idnotificacion)}
-                        className="w-full h-full flex items-center justify-center gap-1 text-[11px] font-bold text-white"
-                      >
-                        <Trash2 className="w-4 h-4" /> Borrar
-                      </button>
-                    </div>
-
-                    {/* Draggable Card Body */}
-                    <motion.div
-                      drag="x"
-                      dragConstraints={{ left: -75, right: 0 }}
-                      dragElastic={0.1}
-                      className={`relative z-10 p-3.5 bg-white dark:bg-slate-900 transition-colors ${
-                        !n.leido && n.estado === 'Pendiente'
-                          ? 'bg-violet-50 dark:bg-violet-950'
-                          : ''
-                      }`}
-                    >
-                    <div className="flex gap-3 items-start">
-                      {/* Avatar */}
-                      <div className={`w-9 h-9 rounded-full ${getAvatarBg(n.emisor?.fotoperfil)} border border-slate-300 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0 shadow-sm mt-0.5`}>
-                        {n.emisor?.fotoperfil ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={n.emisor.fotoperfil}
-                            alt={emisorNombre}
-                            className={getAvatarClass(n.emisor.fotoperfil)}
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                            }}
-                          />
-                        ) : (
-                          <span className="text-violet-600 dark:text-violet-400 text-xs font-bold">{initials}</span>
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex justify-between items-start">
-                          <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                            {n.titulo}
-                          </h4>
-                          <div className="flex items-center gap-1 shrink-0 ml-2">
-                            <span className="text-[10px] text-slate-600 dark:text-slate-400">
-                              {new Date(n.fechacreacion).toLocaleDateString('es-ES', {
-                                day: 'numeric',
-                                month: 'short',
-                              })}
-                            </span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteNotification(n.idnotificacion);
-                              }}
-                              disabled={actionLoading === n.idnotificacion}
-                              className="text-slate-400 hover:text-rose-500 p-0.5 rounded transition-colors ml-1 opacity-70 hover:opacity-100"
-                              title="Borrar notificación"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-
-                        <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                          {n.mensaje}
-                        </p>
-
-                        {n.rolPropuesto && (
-                          <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800/50">
-                            <Shield className="w-2.5 h-2.5" />
-                            <span>Rol: {n.rolPropuesto}</span>
-                          </div>
-                        )}
-
-                        {/* Action / Badge Section */}
-                        {n.estado === 'Informativa' || n.tipo.startsWith('NUEVO_') ? (
-                          <div className="pt-1.5 flex items-center justify-between">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                                n.tipo === 'NUEVO_GASTO'
-                                  ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30'
-                                  : n.tipo === 'NUEVO_INGRESO'
-                                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
-                                  : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
-                              }`}
-                            >
-                              {n.tipo === 'NUEVO_GASTO' ? '💸 Gasto' : n.tipo === 'NUEVO_INGRESO' ? '💰 Ingreso' : '🏦 Ahorro'}
-                            </span>
-                          </div>
-                        ) : n.estado === 'Pendiente' ? (
-                          <div className="flex gap-2 pt-2">
-                            <Button
-                              size="sm"
-                              disabled={actionLoading === n.idnotificacion}
-                              onClick={() => handleRespond(n.idnotificacion, true)}
-                              className="h-7 text-[11px] px-3 gap-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg"
-                            >
-                              {actionLoading === n.idnotificacion ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                              ) : (
-                                <Check className="w-3 h-3" />
-                              )}
-                              Aceptar
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={actionLoading === n.idnotificacion}
-                              onClick={() => handleRespond(n.idnotificacion, false)}
-                              className="h-7 text-[11px] px-2.5 gap-1 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                              Rechazar
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="pt-1.5">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                                n.estado === 'Aceptada'
-                                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
-                                  : 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30'
-                              }`}
-                            >
-                              {n.estado === 'Aceptada' ? (
-                                <>
-                                  <Check className="w-2.5 h-2.5 text-emerald-500" /> Aceptada
-                                </>
-                              ) : (
-                                <>
-                                  <X className="w-2.5 h-2.5 text-rose-500" /> Rechazada
-                                </>
-                              )}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                </div>
-              );
-            })
+              filteredNotificaciones.map((n) => (
+                <NotificationCardItem
+                  key={n.idnotificacion}
+                  n={n}
+                  actionLoading={actionLoading}
+                  onRespond={handleRespond}
+                  onDelete={handleDeleteNotification}
+                />
+              ))
             )}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function NotificationCardItem({
+  n,
+  actionLoading,
+  onRespond,
+  onDelete,
+}: {
+  n: NotificacionItem;
+  actionLoading: string | null;
+  onRespond: (id: string, aceptar: boolean) => void;
+  onDelete: (id: string) => void;
+}) {
+  const emisorNombre = n.emisor?.nombreusuario || 'Un usuario';
+  const initials = emisorNombre.slice(0, 2).toUpperCase();
+
+  return (
+    <div className="relative overflow-hidden bg-rose-500/10 group">
+      {/* Background Delete Button visible when sliding */}
+      <div className="absolute inset-y-0 right-0 w-20 bg-rose-600 flex items-center justify-center text-white z-0">
+        <button
+          type="button"
+          onClick={() => onDelete(n.idnotificacion)}
+          className="w-full h-full flex items-center justify-center gap-1 text-[11px] font-bold text-white"
+        >
+          <Trash2 className="w-4 h-4" /> Borrar
+        </button>
+      </div>
+
+      {/* Draggable Card Body */}
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: -75, right: 0 }}
+        dragElastic={0.1}
+        className={`relative z-10 p-3.5 bg-white dark:bg-slate-900 transition-colors ${
+          !n.leido && n.estado === 'Pendiente' ? 'bg-violet-50 dark:bg-violet-950' : ''
+        }`}
+      >
+        <div className="flex gap-3 items-start">
+          {/* Avatar */}
+          <div
+            className={`w-9 h-9 rounded-full ${getAvatarBg(n.emisor?.fotoperfil)} border border-slate-300 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0 shadow-sm mt-0.5`}
+          >
+            {n.emisor?.fotoperfil ? (
+              <Image
+                src={n.emisor.fotoperfil}
+                alt={emisorNombre}
+                width={36}
+                height={36}
+                unoptimized
+                className={getAvatarClass(n.emisor.fotoperfil)}
+              />
+            ) : (
+              <span className="text-violet-600 dark:text-violet-400 text-xs font-bold">{initials}</span>
+            )}
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0 space-y-1">
+            <div className="flex justify-between items-start">
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">{n.titulo}</h4>
+              <div className="flex items-center gap-1 shrink-0 ml-2">
+                <span className="text-[10px] text-slate-600 dark:text-slate-400">
+                  {new Date(n.fechacreacion).toLocaleDateString('es-ES', {
+                    day: 'numeric',
+                    month: 'short',
+                    timeZone: 'UTC',
+                  })}
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(n.idnotificacion);
+                  }}
+                  disabled={actionLoading === n.idnotificacion}
+                  className="text-slate-400 hover:text-rose-500 p-0.5 rounded transition-colors ml-1 opacity-70 hover:opacity-100"
+                  title="Borrar notificación"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">{n.mensaje}</p>
+
+            {n.rolPropuesto && (
+              <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800/50">
+                <Shield className="w-2.5 h-2.5" />
+                <span>Rol: {n.rolPropuesto}</span>
+              </div>
+            )}
+
+            {/* Action / Badge Section */}
+            {n.estado === 'Informativa' || n.tipo.startsWith('NUEVO_') ? (
+              <div className="pt-1.5 flex items-center justify-between">
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                    n.tipo === 'NUEVO_GASTO'
+                      ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30'
+                      : n.tipo === 'NUEVO_INGRESO'
+                      ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                      : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                  }`}
+                >
+                  {n.tipo === 'NUEVO_GASTO' ? '💸 Gasto' : n.tipo === 'NUEVO_INGRESO' ? '💰 Ingreso' : '🏦 Ahorro'}
+                </span>
+              </div>
+            ) : n.estado === 'Pendiente' ? (
+              <div className="flex gap-2 pt-2">
+                <Button
+                  size="sm"
+                  disabled={actionLoading === n.idnotificacion}
+                  onClick={() => onRespond(n.idnotificacion, true)}
+                  className="h-7 text-[11px] px-3 gap-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg"
+                >
+                  {actionLoading === n.idnotificacion ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Check className="w-3 h-3" />
+                  )}
+                  Aceptar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={actionLoading === n.idnotificacion}
+                  onClick={() => onRespond(n.idnotificacion, false)}
+                  className="h-7 text-[11px] px-2.5 gap-1 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Rechazar
+                </Button>
+              </div>
+            ) : (
+              <div className="pt-1.5">
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                    n.estado === 'Aceptada'
+                      ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                      : 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30'
+                  }`}
+                >
+                  {n.estado === 'Aceptada' ? (
+                    <>
+                      <Check className="w-2.5 h-2.5 text-emerald-500" /> Aceptada
+                    </>
+                  ) : (
+                    <>
+                      <X className="w-2.5 h-2.5 text-rose-500" /> Rechazada
+                    </>
+                  )}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }

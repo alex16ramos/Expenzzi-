@@ -1,115 +1,9 @@
 'use client';
 
 import React from 'react';
-import {
-  ShoppingCart,
-  Car,
-  Wifi,
-  ArrowDownLeft,
-  ArrowUpRight,
-  Landmark,
-  HeartPulse,
-  Film,
-  LucideIcon,
-} from 'lucide-react';
+import { Transaction, getCategoryIconAndStyle } from './transaction-utils';
 
-export interface Transaction {
-  id: string | number;
-  date: string;
-  user: string;
-  avatar?: string | null;
-  initials: string;
-  amount: number;
-  currency: 'ARS' | 'USD' | 'UYU' | string;
-  ars: string;
-  usd: string;
-  uyu?: string;
-  comment: string;
-  method: string;
-  category?: string;
-  type?: 'Gasto' | 'Ingreso' | 'Ahorro' | string;
-  rawItem?: Record<string, unknown>;
-}
-
-export function getCategoryIconAndStyle(categoryName?: string | null, type?: string): {
-  icon: LucideIcon;
-  bg: string;
-  text: string;
-  sign: string;
-} {
-  const cat = (categoryName || '').toLowerCase();
-  const t = (type || '').toLowerCase();
-
-  if (t === 'ingreso' || cat.includes('ingreso') || cat.includes('cobro') || cat.includes('sueldo')) {
-    return {
-      icon: ArrowDownLeft,
-      bg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
-      text: 'text-emerald-600 dark:text-emerald-400',
-      sign: '+',
-    };
-  }
-
-  if (t === 'ahorro' || cat.includes('ahorro') || cat.includes('invers')) {
-    return {
-      icon: Landmark,
-      bg: 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400',
-      text: 'text-indigo-600 dark:text-indigo-400',
-      sign: '',
-    };
-  }
-
-  if (cat.includes('super') || cat.includes('alimento') || cat.includes('comida') || cat.includes('coto')) {
-    return {
-      icon: ShoppingCart,
-      bg: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
-      text: 'text-rose-600 dark:text-rose-400',
-      sign: '-',
-    };
-  }
-
-  if (cat.includes('transp') || cat.includes('auto') || cat.includes('nafta') || cat.includes('combust') || cat.includes('ypf')) {
-    return {
-      icon: Car,
-      bg: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
-      text: 'text-rose-600 dark:text-rose-400',
-      sign: '-',
-    };
-  }
-
-  if (cat.includes('servic') || cat.includes('net') || cat.includes('wifi') || cat.includes('telecom') || cat.includes('luz')) {
-    return {
-      icon: Wifi,
-      bg: 'bg-purple-500/10 border-purple-500/20 text-purple-400',
-      text: 'text-rose-600 dark:text-rose-400',
-      sign: '-',
-    };
-  }
-
-  if (cat.includes('salud') || cat.includes('farmac') || cat.includes('med')) {
-    return {
-      icon: HeartPulse,
-      bg: 'bg-rose-500/10 border-rose-500/20 text-rose-400',
-      text: 'text-rose-600 dark:text-rose-400',
-      sign: '-',
-    };
-  }
-
-  if (cat.includes('entreten') || cat.includes('cine') || cat.includes('juego')) {
-    return {
-      icon: Film,
-      bg: 'bg-pink-500/10 border-pink-500/20 text-pink-400',
-      text: 'text-rose-600 dark:text-rose-400',
-      sign: '-',
-    };
-  }
-
-  return {
-    icon: ArrowUpRight,
-    bg: 'bg-slate-800 border-slate-700/60 text-slate-300',
-    text: 'text-rose-600 dark:text-rose-400',
-    sign: '-',
-  };
-}
+export type { Transaction };
 
 interface TransactionCardProps {
   transaction: Transaction;
@@ -126,9 +20,10 @@ export function TransactionCard({ transaction: tx, onSelect }: TransactionCardPr
   const subtitle = `${tx.date} • ${tx.category || tx.method || 'General'}`;
 
   return (
-    <div
+    <button
+      type="button"
       onClick={() => onSelect(tx)}
-      className="p-3.5 flex items-center justify-between hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
+      className="w-full text-left p-3.5 flex items-center justify-between hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
     >
       <div className="flex items-center gap-3">
         <div className={`w-10 h-10 rounded-full ${bg} border flex items-center justify-center shrink-0 shadow-sm`}>
@@ -152,6 +47,6 @@ export function TransactionCard({ transaction: tx, onSelect }: TransactionCardPr
           {tx.currency}
         </span>
       </div>
-    </div>
+    </button>
   );
 }

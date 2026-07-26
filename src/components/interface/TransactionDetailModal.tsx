@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { X, History, Pencil, Trash2, CreditCard, User, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Transaction } from './TransactionCard';
-import { getAvatarBg, getAvatarClass } from '@/app/dashboard/perfil/page';
+import { getAvatarBg, getAvatarClass } from '@/lib/avatar-utils';
 
 interface TransactionDetailModalProps {
   transaction: Transaction | null;
@@ -37,7 +38,7 @@ export function TransactionDetailModal({
   const title = tx.comment || tx.category || `Movimiento #${tx.id}`;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end justify-center p-0 md:p-4 transition-all animate-in fade-in duration-200">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end justify-center p-0 md:p-4 transition-colors animate-in fade-in duration-200">
       <div
         className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-t-3xl md:rounded-3xl p-6 space-y-5 animate-in slide-in-from-bottom duration-200 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
@@ -56,6 +57,7 @@ export function TransactionDetailModal({
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
           >
@@ -106,8 +108,7 @@ export function TransactionDetailModal({
             <div className="flex items-center gap-2">
               <div className={`w-5 h-5 rounded-full ${getAvatarBg(tx.avatar)} border border-slate-300 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0`}>
                 {tx.avatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={tx.avatar} alt={tx.user} className={getAvatarClass(tx.avatar)} />
+                  <Image src={tx.avatar} alt={tx.user} width={20} height={20} unoptimized className={getAvatarClass(tx.avatar)} />
                 ) : (
                   <span className="text-[9px] font-bold text-violet-400">{tx.initials}</span>
                 )}
