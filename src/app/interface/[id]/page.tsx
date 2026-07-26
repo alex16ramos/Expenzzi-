@@ -23,6 +23,7 @@ import { AuditHistoryModal } from '@/components/interface/AuditHistoryModal';
 import { CustomDialog } from '@/components/ui/custom-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { enqueueOfflineMutation } from '@/lib/offline-sync';
 import { itemsNav } from '@/lib/nav-items';
 
 interface PageProps {
@@ -446,62 +447,143 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     }
   };
 
-  // Save Handlers
+  // Save Handlers (Offline-First Ready)
   const handleSaveGasto = async (data: GastoFormData) => {
     const isEdit = !!data.idgasto;
     const method = isEdit ? 'PUT' : 'POST';
-    const res = await fetch(`/api/interfaces/${interfaceId}/gastos`, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Error al guardar gasto');
-    }
-    await res.json();
+    const endpoint = `/api/interfaces/${interfaceId}/gastos`;
 
-    toast.success(isEdit ? 'Gasto modificado correctamente' : 'Gasto registrado correctamente');
-    loadSectionRecords();
-    loadBalances();
+    if (typeof window !== 'undefined' && !navigator.onLine) {
+      enqueueOfflineMutation(
+        endpoint,
+        method,
+        data as unknown as Record<string, unknown>,
+        `Gasto: ${data.comentario || 'Sin concepto'} (${data.importe} ${data.moneda})`
+      );
+      toast.info('Gasto guardado localmente (se sincronizará al recuperar la conexión)');
+      return;
+    }
+
+    try {
+      const res = await fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Error al guardar gasto');
+      }
+      await res.json();
+      toast.success(isEdit ? 'Gasto modificado correctamente' : 'Gasto registrado correctamente');
+      loadSectionRecords();
+      loadBalances();
+    } catch (err: unknown) {
+      if (typeof window !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation(
+          endpoint,
+          method,
+          data as unknown as Record<string, unknown>,
+          `Gasto: ${data.comentario || 'Sin concepto'} (${data.importe} ${data.moneda})`
+        );
+        toast.info('Gasto guardado en almacenamiento local');
+        return;
+      }
+      const msg = (err as { message?: string })?.message || 'Error al guardar gasto';
+      throw new Error(msg);
+    }
   };
 
   const handleSaveIngreso = async (data: IngresoFormData) => {
     const isEdit = !!data.idingreso;
     const method = isEdit ? 'PUT' : 'POST';
-    const res = await fetch(`/api/interfaces/${interfaceId}/ingresos`, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Error al guardar ingreso');
-    }
-    await res.json();
+    const endpoint = `/api/interfaces/${interfaceId}/ingresos`;
 
-    toast.success(isEdit ? 'Ingreso modificado correctamente' : 'Ingreso registrado correctamente');
-    loadSectionRecords();
-    loadBalances();
+    if (typeof window !== 'undefined' && !navigator.onLine) {
+      enqueueOfflineMutation(
+        endpoint,
+        method,
+        data as unknown as Record<string, unknown>,
+        `Ingreso: ${data.comentario || 'Sin concepto'} (${data.importe} ${data.moneda})`
+      );
+      toast.info('Ingreso guardado localmente (se sincronizará al recuperar la conexión)');
+      return;
+    }
+
+    try {
+      const res = await fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Error al guardar ingreso');
+      }
+      await res.json();
+      toast.success(isEdit ? 'Ingreso modificado correctamente' : 'Ingreso registrado correctamente');
+      loadSectionRecords();
+      loadBalances();
+    } catch (err: unknown) {
+      if (typeof window !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation(
+          endpoint,
+          method,
+          data as unknown as Record<string, unknown>,
+          `Ingreso: ${data.comentario || 'Sin concepto'} (${data.importe} ${data.moneda})`
+        );
+        toast.info('Ingreso guardado en almacenamiento local');
+        return;
+      }
+      const msg = (err as { message?: string })?.message || 'Error al guardar ingreso';
+      throw new Error(msg);
+    }
   };
 
   const handleSaveAhorro = async (data: AhorroFormData) => {
     const isEdit = !!data.idahorro;
     const method = isEdit ? 'PUT' : 'POST';
-    const res = await fetch(`/api/interfaces/${interfaceId}/ahorros`, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Error al guardar ahorro');
-    }
-    await res.json();
+    const endpoint = `/api/interfaces/${interfaceId}/ahorros`;
 
-    toast.success(isEdit ? 'Ahorro modificado correctamente' : 'Ahorro registrado correctamente');
-    loadSectionRecords();
-    loadBalances();
+    if (typeof window !== 'undefined' && !navigator.onLine) {
+      enqueueOfflineMutation(
+        endpoint,
+        method,
+        data as unknown as Record<string, unknown>,
+        `Ahorro: ${data.comentario || 'Sin concepto'} (${data.importe} ${data.moneda})`
+      );
+      toast.info('Ahorro guardado localmente (se sincronizará al recuperar la conexión)');
+      return;
+    }
+
+    try {
+      const res = await fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Error al guardar ahorro');
+      }
+      await res.json();
+      toast.success(isEdit ? 'Ahorro modificado correctamente' : 'Ahorro registrado correctamente');
+      loadSectionRecords();
+      loadBalances();
+    } catch (err: unknown) {
+      if (typeof window !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation(
+          endpoint,
+          method,
+          data as unknown as Record<string, unknown>,
+          `Ahorro: ${data.comentario || 'Sin concepto'} (${data.importe} ${data.moneda})`
+        );
+        toast.info('Ahorro guardado en almacenamiento local');
+        return;
+      }
+      const msg = (err as { message?: string })?.message || 'Error al guardar ahorro';
+      throw new Error(msg);
+    }
   };
 
   // Category ABM Handlers
