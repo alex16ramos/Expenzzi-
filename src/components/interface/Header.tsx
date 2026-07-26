@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Menu, ArrowLeft, Users, Shield } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
+import { ExchangeRateDropdown } from './ExchangeRateDropdown';
 import { ThemeToggle } from '../ThemeToggle';
 import { authClient } from '@/lib/auth-client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -143,6 +144,8 @@ export function Header({
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
+        <ExchangeRateDropdown />
+
         <NotificationBell
           interfaceId={interfaceId}
           interfaceName={interfaceName || undefined}

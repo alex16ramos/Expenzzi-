@@ -110,6 +110,8 @@ model UsuarioInterfaz {
   @@index([idinterfazoperacion, rol], map: "idx_idinterfazoperacion_rol")
   @@index([idinterfazoperacion, idusuario], map: "idx_usuariointerfaz_idinterfaz_idusuario")
   @@index([idusuario], map: "idx_usuariointerfaz_idusuario")
+  @@index([idusuario, fechasalida], map: "idx_usuariointerfaz_idusuario_fechasalida")
+  @@index([idinterfazoperacion, idusuario, fechasalida], map: "idx_usuariointerfaz_idinterfaz_idusuario_fechasalida")
   @@map("usuariointerfaz")
 }
 
@@ -119,6 +121,7 @@ model Ahorro {
   fechahasta          DateTime  @map("fechahasta") @db.Date
   moneda              TMoneda   @map("moneda")
   importe             Decimal   @map("importe") @db.Decimal(12, 2)
+  tasacambio          Decimal?  @map("tasacambio") @db.Decimal(12, 4)
   comentario          String?   @map("comentario") @db.VarChar
   periodoaporte       TPeriodo? @map("periodoaporte")
   estado              Boolean?  @default(true) @map("estado")
@@ -184,6 +187,7 @@ model Gasto {
   responsablegasto         String   @map("responsablegasto") @db.Uuid
   moneda                   TMoneda  @map("moneda")
   importe                  Decimal  @map("importe") @db.Decimal(12, 2)
+  tasacambio               Decimal? @map("tasacambio") @db.Decimal(12, 4)
   comentario               String?  @map("comentario") @db.VarChar
   responsableingresargasto String   @map("responsableingresargasto") @db.Uuid
   estado                   Boolean? @default(true) @map("estado")
@@ -198,6 +202,8 @@ model Gasto {
 
   @@index([idsubmetodopago], map: "idx_gasto_submetodopago")
   @@index([idcategoria, fecha, estado], map: "idx_idcategoria_fecha_estado")
+  @@index([idsubmetodopago, estado], map: "idx_gasto_submetodopago_estado")
+  @@index([responsablegasto, estado], map: "idx_gasto_responsable_estado")
   @@map("gasto")
 }
 
@@ -207,6 +213,7 @@ model Ingreso {
   responsableingreso         String   @map("responsableingreso") @db.Uuid
   moneda                     TMoneda  @map("moneda")
   importe                    Decimal  @map("importe") @db.Decimal(12, 2)
+  tasacambio                 Decimal? @map("tasacambio") @db.Decimal(12, 4)
   comentario                 String?  @map("comentario") @db.VarChar
   responsableingresaringreso String   @map("responsableingresaringreso") @db.Uuid
   estado                     Boolean? @default(true) @map("estado")
@@ -218,6 +225,7 @@ model Ingreso {
   historialIngresos          HistorialIngreso[]
 
   @@index([idinterfazoperacion, fecha, estado], map: "idx_idinterfazoperacion_fecha_estado")
+  @@index([responsableingreso, estado], map: "idx_ingreso_responsable_estado")
   @@map("ingreso")
 }
 

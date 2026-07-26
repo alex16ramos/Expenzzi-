@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
+import { getExchangeRatesForDate, convertCurrency } from '@/lib/exchange-rate';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +38,7 @@ export async function GET() {
 
     const activeInterfaces = userInterfaces.filter((item) => item.interfazoperacion != null);
 
-    // Calculate balances per interface for ARS, USD, UYU
+    // Calculate balances per interface for ARS, USD, UYU with historical date auto-conversion
     const interfaces = await Promise.all(
       activeInterfaces.map(async (item) => {
         const interfaceId = item.interfazoperacion.idinterfazoperacion;
@@ -51,24 +52,45 @@ export async function GET() {
                 { submetodopago: { idinterfazoperacion: interfaceId } },
               ],
             },
-            select: { moneda: true, importe: true },
+            select: { fecha: true, moneda: true, importe: true },
           }),
           prisma.ingreso.findMany({
             where: { idinterfazoperacion: interfaceId, estado: true },
-            select: { moneda: true, importe: true },
+            select: { fecha: true, moneda: true, importe: true },
           }),
           prisma.ahorro.findMany({
             where: { idinterfazoperacion: interfaceId, estado: true },
-            select: { moneda: true, importe: true },
+            select: { fechadesde: true, moneda: true, importe: true },
           }),
         ]);
 
-        const calcNet = (curr: 'ARS' | 'USD' | 'UYU') => {
-          const totalIngresos = ingresos.filter((i) => i.moneda === curr).reduce((acc, i) => acc + Number(i.importe || 0), 0);
-          const totalGastos = gastos.filter((g) => g.moneda === curr).reduce((acc, g) => acc + Number(g.importe || 0), 0);
-          const totalAhorros = ahorros.filter((a) => a.moneda === curr).reduce((acc, a) => acc + Number(a.importe || 0), 0);
+        const calcNet = async (targetCurr: 'ARS' | 'USD' | 'UYU') => {
+          let totalIngresos = 0;
+          for (const i of ingresos) {
+            const rates = await getExchangeRatesForDate(i.fecha);
+            totalIngresos += convertCurrency(Number(i.importe || 0), i.moneda as 'ARS' | 'USD' | 'UYU', targetCurr, rates);
+          }
+
+          let totalGastos = 0;
+          for (const g of gastos) {
+            const rates = await getExchangeRatesForDate(g.fecha);
+            totalGastos += convertCurrency(Number(g.importe || 0), g.moneda as 'ARS' | 'USD' | 'UYU', targetCurr, rates);
+          }
+
+          let totalAhorros = 0;
+          for (const a of ahorros) {
+            const rates = await getExchangeRatesForDate(a.fechadesde);
+            totalAhorros += convertCurrency(Number(a.importe || 0), a.moneda as 'ARS' | 'USD' | 'UYU', targetCurr, rates);
+          }
+
           return totalIngresos - totalGastos + totalAhorros;
         };
+
+        const [balanceARS, balanceUSD, balanceUYU] = await Promise.all([
+          calcNet('ARS'),
+          calcNet('USD'),
+          calcNet('UYU'),
+        ]);
 
         return {
           id: String(item.interfazoperacion.idinterfazoperacion),
@@ -80,9 +102,9 @@ export async function GET() {
           linkvisualizador: item.interfazoperacion.linkvisualizador || randomUUID(),
           fechacreacion: item.interfazoperacion.fechacreacion ? item.interfazoperacion.fechacreacion.toISOString().split('T')[0] : '',
           fechaunion: item.fechaunion ? item.fechaunion.toISOString().split('T')[0] : '',
-          balanceARS: calcNet('ARS'),
-          balanceUSD: calcNet('USD'),
-          balanceUYU: calcNet('UYU'),
+          balanceARS,
+          balanceUSD,
+          balanceUYU,
         };
       })
     );

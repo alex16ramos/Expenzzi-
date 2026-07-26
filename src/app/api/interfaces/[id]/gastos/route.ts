@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { TMoneda } from '@prisma/client';
 import { notifyInterfaceMembers } from '@/lib/notify-members';
 import { emitRealtimeEvent } from '@/lib/events';
+import { getExchangeRatesForDate } from '@/lib/exchange-rate';
 
 export const dynamic = 'force-dynamic';
 
@@ -206,13 +207,17 @@ export async function POST(
       });
     }
 
+    const gastoFecha = fecha ? new Date(fecha) : new Date();
+    const rates = await getExchangeRatesForDate(gastoFecha);
+
     const newGasto = await prisma.gasto.create({
       data: {
-        fecha: fecha ? new Date(fecha) : new Date(),
+        fecha: gastoFecha,
         responsablegasto: respUser,
         responsableingresargasto: userId,
         moneda: moneda as TMoneda,
         importe: Number(importe),
+        tasacambio: rates.usdars,
         comentario: comentario ? String(comentario).trim() : null,
         idcategoria: idcategoria ? BigInt(idcategoria) : null,
         idsubmetodopago: idsubmetodopago ? BigInt(idsubmetodopago) : null,

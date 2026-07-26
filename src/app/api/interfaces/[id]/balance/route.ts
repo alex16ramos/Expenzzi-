@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
+import { getTodayExchangeRates, getExchangeRatesForDate, convertCurrency } from '@/lib/exchange-rate';
+import { checkUserInterfaceMembership } from '@/lib/membership-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +24,7 @@ async function getUserIdFromSession(): Promise<string | null> {
 /**
  * GET /api/interfaces/[id]/balance
  * Calculates and returns overall general balances in ARS, USD, UYU (RF19).
- * Dynamically aggregates active Ingresos, Gastos, and Ahorros per currency.
+ * Dynamically aggregates active Ingresos, Gastos, and Ahorros converting with historical date rates.
  */
 export async function GET(
   req: Request,
@@ -37,28 +39,21 @@ export async function GET(
     const resolvedParams = await params;
     const interfaceId = BigInt(resolvedParams.id);
 
-    // Verify membership
-    const userInterfaz = await prisma.usuarioInterfaz.findFirst({
-      where: {
-        idinterfazoperacion: interfaceId,
-        idusuario: userId,
-        fechasalida: null,
-      },
-    });
-
-    if (!userInterfaz) {
+    // Fast-path membership check using 60s in-memory TTL cache
+    const { hasAccess } = await checkUserInterfaceMembership(userId, interfaceId);
+    if (!hasAccess) {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
     }
 
-    // Fetch active Ingresos, Ahorros, and Gastos concurrently
-    const [ingresos, ahorros, gastos] = await Promise.all([
+    // Fetch active Ingresos, Ahorros, and Gastos concurrently with operation dates and rates snapshot
+    const [ingresos, ahorros, gastos, todayRates] = await Promise.all([
       prisma.ingreso.findMany({
         where: { idinterfazoperacion: interfaceId, estado: true },
-        select: { moneda: true, importe: true },
+        select: { fecha: true, moneda: true, importe: true, tasacambio: true },
       }),
       prisma.ahorro.findMany({
         where: { idinterfazoperacion: interfaceId, estado: true },
-        select: { moneda: true, importe: true },
+        select: { fechadesde: true, moneda: true, importe: true, tasacambio: true },
       }),
       prisma.gasto.findMany({
         where: {
@@ -68,8 +63,9 @@ export async function GET(
             { submetodopago: { idinterfazoperacion: interfaceId } },
           ],
         },
-        select: { moneda: true, importe: true },
+        select: { fecha: true, moneda: true, importe: true, tasacambio: true },
       }),
+      getTodayExchangeRates(),
     ]);
 
     const balances = {
@@ -78,26 +74,41 @@ export async function GET(
       UYU: { ingresos: 0, gastos: 0, ahorros: 0, net: 0 },
     };
 
-    ingresos.forEach((item) => {
-      const c = item.moneda as CurrencyKey;
-      if (balances[c]) {
-        balances[c].ingresos += Number(item.importe);
-      }
-    });
+    // Process Ingresos with snapshot or historical date exchange rates
+    await Promise.all(
+      ingresos.map(async (item) => {
+        const srcMoneda = item.moneda as CurrencyKey;
+        const amt = Number(item.importe || 0);
+        const itemRates = item.tasacambio ? todayRates : await getExchangeRatesForDate(item.fecha);
+        CURRENCIES.forEach((targetMoneda) => {
+          balances[targetMoneda].ingresos += convertCurrency(amt, srcMoneda, targetMoneda, itemRates, item.tasacambio ? Number(item.tasacambio) : null);
+        });
+      })
+    );
 
-    gastos.forEach((item) => {
-      const c = item.moneda as CurrencyKey;
-      if (balances[c]) {
-        balances[c].gastos += Number(item.importe);
-      }
-    });
+    // Process Gastos with snapshot or historical date exchange rates
+    await Promise.all(
+      gastos.map(async (item) => {
+        const srcMoneda = item.moneda as CurrencyKey;
+        const amt = Number(item.importe || 0);
+        const itemRates = item.tasacambio ? todayRates : await getExchangeRatesForDate(item.fecha);
+        CURRENCIES.forEach((targetMoneda) => {
+          balances[targetMoneda].gastos += convertCurrency(amt, srcMoneda, targetMoneda, itemRates, item.tasacambio ? Number(item.tasacambio) : null);
+        });
+      })
+    );
 
-    ahorros.forEach((item) => {
-      const c = item.moneda as CurrencyKey;
-      if (balances[c]) {
-        balances[c].ahorros += Number(item.importe);
-      }
-    });
+    // Process Ahorros with snapshot or historical date exchange rates
+    await Promise.all(
+      ahorros.map(async (item) => {
+        const srcMoneda = item.moneda as CurrencyKey;
+        const amt = Number(item.importe || 0);
+        const itemRates = item.tasacambio ? todayRates : await getExchangeRatesForDate(item.fechadesde);
+        CURRENCIES.forEach((targetMoneda) => {
+          balances[targetMoneda].ahorros += convertCurrency(amt, srcMoneda, targetMoneda, itemRates, item.tasacambio ? Number(item.tasacambio) : null);
+        });
+      })
+    );
 
     CURRENCIES.forEach((c) => {
       // Net balance = Ingresos - Gastos + Ahorros
@@ -107,6 +118,7 @@ export async function GET(
     return NextResponse.json({
       interfaceId: String(interfaceId),
       balances,
+      exchangeRates: todayRates,
     });
   } catch (err: unknown) {
     console.error('[API /api/interfaces/[id]/balance GET Error]:', err);

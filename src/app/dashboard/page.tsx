@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
 import { NotificationBell } from '@/components/interface/NotificationBell';
+import { ExchangeRateDropdown } from '@/components/interface/ExchangeRateDropdown';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -510,6 +511,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          <ExchangeRateDropdown />
           <NotificationBell onNotificationHandled={fetchInterfaces} />
           <ThemeToggle variant="compact" />
         </div>

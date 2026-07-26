@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Filter, X, Search, RotateCcw, Calendar, DollarSign, Tag, CreditCard, ChevronDown, ChevronUp } from 'lucide-react';
+import { Filter, X, Search, RotateCcw, Calendar, DollarSign, Tag, CreditCard, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 export interface MultiFilterState {
@@ -22,6 +22,7 @@ interface FilterBarProps {
   categories: { id: string; nombre: string }[];
   submethods: { id: string; nombre: string; metodo: string }[];
   onReset: () => void;
+  onExportCSV?: () => void;
 }
 
 export function FilterBar({
@@ -30,6 +31,7 @@ export function FilterBar({
   categories = [],
   submethods = [],
   onReset,
+  onExportCSV,
 }: FilterBarProps) {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [localSearch, setLocalSearch] = useState(filters.search);
@@ -155,6 +157,18 @@ export function FilterBar({
             )}
             {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
           </button>
+
+          {onExportCSV && (
+            <button
+              type="button"
+              onClick={onExportCSV}
+              className="flex items-center gap-1.5 px-3.5 h-10 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 transition-colors"
+              title="Exportar movimientos a Excel / CSV"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Exportar</span>
+            </button>
+          )}
 
           {activeFiltersCount > 0 && (
             <button

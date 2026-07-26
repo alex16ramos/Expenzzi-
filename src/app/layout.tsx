@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { ConnectionStatusBanner } from "@/components/ui/ConnectionStatusBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,6 +39,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <ConnectionStatusBanner />
           <ServiceWorkerRegister />
           {children}
           <Toaster position="bottom-right" richColors className="select-none"/>

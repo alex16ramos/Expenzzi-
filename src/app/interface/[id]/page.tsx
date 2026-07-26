@@ -623,6 +623,58 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     });
   }, [transactions, sortBy, sortOrder]);
 
+  // Export Transactions to CSV (Compatible with Excel & Google Sheets)
+  const handleExportCSV = useCallback(() => {
+    if (!sortedTransactions || sortedTransactions.length === 0) {
+      toast.error('No hay movimientos disponibles para exportar');
+      return;
+    }
+
+    const headers = ['Fecha', 'Tipo', 'Categoría', 'Método / Submétodo', 'Comentario', 'Importe', 'Moneda', 'Registrado por'];
+
+    const formatCell = (val: string | number | null | undefined) => {
+      if (val === null || val === undefined) return '';
+      const str = String(val).replace(/"/g, '""');
+      if (str.includes(';') || str.includes('"') || str.includes('\n')) {
+        return `"${str}"`;
+      }
+      return str;
+    };
+
+    const rows = sortedTransactions.map((tx) => [
+      formatCell(tx.date),
+      formatCell(tx.type),
+      formatCell(tx.category || 'Sin Categoría'),
+      formatCell(tx.method || 'General'),
+      formatCell(tx.comment || ''),
+      tx.amount,
+      formatCell(tx.currency),
+      formatCell(tx.user),
+    ]);
+
+    // sep=; directive forces Excel (Windows & Mac) to split columns cleanly by semicolon
+    const csvContent =
+      '\uFEFFsep=;\n' +
+      [headers.join(';'), ...rows.map((r) => r.join(';'))].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const dateStr = new Date().toISOString().split('T')[0];
+    const safeName = (interfaceData?.nombre || 'Interfaz').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `Expenzzi_${safeName}_${activeSection}_${dateStr}.csv`;
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success(`Exportados ${sortedTransactions.length} registros a ${filename}`);
+  }, [sortedTransactions, interfaceData?.nombre, activeSection]);
+
   const hasSelectedDetail = !!selectedTransactionForModal;
 
   return (
@@ -699,6 +751,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
                   categories={categories}
                   submethods={submethods}
                   onReset={() => setFilters(DEFAULT_MULTI_FILTERS)}
+                  onExportCSV={handleExportCSV}
                 />
 
                 {/* RECENT ACTIVITY SECTION */}
