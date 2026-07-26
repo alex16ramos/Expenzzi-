@@ -3,77 +3,172 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Plus,
-  Link2,
-  Users,
-  Copy,
-  Check,
   ArrowRight,
-  Loader2,
-  LogOut,
+  Wallet,
   Eye,
   EyeOff,
+  MoreVertical,
+  LogOut,
   User,
-  Trash2,
-  Wallet,
-  Bell,
-  Key,
+  Search,
+  CheckCircle2,
+  Copy,
+  Users,
+  Star,
+  Clock,
   Layers,
+  Filter,
+  UserPlus,
+  Compass,
+  Info,
 } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
+import { NotificationBell } from '@/components/interface/NotificationBell';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { NotificationBell } from '@/components/interface/NotificationBell';
-import { getAvatarBg, getAvatarClass } from '@/app/dashboard/perfil/page';
+import { Skeleton } from '@/components/ui/skeleton';
+import { CustomDialog } from '@/components/ui/custom-dialog';
+import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Badge } from '@/components/ui/badge';
+import { getAvatarBg, getAvatarClass } from './perfil/page';
 
 interface InterfazItem {
   id: string;
   nombre: string;
-  descripcion: string;
-  rol: 'Administrador' | 'Invitado' | 'Visualizador' | string;
+  descripcion?: string;
+  rol: string;
   estado: boolean;
   linkinvitado: string;
   linkvisualizador: string;
   fechacreacion?: string;
   fechaunion?: string;
+  balanceARS?: number;
+  balanceUSD?: number;
+  balanceUYU?: number;
 }
 
-export default function Dashboard() {
+export default function DashboardPage() {
   const session = authClient.useSession();
   const user = session?.data?.user;
 
+  // Data states
   const [interfaces, setInterfaces] = useState<InterfazItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [createLoading, setCreateLoading] = useState(false);
-  const [joinLoading, setJoinLoading] = useState(false);
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showJoinModal, setShowJoinModal] = useState(false);
+  // Selected Interfaces & Currency for Consolidated Balance & Per-Card Balance
+  const [selectedInterfaceIds, setSelectedInterfaceIds] = useState<string[]>([]);
+  const [balanceCurrency, setBalanceCurrency] = useState<'ARS' | 'USD' | 'UYU'>('ARS');
+
+  // Favorites state stored in localStorage
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const storedFavs = localStorage.getItem('expenzzi_favorites');
+      return storedFavs ? JSON.parse(storedFavs) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Filter Pills & Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterPill, setFilterPill] = useState<'todas' | 'favoritas' | 'ultimo-acceso'>('todas');
+
+  // Balance Visibility
+  const [isBalanceVisible, setIsBalanceVisible] = useState(true);
+
+  // UI Dropdowns & Modals
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [profileFoto, setProfileFoto] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState<string>('');
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch('/api/perfil');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (isMounted && data.success && data.user) {
+          if (data.user.fotoperfil) setProfileFoto(data.user.fotoperfil);
+          if (data.user.nombreusuario) setProfileName(data.user.nombreusuario);
+        }
+      } catch {
+        // Ignore
+      }
+    };
+    fetchProfile();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const [openCardMenuId, setOpenCardMenuId] = useState<string | null>(null);
+  const [codesModalItem, setCodesModalItem] = useState<InterfazItem | null>(null);
+  const [deleteConfirmItem, setDeleteConfirmItem] = useState<InterfazItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Modal Dialog States (Nueva Interfaz & Unirse)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+  const [joinLoading, setJoinLoading] = useState(false);
 
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [codigo, setCodigo] = useState('');
-
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createResult, setCreateResult] = useState<{ id: string; nombre: string } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Fintech UI states
-  const [isBalanceVisible, setIsBalanceVisible] = useState(true);
-  const [selectedCurrency, setSelectedCurrency] = useState<'ARS' | 'USD' | 'UYU'>('ARS');
-  const [expandedCodesId, setExpandedCodesId] = useState<string | null>(null);
+  // Toggle favorite status
+  const toggleFavorite = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const isFav = favorites.includes(id);
+    const updated = isFav ? favorites.filter((f) => f !== id) : [...favorites, id];
+    setFavorites(updated);
+    try {
+      localStorage.setItem('expenzzi_favorites', JSON.stringify(updated));
+    } catch {
+      // Ignore
+    }
+    toast.success(isFav ? 'Quitado de favoritos' : 'Añadido a favoritos');
+  };
 
-  // Fetch active interfaces accessible by user
   const fetchInterfaces = useCallback(async () => {
     try {
       const res = await fetch('/api/interfaces', {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Cache-Control': 'no-cache' },
       });
-      const data = await res.json();
+      if (res.status === 401) {
+        // Retry once after 500ms for OAuth cookie settlement
+        setTimeout(async () => {
+          try {
+            const retryRes = await fetch('/api/interfaces');
+            if (retryRes.ok) {
+              const data = await retryRes.json();
+              if (data.interfaces) {
+                setInterfaces(data.interfaces);
+                setSelectedInterfaceIds((prev) => (prev.length === 0 ? data.interfaces.map((i: InterfazItem) => i.id) : prev));
+              }
+            }
+          } catch {
+            // Ignore
+          } finally {
+            setLoading(false);
+          }
+        }, 500);
+        return;
+      }
 
-      if (res.ok && data.interfaces) {
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+      if (data.interfaces) {
         setInterfaces(data.interfaces);
-      } else {
-        console.error('Failed to load interfaces:', data.error);
+        setSelectedInterfaceIds((prev) =>
+          prev.length === 0 ? data.interfaces.map((i: InterfazItem) => i.id) : prev
+        );
       }
     } catch (err) {
       console.error('Error fetching interfaces:', err);
@@ -82,16 +177,50 @@ export default function Dashboard() {
     }
   }, []);
 
+  const isSessionPending = session?.isPending;
+
   useEffect(() => {
     let isMounted = true;
-    const loadData = async () => {
+
+    if (isSessionPending) return;
+
+    const load = async () => {
       try {
         const res = await fetch('/api/interfaces', {
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Cache-Control': 'no-cache' },
         });
+
+        if (res.status === 401) {
+          // Retry after 400ms if session cookie is settling post-OAuth
+          setTimeout(async () => {
+            if (!isMounted) return;
+            try {
+              const retryRes = await fetch('/api/interfaces');
+              if (retryRes.ok) {
+                const retryData = await retryRes.json();
+                if (isMounted && retryData.interfaces) {
+                  setInterfaces(retryData.interfaces);
+                  setSelectedInterfaceIds((prev) =>
+                    prev.length === 0 ? retryData.interfaces.map((i: InterfazItem) => i.id) : prev
+                  );
+                }
+              }
+            } catch {
+              // Ignore
+            } finally {
+              if (isMounted) setLoading(false);
+            }
+          }, 400);
+          return;
+        }
+
+        if (!res.ok) return;
         const data = await res.json();
-        if (isMounted && res.ok && data.interfaces) {
+        if (isMounted && data.interfaces) {
           setInterfaces(data.interfaces);
+          setSelectedInterfaceIds((prev) =>
+            prev.length === 0 ? data.interfaces.map((i: InterfazItem) => i.id) : prev
+          );
         }
       } catch (err) {
         console.error('Error fetching interfaces:', err);
@@ -100,44 +229,17 @@ export default function Dashboard() {
       }
     };
 
-    void loadData();
+    load();
+
     return () => {
       isMounted = false;
     };
-  }, []);
-
-  const handleLeaveOrDeleteInterface = async (interfaceId: string, nombre: string, isAdmin: boolean) => {
-    const confirmMessage = isAdmin
-      ? `¿Estás seguro de que deseas eliminar la interfaz "${nombre}"? Esta acción eliminará permanentemente la interfaz y todas sus operaciones.`
-      : `¿Estás seguro de que deseas salir de la interfaz "${nombre}"? Dejarás de pertenecer a este grupo.`;
-
-    if (!confirm(confirmMessage)) {
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/interfaces/${interfaceId}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setFeedback({
-          type: 'success',
-          message: data.message || (isAdmin ? 'Interfaz eliminada' : 'Has salido de la interfaz'),
-        });
-        fetchInterfaces();
-      } else {
-        alert(data.error || 'Error al procesar la solicitud');
-      }
-    } catch (err) {
-      console.error('Error in interface action:', err);
-      alert('Error al conectar con el servidor');
-    }
-  };
+  }, [isSessionPending]);
 
   const handleSignOut = async () => {
     try {
       await authClient.signOut();
+      toast.success('Sesión cerrada correctamente');
     } catch {
       // Ignore
     } finally {
@@ -145,11 +247,36 @@ export default function Dashboard() {
     }
   };
 
+  const executeDeleteOrLeave = async () => {
+    if (!deleteConfirmItem) return;
+    setIsDeleting(true);
+    const isAdmin = deleteConfirmItem.rol === 'Administrador';
+
+    try {
+      const res = await fetch(`/api/interfaces/${deleteConfirmItem.id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(data.message || (isAdmin ? 'Interfaz eliminada con éxito' : 'Has salido de la interfaz'));
+        setDeleteConfirmItem(null);
+        fetchInterfaces();
+      } else {
+        toast.error(data.error || 'Error al procesar la solicitud');
+      }
+    } catch (err) {
+      console.error('Error in interface action:', err);
+      toast.error('Error al conectar con el servidor');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Create new interface
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateLoading(true);
-    setFeedback(null);
+    setCreateResult(null);
 
     try {
       const res = await fetch('/api/interfaces', {
@@ -160,465 +287,641 @@ export default function Dashboard() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setFeedback({ type: 'success', message: '¡Interfaz creada con éxito como Administrador!' });
+        toast.success('¡Interfaz creada con éxito!');
+        setCreateResult({
+          id: String(data.data.idinterfazoperacion),
+          nombre: data.data.nombre,
+        });
         setNombre('');
         setDescripcion('');
-        setShowCreateModal(false);
-        await fetchInterfaces();
+        fetchInterfaces();
       } else {
-        setFeedback({ type: 'error', message: data.error || 'No se pudo crear la interfaz' });
+        toast.error(data.error || 'No se pudo crear la interfaz');
       }
     } catch (err) {
       console.error('Error creating interface:', err);
-      setFeedback({ type: 'error', message: 'Error de red al crear la interfaz' });
+      toast.error('Error de red al crear interfaz');
     } finally {
       setCreateLoading(false);
     }
   };
 
-  // Join interface via invitation UUID
-  const handleJoin = async (e: React.FormEvent) => {
+  // Join interface by code
+  const handleJoinByCode = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!joinCode.trim()) return;
     setJoinLoading(true);
-    setFeedback(null);
 
     try {
       const res = await fetch('/api/interfaces/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ codigo }),
+        body: JSON.stringify({ code: joinCode.trim() }),
       });
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setFeedback({ type: 'success', message: data.message || '¡Te has unido exitosamente a la interfaz!' });
-        setCodigo('');
-        setShowJoinModal(false);
-        await fetchInterfaces();
+        toast.success(data.message || 'Te has unido a la interfaz');
+        setIsJoinDialogOpen(false);
+        setJoinCode('');
+        fetchInterfaces();
+        if (data.interfaceId) {
+          window.location.href = `/interface/${data.interfaceId}`;
+        }
       } else {
-        setFeedback({ type: 'error', message: data.error || 'Código de invitación inválido o inactivo' });
+        toast.error(data.error || 'Código de invitación inválido o expirado');
       }
     } catch (err) {
       console.error('Error joining interface:', err);
-      setFeedback({ type: 'error', message: 'Error de red al unirse a la interfaz' });
+      toast.error('Error al conectar con el servidor');
     } finally {
       setJoinLoading(false);
     }
   };
 
-  const copyToClipboard = (text: string, key: string) => {
+  const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
-    setCopiedId(key);
+    setCopiedId(id);
+    toast.success('Código copiado al portapapeles');
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const currencySymbol = selectedCurrency === 'USD' ? 'US$' : selectedCurrency === 'UYU' ? '$U' : '$';
+  // Toggle selection for consolidated balance calculation
+  const toggleInterfaceSelection = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedInterfaceIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  // Compute Consolidated Balance Totals across selected interfaces
+  const selectedInterfaces = interfaces.filter((item) => selectedInterfaceIds.includes(item.id));
+  const consolidatedARS = selectedInterfaces.reduce((acc, item) => acc + (item.balanceARS || 0), 0);
+  const consolidatedUSD = selectedInterfaces.reduce((acc, item) => acc + (item.balanceUSD || 0), 0);
+  const consolidatedUYU = selectedInterfaces.reduce((acc, item) => acc + (item.balanceUYU || 0), 0);
+
+  const activeConsolidated =
+    balanceCurrency === 'ARS' ? consolidatedARS : balanceCurrency === 'USD' ? consolidatedUSD : consolidatedUYU;
+  const currencySymbol = balanceCurrency === 'ARS' ? '$' : balanceCurrency === 'USD' ? 'US$' : '$U';
+
+  // Filter & Search Interface items
+  const filteredInterfaces = interfaces.filter((item) => {
+    const matchesSearch =
+      item.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.descripcion && item.descripcion.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    if (!matchesSearch) return false;
+
+    if (filterPill === 'favoritas') {
+      return favorites.includes(item.id);
+    }
+
+    return true;
+  });
+
+  const sortedInterfaces = [...filteredInterfaces].sort((a, b) => {
+    if (filterPill === 'ultimo-acceso') {
+      return (b.fechaunion || '').localeCompare(a.fechaunion || '');
+    }
+    return 0;
+  });
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex justify-center items-start p-0 md:py-8 font-sans relative overflow-x-hidden transition-colors duration-200">
-      {/* Background Radial Glow Effects */}
-      <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl -z-10 pointer-events-none" />
-      <div className="absolute bottom-10 left-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-3xl -z-10 pointer-events-none" />
-
-      {/* Main Container Frame (Fintech Smartphone / Desktop Layout) */}
-      <div className="w-full max-w-md bg-white dark:bg-slate-950 md:dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 md:rounded-3xl shadow-2xl min-h-screen md:min-h-[840px] flex flex-col justify-between overflow-hidden relative backdrop-blur-md transition-colors">
-        
-        <div>
-          {/* HEADER NAVBAR */}
-          <header className="p-5 pb-3 flex justify-between items-center bg-white/90 dark:bg-slate-950/80 backdrop-blur-md sticky top-0 z-20 border-b border-slate-200 dark:border-slate-900 transition-colors">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => (window.location.href = '/dashboard/perfil')}
-                className="relative group shrink-0"
-                title="Ver Mi Perfil"
-              >
-                <div className={`w-11 h-11 rounded-full ${getAvatarBg(user?.image)} border-2 border-indigo-500 p-0.5 transition-transform group-hover:scale-105 overflow-hidden flex items-center justify-center`}>
-                  {user?.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={user.image}
-                      alt={user.name || 'Avatar'}
-                      className={getAvatarClass(user.image)}
-                    />
-                  ) : (
-                    <User className="w-5 h-5 text-indigo-400" />
-                  )}
-                </div>
-                <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-slate-950 rounded-full" />
-              </button>
-              <div className="min-w-0">
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Bienvenido de nuevo</p>
-                <h1 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-1 truncate">
-                  {user?.name || user?.email || 'Usuario'} 👋
-                </h1>
+    <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
+      {/* HEADER BAR */}
+      <header className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/40 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {/* User Avatar with Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowUserDropdown(!showUserDropdown)}
+              className="relative group rounded-full cursor-pointer"
+              aria-label="Perfil de usuario"
+            >
+              <div className={`w-9 h-9 rounded-full ${getAvatarBg(profileFoto || user?.image)} transition-transform group-hover:scale-105 overflow-hidden flex items-center justify-center font-bold text-xs`}>
+                {profileFoto || user?.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={profileFoto || user?.image || ''}
+                    alt={profileName || user?.name || 'Usuario'}
+                    className={getAvatarClass(profileFoto || user?.image)}
+                  />
+                ) : (
+                  (profileName || user?.name || user?.email || 'U').slice(0, 2).toUpperCase()
+                )}
               </div>
-            </div>
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-slate-950 rounded-full" />
+            </button>
 
-            <div className="flex items-center gap-2">
-              <NotificationBell onNotificationHandled={fetchInterfaces} />
-              <ThemeToggle variant="compact" />
-            </div>
-          </header>
-
-          <main className="p-5 space-y-6">
-            {/* Toast Feedback Notification */}
-            {feedback && (
-              <div
-                className={`p-3.5 rounded-2xl border text-xs font-semibold flex justify-between items-center animate-in fade-in duration-200 ${
-                  feedback.type === 'success'
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                    : 'bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400'
-                }`}
-              >
-                <span>{feedback.message}</span>
-                <button
-                  onClick={() => setFeedback(null)}
-                  className="text-xs font-bold px-2 py-0.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800/50"
-                >
-                  &times;
-                </button>
-              </div>
-            )}
-
-            {/* HERO BANNER: BALANCE CONSOLIDADO */}
-            <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-900/90 via-purple-900/90 to-slate-900 text-white border border-purple-500/30 shadow-xl relative overflow-hidden">
-              <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
-
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-xs uppercase tracking-wider text-purple-200 font-semibold flex items-center gap-1.5">
-                  <Wallet className="w-4 h-4 text-indigo-300" /> Balance Consolidado
-                </span>
-                <button
-                  onClick={() => setIsBalanceVisible(!isBalanceVisible)}
-                  className="text-slate-200 hover:text-white text-xs flex items-center gap-1 bg-slate-800/60 px-2.5 py-1 rounded-full border border-slate-700/50 transition-colors"
-                >
-                  {isBalanceVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  <span className="text-[11px] font-semibold">{isBalanceVisible ? 'Ocultar' : 'Mostrar'}</span>
-                </button>
-              </div>
-
-              <div className="my-2 flex items-center justify-between gap-2">
-                <h2 className="text-3xl font-extrabold text-white tracking-tight flex items-baseline gap-1.5">
-                  {isBalanceVisible ? (
-                    <>
-                      <span className="text-xl font-bold text-indigo-300">{currencySymbol}</span>
-                      {interfaces.length > 0 ? (interfaces.length * 150000).toLocaleString('es-AR') : '0'}
-                    </>
-                  ) : (
-                    '••••••••'
-                  )}
-                </h2>
-
-                {/* Currency Selector Pills */}
-                <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800/90 shadow-inner">
-                  {(['ARS', 'USD', 'UYU'] as const).map((curr) => (
-                    <button
-                      key={curr}
-                      onClick={() => setSelectedCurrency(curr)}
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold transition-all ${
-                        selectedCurrency === curr
-                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-                      }`}
-                      title={`Ver balance en ${curr}`}
-                    >
-                      {curr}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <p className="text-xs text-slate-300 mt-1 font-medium">
-                Suma total de tus {interfaces.length} interfaces activas
-              </p>
-            </div>
-
-            {/* QUICK ACTIONS GRID (4 BUTTONS) */}
-            <div className="grid grid-cols-4 gap-2.5">
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="flex flex-col items-center gap-2 p-3 bg-white dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800/90 border border-slate-200 dark:border-slate-800 hover:border-indigo-500/30 rounded-2xl transition group shadow-sm"
-              >
-                <div className="w-11 h-11 rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-base group-hover:scale-110 transition-transform">
-                  <Plus className="w-5 h-5" />
-                </div>
-                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white">Nueva</span>
-              </button>
-
-              <button
-                onClick={() => setShowJoinModal(true)}
-                className="flex flex-col items-center gap-2 p-3 bg-white dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800/90 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/30 rounded-2xl transition group shadow-sm"
-              >
-                <div className="w-11 h-11 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-base group-hover:scale-110 transition-transform">
-                  <Link2 className="w-5 h-5" />
-                </div>
-                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white">Unirse</span>
-              </button>
-
-              <button
-                onClick={() => (window.location.href = '/dashboard/perfil')}
-                className="flex flex-col items-center gap-2 p-3 bg-white dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800/90 border border-slate-200 dark:border-slate-800 hover:border-blue-500/30 rounded-2xl transition group shadow-sm"
-              >
-                <div className="w-11 h-11 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center justify-center text-base group-hover:scale-110 transition-transform">
-                  <Users className="w-5 h-5" />
-                </div>
-                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white">Amigos</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  const bellBtn = document.querySelector('[data-notification-bell="true"]') as HTMLButtonElement;
-                  if (bellBtn) bellBtn.click();
-                }}
-                className="flex flex-col items-center gap-2 p-3 bg-white dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800/90 border border-slate-200 dark:border-slate-800 hover:border-amber-500/30 rounded-2xl transition group shadow-sm"
-              >
-                <div className="w-11 h-11 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center text-base group-hover:scale-110 transition-transform">
-                  <Bell className="w-5 h-5" />
-                </div>
-                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white">Avisos</span>
-              </button>
-            </div>
-
-            {/* INTERFACES SECTION HEADER */}
-            <div className="flex justify-between items-center pt-2">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-wide uppercase flex items-center gap-2">
-                <Layers className="w-4 h-4 text-indigo-500 dark:text-indigo-400" /> Tus Interfaces ({interfaces.length})
-              </h3>
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Seleccioná para entrar</span>
-            </div>
-
-            {/* INTERFACES CARDS LIST */}
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-3 text-slate-500 dark:text-slate-400">
-                <Loader2 className="w-6 h-6 animate-spin text-indigo-500 dark:text-indigo-400" />
-                <span className="text-xs">Cargando interfaces...</span>
-              </div>
-            ) : interfaces.length === 0 ? (
-              <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 text-center space-y-3">
-                <Users className="w-8 h-8 text-slate-400 dark:text-slate-500 mx-auto" />
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Sin interfaces asociadas</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Aún no perteneces a ninguna interfaz. Crea un nuevo grupo o ingresa un código de invitación.
-                </p>
-                <Button onClick={() => setShowCreateModal(true)} size="sm" className="gap-1.5">
-                  <Plus className="w-4 h-4" /> Crear Primera Interfaz
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {interfaces.map((item) => {
-                  const isExpanded = expandedCodesId === item.id;
-                  const isAdmin = item.rol === 'Administrador';
-                  const isInvitado = item.rol === 'Invitado';
-
-                  const badgeClass = isAdmin
-                    ? 'bg-purple-500/10 border-purple-500/30 text-purple-600 dark:text-purple-400'
-                    : isInvitado
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
-
-                  return (
-                    <div
-                      key={item.id}
-                      className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-2xl p-4 transition-all shadow-sm group"
-                    >
-                      {/* Top Row: Icon, Name & Role Badge */}
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-base shrink-0">
-                            <Layers className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
-                              {item.nombre}
-                            </h4>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
-                              {item.descripcion || 'Sin descripción'}
-                            </p>
-                          </div>
-                        </div>
-
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border shrink-0 ${badgeClass}`}>
-                          {item.rol}
-                        </span>
-                      </div>
-
-                      {/* Middle Row: Active Status & Action Buttons */}
-                      <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800/80 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5 text-[11px]">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" /> ACTIVA
-                          </span>
-                          {isAdmin ? (
-                            <button
-                              onClick={() => handleLeaveOrDeleteInterface(item.id, item.nombre, true)}
-                              className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
-                              title="Eliminar interfaz (Administrador)"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleLeaveOrDeleteInterface(item.id, item.nombre, false)}
-                              className="p-1 text-slate-400 hover:text-amber-500 hover:bg-amber-500/10 rounded-lg transition-colors"
-                              title="Salir de la interfaz"
-                            >
-                              <LogOut className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setExpandedCodesId(isExpanded ? null : item.id)}
-                            className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/50 text-xs flex items-center gap-1 transition-colors"
-                            title="Ver códigos de invitación"
-                          >
-                            <Key className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" /> Códigos
-                          </button>
-
-                          <button
-                            onClick={() => (window.location.href = `/interface/${item.id}`)}
-                            className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-colors text-xs"
-                          >
-                            Entrar <ArrowRight className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Collapsible Invitation Codes Panel */}
-                      {isExpanded && (
-                        <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800/80 space-y-2 animate-in fade-in duration-150">
-                          {item.linkinvitado && (
-                            <div className="flex justify-between items-center text-[11px]">
-                              <span className="text-slate-600 dark:text-slate-400 font-medium">Código Invitado:</span>
-                              <button
-                                onClick={() => copyToClipboard(item.linkinvitado, `inv-${item.id}`)}
-                                className="text-emerald-600 dark:text-emerald-400 font-mono hover:underline flex items-center gap-1"
-                              >
-                                {item.linkinvitado.slice(0, 12)}...
-                                {copiedId === `inv-${item.id}` ? (
-                                  <Check className="w-3 h-3 text-emerald-500" />
-                                ) : (
-                                  <Copy className="w-3 h-3" />
-                                )}
-                              </button>
-                            </div>
-                          )}
-
-                          {item.linkvisualizador && (
-                            <div className="flex justify-between items-center text-[11px]">
-                              <span className="text-slate-600 dark:text-slate-400 font-medium">Código Visualizador:</span>
-                              <button
-                                onClick={() => copyToClipboard(item.linkvisualizador, `vis-${item.id}`)}
-                                className="text-indigo-600 dark:text-indigo-400 font-mono hover:underline flex items-center gap-1"
-                              >
-                                {item.linkvisualizador.slice(0, 12)}...
-                                {copiedId === `vis-${item.id}` ? (
-                                  <Check className="w-3 h-3 text-indigo-500" />
-                                ) : (
-                                  <Copy className="w-3 h-3" />
-                                )}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
+            <AnimatePresence>
+              {showUserDropdown && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowUserDropdown(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                    className="absolute left-0 mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl py-2 z-50 overflow-hidden"
+                  >
+                    <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800">
+                      <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                        {profileName || user?.name || 'Usuario Expenzzi'}
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        {user?.email || 'usuario@expenzzi.local'}
+                      </p>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </main>
+
+                    <button
+                      onClick={() => { setShowUserDropdown(false); window.location.href = '/dashboard/perfil'; }}
+                      className="w-full px-4 py-2 text-left text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 font-medium"
+                    >
+                      <User className="w-4 h-4 text-indigo-500" /> Mi Perfil
+                    </button>
+
+                    <button
+                      onClick={() => { setShowUserDropdown(false); window.location.href = '/dashboard/amigos'; }}
+                      className="w-full px-4 py-2 text-left text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 font-medium"
+                    >
+                      <Users className="w-4 h-4 text-emerald-500" /> Mis Amigos
+                    </button>
+
+                    <button
+                      onClick={() => { setShowUserDropdown(false); handleSignOut(); }}
+                      className="w-full px-4 py-2 text-left text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 font-medium border-t border-slate-100 dark:border-slate-800/80 mt-1"
+                    >
+                      <LogOut className="w-4 h-4" /> Cerrar Sesión
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="min-w-0">
+            <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+              {profileName || user?.name || user?.email?.split('@')[0] || 'Usuario'}
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+              Hola, Buen día!
+            </p>
+          </div>
         </div>
 
-        {/* BOTTOM NAVIGATION BAR */}
-        <nav className="bg-white/90 dark:bg-slate-950/90 backdrop-blur-md border-t border-slate-200 dark:border-slate-900 px-6 py-3 flex justify-around items-center z-10 shrink-0 transition-colors">
-          <button className="flex flex-col items-center gap-1 text-indigo-600 dark:text-indigo-400 font-bold">
-            <Layers className="w-5 h-5" />
-            <span className="text-[10px] font-bold">Inicio</span>
-          </button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <NotificationBell onNotificationHandled={fetchInterfaces} />
+          <ThemeToggle variant="compact" />
+        </div>
+      </header>
+
+      {/* MAIN RESPONSIVE BODY CONTAINER */}
+      <main className="w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-6 flex-1 mx-auto">
+        {/* ORIGINAL TOP 4 ACTION BUTTONS BAR */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex flex-col items-center gap-1 text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+            onClick={() => { setCreateResult(null); setIsCreateDialogOpen(true); }}
+            className="flex items-center gap-3 p-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all shadow-md shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
-            <Plus className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Crear</span>
+            <div className="p-2 bg-white/10 rounded-xl">
+              <Plus className="w-5 h-5" />
+            </div>
+            <div className="text-left">
+              <span className="block font-bold">Nueva Interfaz</span>
+              <span className="text-[10px] text-indigo-200 font-normal">Crear grupo de gastos</span>
+            </div>
           </button>
+
+          <button
+            onClick={() => setIsJoinDialogOpen(true)}
+            className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-bold text-xs border border-slate-200 dark:border-slate-800 transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+          >
+            <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl">
+              <UserPlus className="w-5 h-5" />
+            </div>
+            <div className="text-left">
+              <span className="block font-bold">Unirse</span>
+              <span className="text-[10px] text-slate-500 font-normal">Usar código de invitación</span>
+            </div>
+          </button>
+
           <button
             onClick={() => (window.location.href = '/dashboard/perfil')}
-            className="flex flex-col items-center gap-1 text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+            className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-bold text-xs border border-slate-200 dark:border-slate-800 transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
-            <User className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Perfil</span>
+            <div className="p-2 bg-purple-500/10 text-purple-500 rounded-xl">
+              <User className="w-5 h-5" />
+            </div>
+            <div className="text-left">
+              <span className="block font-bold">Mi Perfil</span>
+              <span className="text-[10px] text-slate-500 font-normal">Editar datos y avatar</span>
+            </div>
           </button>
+
           <button
-            onClick={handleSignOut}
-            className="flex flex-col items-center gap-1 text-slate-500 dark:text-slate-500 hover:text-rose-500 transition-colors"
+            onClick={() => (window.location.href = '/dashboard/amigos')}
+            className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-bold text-xs border border-slate-200 dark:border-slate-800 transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
-            <LogOut className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Salir</span>
+            <div className="p-2 bg-amber-500/10 text-amber-500 rounded-xl">
+              <Users className="w-5 h-5" />
+            </div>
+            <div className="text-left">
+              <span className="block font-bold">Mis Amigos</span>
+              <span className="text-[10px] text-slate-500 font-normal">Gestionar contactos</span>
+            </div>
           </button>
-        </nav>
-      </div>
+        </div>
 
-      {/* CREATE INTERFACE MODAL */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-5 shadow-2xl text-slate-900 dark:text-white">
-            <div>
-              <h3 className="text-base font-bold flex items-center gap-2 text-slate-900 dark:text-white">
-                <Plus className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /> Crear Nueva Interfaz
-              </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                Ingresa el nombre y descripción. Serás asignado automáticamente como <strong>Administrador</strong>.
-              </p>
+        {/* HERO BANNER: BALANCE CONSOLIDADO */}
+        <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-indigo-900/90 via-purple-900/90 to-slate-900 text-white border border-purple-500/30 shadow-2xl relative overflow-hidden space-y-4">
+          <div className="absolute -right-8 -bottom-8 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="flex flex-wrap justify-between items-center gap-2">
+            <span className="text-xs uppercase tracking-wider text-purple-200 font-bold flex items-center gap-1.5">
+              <Wallet className="w-4 h-4 text-indigo-300" /> Balance Consolidado 
+              <Badge className="text-[10px]">{selectedInterfaces.length} {selectedInterfaces.length === 1 ? 'seleccionada' : 'seleccionadas'}</Badge>
+            </span>
+            <div className="flex items-center gap-2">
+              {/* Currency Tabs */}
+              <div className="flex bg-slate-950/80 p-1 rounded-xl border border-slate-800 text-[11px] font-bold">
+                {(['ARS', 'USD', 'UYU'] as const).map((curr) => (
+                  <button
+                    key={curr}
+                    onClick={() => setBalanceCurrency(curr)}
+                    className={`px-2.5 py-0.5 rounded-lg transition-all cursor-pointer ${
+                      balanceCurrency === curr ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {curr}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setIsBalanceVisible(!isBalanceVisible)}
+                className="text-slate-200 hover:text-white text-xs flex items-center gap-1.5 bg-slate-800/70 px-3 py-1 rounded-xl border border-slate-700/50 transition-colors cursor-pointer"
+              >
+                {isBalanceVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
             </div>
+          </div>
 
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Nombre de la Interfaz *
-                </label>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight flex items-baseline gap-2">
+                {isBalanceVisible ? (
+                  <>
+                    <span className="text-2xl font-bold text-indigo-300">{currencySymbol}</span>
+                    {activeConsolidated.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </>
+                ) : (
+                  <>
+                    <span className="text-2xl font-bold text-indigo-300">{currencySymbol}</span>
+                    ••••••••
+                  </>
+                )}
+              </h2>
+              <span className="text-xs text-slate-300/80 mt-1 flex items-center gap-1.5 mt-5">
+                <Info className="size-4"/> Suma calculada en base a las interfaces marcadas con el checkbox abajo.
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* INTERFACES SECTION WITH SEARCH & FILTER PILLS */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Layers className="w-5 h-5 text-indigo-500" /> Mis Interfaces de Operación
+              <Badge>{interfaces.length}</Badge>
+            </h3>
+
+            {/* Filter Pills & Search Container */}
+            <div className="flex flex-wrap items-center gap-2 self-stretch sm:self-auto">
+              <div className="relative flex-1 sm:w-60">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <Input
                   type="text"
-                  required
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                  placeholder="Ej: Gastos Compartidos Apt 302"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar interfaz..."
+                  className="pl-8 h-9 text-xs bg-white dark:bg-slate-900 rounded-xl"
                 />
+              </div>
+
+              <div className="flex bg-slate-200 dark:bg-slate-900 p-1 rounded-xl border border-slate-300 dark:border-slate-800 text-xs font-semibold">
+                <button
+                  onClick={() => setFilterPill('todas')}
+                  className={`px-3 py-1 rounded-lg transition-all ${
+                    filterPill === 'todas' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 cursor-pointer'
+                  }`}
+                >
+                  Todas
+                </button>
+                <button
+                  onClick={() => setFilterPill('favoritas')}
+                  className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 ${
+                    filterPill === 'favoritas' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 cursor-pointer'
+                  }`}
+                >
+                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> Favoritas
+                </button>
+                <button
+                  onClick={() => setFilterPill('ultimo-acceso')}
+                  className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 ${
+                    filterPill === 'ultimo-acceso' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 cursor-pointer'
+                  }`}
+                >
+                  <Clock className="w-3 h-3" /> Recientes
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* INTERFACES RESPONSIVE GRID */}
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4">
+                  <Skeleton className="h-6 w-3/4 rounded-md" />
+                  <Skeleton className="h-4 w-1/2 rounded-md" />
+                  <Skeleton className="h-10 w-full rounded-2xl" />
+                </div>
+              ))}
+            </div>
+          ) : sortedInterfaces.length === 0 ? (
+            <div className="p-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl text-center space-y-3 shadow-sm">
+              <Filter className="w-10 h-10 text-indigo-400 mx-auto opacity-40" />
+              <h4 className="text-base font-bold text-slate-900 dark:text-white">No se encontraron interfaces</h4>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                {searchQuery || filterPill !== 'todas'
+                  ? 'Intenta ajustar los filtros de búsqueda o favoritos.'
+                  : 'Crea tu primera interfaz de operaciones para comenzar a administrar gastos.'}
+              </p>
+              <Button
+                onClick={() => { setCreateResult(null); setIsCreateDialogOpen(true); }}
+                className="gap-2 bg-indigo-600 text-white text-xs rounded-xl"
+              >
+                <Plus className="w-4 h-4" /> Crear Interfaz
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {sortedInterfaces.map((item) => {
+                const isFavorite = favorites.includes(item.id);
+                const isSelectedForConsolidated = selectedInterfaceIds.includes(item.id);
+                const isAdmin = item.rol === 'Administrador';
+
+                // Display ONLY the selected currency balance for compact card height
+                const currentBalanceVal =
+                  balanceCurrency === 'ARS'
+                    ? item.balanceARS
+                    : balanceCurrency === 'USD'
+                    ? item.balanceUSD
+                    : item.balanceUYU;
+
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => (window.location.href = `/interface/${item.id}`)}
+                    className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-500/50 rounded-3xl p-5 shadow-sm hover:shadow-xl transition-all duration-200 flex flex-col justify-between cursor-pointer relative overflow-hidden"
+                  >
+                    <div>
+                      {/* Top Header Card */}
+                      <div className="flex justify-between items-start mb-3 gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={isSelectedForConsolidated}
+                            onChange={(e) => toggleInterfaceSelection(item.id, e as unknown as React.MouseEvent)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                            title="Incluir en el balance consolidado"
+                          />
+
+                          <h4 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
+                            {item.nombre}
+                          </h4>
+                        </div>
+
+                        {/* Card Action Controls: Star & 3-Dots Menu */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => toggleFavorite(item.id, e)}
+                            className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-400 hover:text-amber-400"
+                            title={isFavorite ? 'Quitar de favoritos' : 'Marcar como favorita'}
+                          >
+                            <Star
+                              className={`w-4 h-4 transition-all ${
+                                isFavorite ? 'fill-amber-400 text-amber-400 scale-110' : 'text-slate-400'
+                              }`}
+                            />
+                          </button>
+
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenCardMenuId(openCardMenuId === item.id ? null : item.id);
+                              }}
+                              className="p-1.5 rounded-full text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                              title="Opciones de la interfaz"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+
+                            <AnimatePresence>
+                              {openCardMenuId === item.id && (
+                                <>
+                                  <div
+                                    className="fixed inset-0 z-40"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenCardMenuId(null);
+                                    }}
+                                  />
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    className="absolute right-0 mt-1 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl py-1.5 z-50 overflow-hidden text-xs"
+                                  >
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOpenCardMenuId(null);
+                                        setCodesModalItem(item);
+                                      }}
+                                      className="w-full px-3.5 py-2 text-left text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 font-medium"
+                                    >
+                                      <Copy className="w-3.5 h-3.5 text-indigo-500" /> Ver Códigos
+                                    </button>
+
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOpenCardMenuId(null);
+                                        setDeleteConfirmItem(item);
+                                      }}
+                                      className="w-full px-3.5 py-2 text-left text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 font-medium border-t border-slate-100 dark:border-slate-800 mt-1"
+                                    >
+                                      {isAdmin ? 'Eliminar Interfaz' : 'Salir de la Interfaz'}
+                                    </button>
+                                  </motion.div>
+                                </>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        </div>
+                      </div>
+
+                      {item.descripcion && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-3">
+                          {item.descripcion}
+                        </p>
+                      )}
+
+                      {/* COMPACT SINGLE CURRENCY BALANCE DISPLAY */}
+                      <div className="p-3 bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-100 dark:border-slate-800/60 flex items-center justify-between mb-4">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
+                          Balance Neto ({balanceCurrency})
+                        </span>
+                        <span className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400">
+                          {currencySymbol} {(currentBalanceVal || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Footer Row */}
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800/80">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-900/50">
+                        {item.rol}
+                      </span>
+                      <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                        Ingresar <ArrowRight className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* MODAL: CODES & INVITE LINKS */}
+      {codesModalItem && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Copy className="w-5 h-5 text-indigo-500" /> Códigos de Invitación
+            </h3>
+            <p className="text-xs text-slate-500">
+              Comparte estos enlaces para invitar miembros a &quot;{codesModalItem.nombre}&quot;.
+            </p>
+
+            <div className="space-y-3 pt-2">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Enlace para Rol Invitado (Cargar movimientos)
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    readOnly
+                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/interface/join?code=${codesModalItem.linkinvitado}`}
+                    className="text-xs bg-slate-50 dark:bg-slate-950 font-mono"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      copyToClipboard(
+                        `${window.location.origin}/interface/join?code=${codesModalItem.linkinvitado}`,
+                        'invitado'
+                      )
+                    }
+                    className="bg-indigo-600 text-white text-xs gap-1"
+                  >
+                    {copiedId === 'invitado' ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Descripción (Opcional)
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Enlace para Rol Visualizador (Solo lectura)
                 </label>
-                <textarea
-                  value={descripcion}
-                  onChange={(e) => setDescripcion(e.target.value)}
-                  placeholder="Detalles sobre las operaciones..."
-                  rows={3}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                <div className="flex gap-2">
+                  <Input
+                    readOnly
+                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/interface/join?code=${codesModalItem.linkvisualizador}`}
+                    className="text-xs bg-slate-50 dark:bg-slate-950 font-mono"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      copyToClipboard(
+                        `${window.location.origin}/interface/join?code=${codesModalItem.linkvisualizador}`,
+                        'visualizador'
+                      )
+                    }
+                    className="bg-indigo-600 text-white text-xs gap-1"
+                  >
+                    {copiedId === 'visualizador' ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => setCodesModalItem(null)} variant="outline" className="text-xs rounded-xl">
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DIALOG: UNIRSE POR CÓDIGO */}
+      {isJoinDialogOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Compass className="w-5 h-5 text-emerald-500" /> Unirse a una Interfaz
+            </h3>
+            <p className="text-xs text-slate-500">
+              Pega el código o enlace de invitación recibido para acceder al grupo.
+            </p>
+
+            <form onSubmit={handleJoinByCode} className="space-y-4 pt-1">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Código o URL de Invitación *
+                </label>
+                <Input
+                  required
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value)}
+                  placeholder="Ej: 8f9b2c1a-..."
+                  className="text-xs"
                 />
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex justify-end gap-2 pt-2">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setShowCreateModal(false)}
-                  className="flex-1"
+                  onClick={() => setIsJoinDialogOpen(false)}
+                  className="text-xs rounded-xl"
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={createLoading} className="flex-1 gap-2 bg-indigo-600 hover:bg-indigo-500 text-white">
-                  {createLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> Creando...
-                    </>
-                  ) : (
-                    'Crear Interfaz'
-                  )}
+                <Button
+                  type="submit"
+                  disabled={joinLoading}
+                  className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold"
+                >
+                  {joinLoading ? 'Ingresando...' : 'Unirme'}
                 </Button>
               </div>
             </form>
@@ -626,56 +929,108 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* JOIN INTERFACE MODAL */}
-      {showJoinModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-5 shadow-2xl text-slate-900 dark:text-white">
-            <div>
-              <h3 className="text-base font-bold flex items-center gap-2 text-slate-900 dark:text-white">
-                <Link2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" /> Unirse a una Interfaz
-              </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                Ingresá el código de invitación (UUID) recibido de un amigo o administrador.
-              </p>
-            </div>
+      {/* DIALOG: CREATE INTERFACE */}
+      {isCreateDialogOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Plus className="w-5 h-5 text-indigo-500" /> Nueva Interfaz de Operaciones
+            </h3>
 
-            <form onSubmit={handleJoin} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Código UUID de Invitación *
-                </label>
-                <Input
-                  type="text"
-                  required
-                  value={codigo}
-                  onChange={(e) => setCodigo(e.target.value)}
-                  placeholder="Ej: b7a3ec84-28cb-4f..."
-                />
-              </div>
+            {!createResult ? (
+              <form onSubmit={handleCreate} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Nombre de la Interfaz *
+                  </label>
+                  <Input
+                    required
+                    value={nombre}
+                    onChange={(e) => setNombre(e.target.value)}
+                    placeholder="Ej: Gastos de Casa, Vacaciones 2026..."
+                    className="text-xs"
+                  />
+                </div>
 
-              <div className="flex gap-3 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowJoinModal(false)}
-                  className="flex-1"
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={joinLoading} className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-500 text-white">
-                  {joinLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> Uniéndose...
-                    </>
-                  ) : (
-                    'Unirse a la Interfaz'
-                  )}
-                </Button>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Descripción (Opcional)
+                  </label>
+                  <Input
+                    value={descripcion}
+                    onChange={(e) => setDescripcion(e.target.value)}
+                    placeholder="Detalles sobre el propósito..."
+                    className="text-xs"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCreateDialogOpen(false)}
+                    className="text-xs rounded-xl"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={createLoading}
+                    className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold"
+                  >
+                    {createLoading ? 'Creando...' : 'Crear Interfaz'}
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-4 pt-1">
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-center space-y-2">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                    ¡Interfaz &quot;{createResult.nombre}&quot; creada!
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Comienza con categorías y submétodos base listos para operar.
+                  </p>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsCreateDialogOpen(false)}
+                    className="text-xs rounded-xl"
+                  >
+                    Permanecer en Dashboard
+                  </Button>
+                  <Button
+                    onClick={() => (window.location.href = `/interface/${createResult.id}`)}
+                    className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold gap-1"
+                  >
+                    Ir a la Interfaz <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
-            </form>
+            )}
           </div>
         </div>
       )}
+
+      {/* CONFIRMATION DIALOG FOR DELETE OR LEAVE */}
+      <CustomDialog
+        isOpen={!!deleteConfirmItem}
+        onClose={() => setDeleteConfirmItem(null)}
+        onConfirm={executeDeleteOrLeave}
+        isLoading={isDeleting}
+        title={deleteConfirmItem?.rol === 'Administrador' ? 'Eliminar Interfaz' : 'Salir de la Interfaz'}
+        description={
+          deleteConfirmItem?.rol === 'Administrador'
+            ? `¿Estás seguro de eliminar "${deleteConfirmItem?.nombre}"? Se perderán todas las transacciones.`
+            : `¿Estás seguro de salir de "${deleteConfirmItem?.nombre}"?`
+        }
+        variant={deleteConfirmItem?.rol === 'Administrador' ? 'danger' : 'warning'}
+        confirmText={deleteConfirmItem?.rol === 'Administrador' ? 'Sí, Eliminar' : 'Sí, Salir'}
+        cancelText="Cancelar"
+      />
     </div>
   );
 }
