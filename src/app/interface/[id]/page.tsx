@@ -1,50 +1,53 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, use } from 'react';
-import { Plus, Minus, RefreshCw, Eye, EyeOff, PieChart, Sliders } from 'lucide-react';
-import { authClient } from '@/lib/auth-client';
+import React, { useState, useEffect, useCallback, use, useRef } from 'react';
+import { Layers } from 'lucide-react';
 import { Header } from '@/components/interface/Header';
-import { InviteModal } from '@/components/interface/InviteModal';
+import { SideMenu } from '@/components/interface/SideMenu';
 import { TransactionCard, Transaction } from '@/components/interface/TransactionCard';
 import { SortField, SortOrder } from '@/components/interface/TransactionTable';
-import { TransactionDetailModal } from '@/components/interface/TransactionDetailModal';
+import { TransactionDetailPanel } from '@/components/interface/TransactionDetailPanel';
 import { Pagination } from '@/components/interface/Pagination';
 import { BottomNav } from '@/components/interface/BottomNav';
-import { UserExpenseChart } from '@/components/interface/UserExpenseChart';
-import { GeneralBalances } from '@/components/interface/BalanceCards';
-import { FilterBar, FilterState } from '@/components/interface/FilterBar';
+import { FabButton } from '@/components/interface/FabButton';
+import { BalanceCards, GeneralBalances } from '@/components/interface/BalanceCards';
+import { FilterBar, MultiFilterState } from '@/components/interface/FilterBar';
 import { GastoFormModal, GastoFormData } from '@/components/interface/GastoFormModal';
 import { IngresoFormModal, IngresoFormData } from '@/components/interface/IngresoFormModal';
 import { AhorroFormModal, AhorroFormData } from '@/components/interface/AhorroFormModal';
 import { ComparativeReportsDashboard } from '@/components/interface/ComparativeReportsDashboard';
+import { UserExpenseChart } from '@/components/interface/UserExpenseChart';
 import { CategoriaManagerModal, CategoriaItem } from '@/components/interface/CategoriaManagerModal';
 import { SubmetodoManagerModal, SubmetodoItem } from '@/components/interface/SubmetodoManagerModal';
 import { AuditHistoryModal } from '@/components/interface/AuditHistoryModal';
+import { CustomDialog } from '@/components/ui/custom-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
+import { itemsNav } from '@/lib/nav-items';
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-const DEFAULT_FILTERS: FilterState = {
+const DEFAULT_MULTI_FILTERS: MultiFilterState = {
   search: '',
-  categoryId: '',
-  submethodId: '',
-  metodo: '',
-  moneda: '',
+  categoryIds: [],
+  submethodIds: [],
+  metodos: [],
+  monedas: [],
   fechaDesde: '',
   fechaHasta: '',
   minImporte: '',
   maxImporte: '',
 };
 
+
+
 export default function InterfaceDetailsPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const interfaceId = resolvedParams.id;
 
-  const session = authClient.useSession();
-  const user = session?.data?.user;
-
-  // Interface details state
+  // Interface state
   const [interfaceData, setInterfaceData] = useState<{ nombre: string; descripcion?: string } | null>(null);
   const [userRole, setUserRole] = useState<string>('Visualizador');
   const [categories, setCategories] = useState<CategoriaItem[]>([]);
@@ -56,20 +59,28 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     UYU: { ingresos: 0, gastos: 0, ahorros: 0, net: 0 },
   });
 
-  // UI state
+  // Selected Currency for Folder Tabs
+  const [selectedCurrency, setSelectedCurrency] = useState<'ARS' | 'USD' | 'UYU'>('ARS');
+
+  // Navigation & View state
   const [activeSection, setActiveSection] = useState<'Gastos' | 'Ingresos' | 'Ahorros' | 'Resúmenes'>('Gastos');
   const [summarySubTab, setSummarySubTab] = useState<'comparative' | 'user'>('comparative');
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState<MultiFilterState>(DEFAULT_MULTI_FILTERS);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize] = useState(20);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBalancesLoading, setIsBalancesLoading] = useState(true);
 
-  // Sorting state
-  const [sortBy, setSortBy] = useState<SortField>('date');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  // SideMenu UI state
+  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
+  const [isSideMenuCollapsed, setIsSideMenuCollapsed] = useState(false);
 
-  // Transaction items loaded from backend
+  // Sorting
+  const [sortBy] = useState<SortField>('date');
+  const [sortOrder] = useState<SortOrder>('desc');
+
+  // Transactions list
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   // Modals state
@@ -84,13 +95,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isSubmethodModalOpen, setIsSubmethodModalOpen] = useState(false);
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-
-  // Fintech Mercado Pago UI states
-  const [isBalanceVisible, setIsBalanceVisible] = useState(true);
-  const [selectedCurrency, setSelectedCurrency] = useState<'ARS' | 'USD' | 'UYU'>('ARS');
   const [selectedTransactionForModal, setSelectedTransactionForModal] = useState<Transaction | null>(null);
-  const [isFilterBarOpen, setIsFilterBarOpen] = useState(false);
+
+  // Delete Confirm Dialog state
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDeletingInterface, setIsDeletingInterface] = useState(false);
 
   // Audit History Modal state
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
@@ -109,24 +118,13 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     setIsAuditModalOpen(true);
   };
 
-
-  // User initials
-  const userInitials = user?.name
-    ? user.name
-        .split(' ')
-        .map((n: string) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
-    : 'EX';
-
-  // 1. Fetch Interface Details & Config
+  // 1. Fetch Interface Details
   const loadInterfaceDetails = useCallback(async () => {
     try {
       const res = await fetch(`/api/interfaces/${interfaceId}/details`);
       if (!res.ok) {
         if (res.status === 404 || res.status === 403) {
-          alert('No tienes acceso a esta interfaz o ha sido eliminada.');
+          toast.error('No tienes acceso a esta interfaz o fue eliminada.');
           window.location.href = '/dashboard';
         }
         return;
@@ -142,8 +140,9 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     }
   }, [interfaceId]);
 
-  // 2. Fetch General Balances (RF19)
+  // 2. Fetch Balances
   const loadBalances = useCallback(async () => {
+    setIsBalancesLoading(true);
     try {
       const res = await fetch(`/api/interfaces/${interfaceId}/balance`);
       if (!res.ok) return;
@@ -153,27 +152,37 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       }
     } catch (err) {
       console.error('Error fetching balances:', err);
+    } finally {
+      setIsBalancesLoading(false);
     }
   }, [interfaceId]);
 
-  // 3. Fetch Records based on Active Section & Filters
+  const recordsCacheRef = useRef<Record<string, Transaction[]>>({});
+
+  // 3. Fetch Records with Instant Client-Side In-Memory Cache
   const loadSectionRecords = useCallback(async () => {
     if (activeSection === 'Resúmenes') {
       setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
+    const hasCachedData = Boolean(recordsCacheRef.current[activeSection]);
+
+    // Only show loading skeletons if we don't have cached data yet for this section
+    if (!hasCachedData) {
+      setIsLoading(true);
+    }
+
     try {
       const queryParams = new URLSearchParams();
       queryParams.set('page', String(currentPage));
       queryParams.set('pageSize', String(pageSize));
 
       if (filters.search) queryParams.set('search', filters.search);
-      if (filters.categoryId) queryParams.set('categoryId', filters.categoryId);
-      if (filters.submethodId) queryParams.set('submethodId', filters.submethodId);
-      if (filters.metodo) queryParams.set('metodo', filters.metodo);
-      if (filters.moneda) queryParams.set('moneda', filters.moneda);
+      if (filters.categoryIds.length > 0) queryParams.set('categoryId', filters.categoryIds.join(','));
+      if (filters.submethodIds.length > 0) queryParams.set('submethodId', filters.submethodIds.join(','));
+      if (filters.metodos.length > 0) queryParams.set('metodo', filters.metodos.join(','));
+      if (filters.monedas.length > 0) queryParams.set('moneda', filters.monedas.join(','));
       if (filters.fechaDesde) queryParams.set('fechaDesde', filters.fechaDesde);
       if (filters.fechaHasta) queryParams.set('fechaHasta', filters.fechaHasta);
       if (filters.minImporte) queryParams.set('minImporte', filters.minImporte);
@@ -183,8 +192,8 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         activeSection === 'Gastos'
           ? `/api/interfaces/${interfaceId}/gastos`
           : activeSection === 'Ingresos'
-          ? `/api/interfaces/${interfaceId}/ingresos`
-          : `/api/interfaces/${interfaceId}/ahorros`;
+            ? `/api/interfaces/${interfaceId}/ingresos`
+            : `/api/interfaces/${interfaceId}/ahorros`;
 
       const res = await fetch(`${endpoint}?${queryParams.toString()}`);
       if (!res.ok) {
@@ -194,7 +203,6 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       const json = await res.json();
 
       if (Array.isArray(json.data)) {
-        // Map backend records to unified Transaction format for components
         const mapped: Transaction[] = json.data.map((item: Record<string, unknown>) => {
           const amt = Number(item.importe || 0);
           const curr = String(item.moneda || 'ARS');
@@ -221,6 +229,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
           };
         });
 
+        recordsCacheRef.current[activeSection] = mapped;
         setTransactions(mapped);
         if (json.pagination) {
           setTotalPages(json.pagination.totalPages || 1);
@@ -233,7 +242,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     }
   }, [activeSection, interfaceId, currentPage, pageSize, filters]);
 
-  // Initial load effect
+  // Initial load
   useEffect(() => {
     let isMounted = true;
     async function fetchData() {
@@ -247,7 +256,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     };
   }, [loadInterfaceDetails, loadBalances]);
 
-  // Section records load effect
+  // Section load
   useEffect(() => {
     let isMounted = true;
     async function fetchRecords() {
@@ -260,23 +269,49 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     };
   }, [loadSectionRecords]);
 
-  const handleSignOut = async () => {
+  const loadBalancesRef = useRef(loadBalances);
+  const loadSectionRecordsRef = useRef(loadSectionRecords);
+
+  useEffect(() => {
+    loadBalancesRef.current = loadBalances;
+    loadSectionRecordsRef.current = loadSectionRecords;
+  });
+
+  // REALTIME SERVER-SENT EVENTS (SSE) CONNECTION (Static connection per interface)
+  useEffect(() => {
+    if (!interfaceId) return;
+
+    let eventSource: EventSource | null = null;
     try {
-      await authClient.signOut();
-    } catch {
-      // Ignore
-    } finally {
-      window.location.href = '/';
+      eventSource = new EventSource(`/api/interfaces/${interfaceId}/realtime`);
+
+      eventSource.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === 'MUTATION') {
+            recordsCacheRef.current = {};
+            if (loadBalancesRef.current) loadBalancesRef.current();
+            if (loadSectionRecordsRef.current) loadSectionRecordsRef.current();
+          }
+        } catch {
+          // Ignore
+        }
+      };
+    } catch (err) {
+      console.error('Error connecting Realtime SSE:', err);
     }
-  };
 
-  const handleLeaveOrDeleteInterface = async () => {
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
+  }, [interfaceId]);
+
+  // Delete Interface
+  const executeDeleteOrLeaveInterface = async () => {
+    setIsDeletingInterface(true);
     const isAdmin = userRole === 'Administrador';
-    const confirmMessage = isAdmin
-      ? '¿Estás seguro de que deseas eliminar permanentemente esta interfaz? Se eliminarán todas las operaciones.'
-      : '¿Estás seguro de que deseas salir de esta interfaz? Dejarás de pertenecer a este grupo.';
-
-    if (!confirm(confirmMessage)) return;
 
     try {
       const res = await fetch(`/api/interfaces/${interfaceId}`, {
@@ -284,52 +319,43 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        alert(data.message || (isAdmin ? 'Interfaz eliminada' : 'Has salido de la interfaz'));
+        toast.success(data.message || (isAdmin ? 'Interfaz eliminada correctamente' : 'Has salido de la interfaz'));
         window.location.href = '/dashboard';
       } else {
-        alert(data.error || 'Error al procesar la solicitud');
+        toast.error(data.error || 'Error al procesar la solicitud');
       }
     } catch {
-      alert('Error al conectar con el servidor');
+      toast.error('Error al conectar con el servidor');
+    } finally {
+      setIsDeletingInterface(false);
+      setIsDeleteConfirmOpen(false);
     }
   };
 
-  const handleSortChange = (field: SortField) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('desc');
-    }
-  };
-
-  const handleSortSelect = (field: SortField, order: SortOrder) => {
-    setSortBy(field);
-    setSortOrder(order);
-  };
-
-  // Delete/Deactivate Handler (Baja Lógica)
+  // Delete Transaction Handler
   const handleDeleteTransaction = async (id: string | number) => {
-    if (!confirm(`¿Está seguro de desactivar este registro de ${activeSection}?`)) return;
-
     try {
       const endpoint =
         activeSection === 'Gastos'
           ? `/api/interfaces/${interfaceId}/gastos?idgasto=${id}`
           : activeSection === 'Ingresos'
-          ? `/api/interfaces/${interfaceId}/ingresos?idingreso=${id}`
-          : `/api/interfaces/${interfaceId}/ahorros?idahorro=${id}`;
+            ? `/api/interfaces/${interfaceId}/ingresos?idingreso=${id}`
+            : `/api/interfaces/${interfaceId}/ahorros?idahorro=${id}`;
 
       const res = await fetch(endpoint, { method: 'DELETE' });
       if (res.ok) {
+        toast.success('Movimiento eliminado correctamente');
         setTransactions(transactions.filter((tx) => String(tx.id) !== String(id)));
         loadBalances();
+        if (selectedTransactionForModal && String(selectedTransactionForModal.id) === String(id)) {
+          setSelectedTransactionForModal(null);
+        }
       } else {
         const err = await res.json();
-        alert(err.error || 'Error al desactivar el registro');
+        toast.error(err.error || 'Error al eliminar movimiento');
       }
     } catch {
-      alert('Error de conexión');
+      toast.error('Error de conexión al eliminar');
     }
   };
 
@@ -372,9 +398,10 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     }
   };
 
-  // Save Handlers for Modals
+  // Save Handlers
   const handleSaveGasto = async (data: GastoFormData) => {
-    const method = data.idgasto ? 'PUT' : 'POST';
+    const isEdit = !!data.idgasto;
+    const method = isEdit ? 'PUT' : 'POST';
     const res = await fetch(`/api/interfaces/${interfaceId}/gastos`, {
       method,
       headers: { 'Content-Type': 'application/json' },
@@ -382,12 +409,15 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Error al guardar gasto');
+
+    toast.success(isEdit ? 'Gasto modificado correctamente' : 'Gasto registrado correctamente');
     loadSectionRecords();
     loadBalances();
   };
 
   const handleSaveIngreso = async (data: IngresoFormData) => {
-    const method = data.idingreso ? 'PUT' : 'POST';
+    const isEdit = !!data.idingreso;
+    const method = isEdit ? 'PUT' : 'POST';
     const res = await fetch(`/api/interfaces/${interfaceId}/ingresos`, {
       method,
       headers: { 'Content-Type': 'application/json' },
@@ -395,12 +425,15 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Error al guardar ingreso');
+
+    toast.success(isEdit ? 'Ingreso modificado correctamente' : 'Ingreso registrado correctamente');
     loadSectionRecords();
     loadBalances();
   };
 
   const handleSaveAhorro = async (data: AhorroFormData) => {
-    const method = data.idahorro ? 'PUT' : 'POST';
+    const isEdit = !!data.idahorro;
+    const method = isEdit ? 'PUT' : 'POST';
     const res = await fetch(`/api/interfaces/${interfaceId}/ahorros`, {
       method,
       headers: { 'Content-Type': 'application/json' },
@@ -408,6 +441,8 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Error al guardar ahorro');
+
+    toast.success(isEdit ? 'Ahorro modificado correctamente' : 'Ahorro registrado correctamente');
     loadSectionRecords();
     loadBalances();
   };
@@ -421,6 +456,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Error al crear categoría');
+    toast.success('Categoría creada correctamente');
     loadInterfaceDetails();
   };
 
@@ -432,6 +468,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Error al actualizar categoría');
+    toast.success('Categoría actualizada');
     loadInterfaceDetails();
   };
 
@@ -441,6 +478,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Error al eliminar categoría');
+    toast.success('Categoría eliminada');
     loadInterfaceDetails();
   };
 
@@ -453,6 +491,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Error al crear submétodo');
+    toast.success('Submétodo de pago creado');
     loadInterfaceDetails();
   };
 
@@ -464,6 +503,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Error al actualizar submétodo');
+    toast.success('Submétodo de pago actualizado');
     loadInterfaceDetails();
   };
 
@@ -473,10 +513,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Error al eliminar submétodo');
+    toast.success('Submétodo de pago eliminado');
     loadInterfaceDetails();
   };
 
-  // Filtered & Sorted Client view
+  // Sorted Transactions
   const sortedTransactions = [...transactions].sort((a, b) => {
     if (sortBy === 'amount') {
       return sortOrder === 'desc' ? b.amount - a.amount : a.amount - b.amount;
@@ -487,278 +528,232 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     return sortOrder === 'desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
   });
 
-  const currBalanceObj = balances?.[selectedCurrency];
-  const totalBalanceAmount =
-    (activeSection === 'Ingresos'
-      ? currBalanceObj?.ingresos
-      : activeSection === 'Ahorros'
-      ? currBalanceObj?.ahorros
-      : currBalanceObj?.gastos) ??
-    transactions
-      .filter((t) => t.currency === selectedCurrency)
-      .reduce((acc, t) => acc + t.amount, 0);
-
-  const currencySymbol = selectedCurrency === 'USD' ? 'US$' : selectedCurrency === 'UYU' ? '$U' : '$';
+  const hasSelectedDetail = !!selectedTransactionForModal;
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex justify-center items-start p-0 md:py-8 font-sans relative overflow-x-hidden transition-colors duration-200">
+    <div className="max-h-dvh h-dvh w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex font-sans relative overflow-x-hidden transition-colors duration-200">
       {/* Background Radial Glow Effects */}
-      <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl -z-10 pointer-events-none" />
-      <div className="absolute bottom-10 left-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-3xl -z-10 pointer-events-none" />
+      <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-3xl -z-10 pointer-events-none" />
+      <div className="absolute bottom-10 left-1/4 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-3xl -z-10 pointer-events-none" />
 
-      {/* Main Container Frame */}
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 min-h-screen md:min-h-[840px] md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col justify-between relative transition-colors">
+      {/* COLLAPSIBLE SIDEBAR MENU */}
+      <SideMenu
+        isOpen={isSideMenuOpen}
+        onClose={() => setIsSideMenuOpen(false)}
+        isCollapsed={isSideMenuCollapsed}
+        onToggleCollapse={() => setIsSideMenuCollapsed(!isSideMenuCollapsed)}
+        role={userRole}
+        onOpenAudit={() => handleOpenAuditModal('todos')}
+        onOpenCategories={() => setIsCategoryModalOpen(true)}
+        onOpenSubmethods={() => setIsSubmethodModalOpen(true)}
+        onOpenDelete={() => setIsDeleteConfirmOpen(true)}
+        interfaceName={interfaceData?.nombre}
+      />
+
+      {/* DYNAMIC 2-COLUMN GRID ON DESKTOP WHEN DETAIL IS SELECTED */}
+      <div className="flex-1 flex flex-col justify-between min-h-dvh max-w-7xl mx-auto w-full">
         <div>
-          {/* Header Component */}
+          {/* Header Bar */}
           <Header
             interfaceId={interfaceId}
             interfaceName={interfaceData?.nombre}
-            activeSection={activeSection}
-            onSectionChange={(sec) => setActiveSection(sec as typeof activeSection)}
-            userInitials={userInitials}
             userRole={userRole}
-            onMenuClick={() => (window.location.href = '/dashboard')}
-            onOpenCategories={() => setIsCategoryModalOpen(true)}
-            onOpenSubmethods={() => setIsSubmethodModalOpen(true)}
-            onOpenAudit={() => handleOpenAuditModal('todos')}
-            onDeleteInterface={handleLeaveOrDeleteInterface}
+            onMenuClick={() => setIsSideMenuOpen(!isSideMenuOpen)}
             onNotificationHandled={loadInterfaceDetails}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
-            onSortSelect={handleSortSelect}
           />
 
-          <main className="p-5 space-y-6">
-            {/* HERO BALANCE CARD */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-900/90 via-slate-900 to-slate-900 border border-indigo-500/30 p-5 shadow-xl shadow-indigo-950/40">
-              <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+          <main className="py-2 px-4 pb-40 sm:py-4 lg:py-6">
+            {/* GRID LAYOUT: 1 COLUMN DEFAULT, 2 COLUMNS ON DESKTOP WHEN TRANSACTION DETAIL IS ACTIVE */}
+            <div className={`grid grid-cols-1 ${hasSelectedDetail ? 'lg:grid-cols-12 gap-6' : 'gap-6'} transition-all duration-300`}>
+              {/* COLUMN 1: MAIN INTERFACE CONTENT */}
+              <div className={`${hasSelectedDetail ? 'lg:col-span-7' : 'w-full'} space-y-6 transition-all duration-300`}>
+                {/* HERO FOLDER TABS BALANCE CARDS */}
+                <BalanceCards
+                  balances={balances}
+                  isLoading={isBalancesLoading}
+                  selectedCurrency={selectedCurrency}
+                  onCurrencySelect={setSelectedCurrency}
+                />
 
-              <div className="flex justify-between items-center text-xs font-medium text-slate-400 mb-1">
-                <span className="uppercase tracking-wider font-semibold text-slate-300">
-                  {activeSection === 'Gastos'
-                    ? 'GASTOS DEL MES'
-                    : activeSection === 'Ingresos'
-                    ? 'INGRESOS DEL MES'
-                    : activeSection === 'Ahorros'
-                    ? 'AHORROS ACUMULADOS'
-                    : 'BALANCE GENERAL'}
-                </span>
-                <button
-                  onClick={() => setIsBalanceVisible(!isBalanceVisible)}
-                  className="flex items-center gap-1.5 text-slate-300 hover:text-indigo-300 transition-colors bg-slate-800/40 px-2.5 py-1 rounded-full border border-slate-700/40"
-                >
-                  {isBalanceVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  <span className="text-[11px]">{isBalanceVisible ? 'Ocultar' : 'Mostrar'}</span>
-                </button>
-              </div>
-
-              <div className="my-2 flex items-center justify-between gap-2">
-                <h2 className="text-3xl font-extrabold text-white tracking-tight flex items-baseline gap-1.5">
-                  {isBalanceVisible ? (
-                    <>
-                      <span className="text-xl font-bold text-indigo-400">{currencySymbol}</span>
-                      {totalBalanceAmount.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                    </>
-                  ) : (
-                    '••••••••'
-                  )}
-                </h2>
-
-                {/* Currency Selector Pills */}
-                <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800/90 shadow-inner">
-                  {(['ARS', 'USD', 'UYU'] as const).map((curr) => (
-                    <button
-                      key={curr}
-                      onClick={() => setSelectedCurrency(curr)}
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold transition-all ${
-                        selectedCurrency === curr
-                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-                      }`}
-                      title={`Ver balance en ${curr}`}
-                    >
-                      {curr}
-                    </button>
-                  ))}
+                <div className="flex flex-wrap justify-between items-center gap-2">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-indigo-500" /> Movimientos & Operaciones
+                  </h3>
+                  {/* Section Selector Tabs */}
+                  <div className="flex hidden lg:block bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs">
+                    {itemsNav.map((item) => (
+                      <button
+                        key={item.label}
+                        onClick={() => setActiveSection(item.label as typeof activeSection)}
+                        className={`px-3 py-1.5 rounded-xl font-bold transition-all ${activeSection === item.label
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                          }`}>
+                        <item.icon className="w-4 h-4 mr-1 inline-block" />
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-
-              <span className="inline-block text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
-                ↓ 12% respecto al mes pasado
-              </span>
-
-              {/* Quick Action Grid Buttons */}
-              <div className="grid grid-cols-4 gap-2 pt-4 border-t border-slate-800/80 mt-4">
-                <button
-                  onClick={() => { setEditingIngreso(null); setIsIngresoModalOpen(true); }}
-                  className="flex flex-col items-center gap-1.5 group"
-                >
-                  <div className="w-11 h-11 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
-                    <Plus className="w-5 h-5" />
-                  </div>
-                  <span className="text-[11px] font-semibold text-slate-300 group-hover:text-white">Ingreso</span>
-                </button>
-
-                <button
-                  onClick={() => { setEditingGasto(null); setIsGastoModalOpen(true); }}
-                  className="flex flex-col items-center gap-1.5 group"
-                >
-                  <div className="w-11 h-11 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 group-hover:bg-rose-600 group-hover:text-white transition-all shadow-sm">
-                    <Minus className="w-5 h-5" />
-                  </div>
-                  <span className="text-[11px] font-semibold text-slate-300 group-hover:text-white">Gasto</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveSection('Resúmenes')}
-                  className="flex flex-col items-center gap-1.5 group"
-                >
-                  <div className="w-11 h-11 rounded-2xl bg-slate-800 border border-slate-700/60 flex items-center justify-center text-slate-300 group-hover:bg-slate-700 group-hover:text-white transition-all shadow-sm">
-                    <PieChart className="w-5 h-5" />
-                  </div>
-                  <span className="text-[11px] font-semibold text-slate-300 group-hover:text-white">Resumen</span>
-                </button>
-
-                <button
-                  onClick={() => setIsFilterBarOpen(!isFilterBarOpen)}
-                  className="flex flex-col items-center gap-1.5 group"
-                >
-                  <div className="w-11 h-11 rounded-2xl bg-slate-800 border border-slate-700/60 flex items-center justify-center text-slate-300 group-hover:bg-slate-700 group-hover:text-white transition-all shadow-sm">
-                    <Sliders className="w-5 h-5" />
-                  </div>
-                  <span className="text-[11px] font-semibold text-slate-300 group-hover:text-white">Filtros</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Filter Bar (Collapsible) */}
-            {isFilterBarOpen && (
-              <div className="animate-in fade-in duration-150">
+                
+                {/* MULTI-SELECT COLLAPSIBLE FILTER BAR */}
                 <FilterBar
                   filters={filters}
                   onFilterChange={setFilters}
                   categories={categories}
                   submethods={submethods}
-                  onReset={() => setFilters(DEFAULT_FILTERS)}
+                  onReset={() => setFilters(DEFAULT_MULTI_FILTERS)}
                 />
-              </div>
-            )}
 
-            {/* RECENT ACTIVITY SECTION */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <h3 className="text-sm font-bold text-slate-200">Actividad Reciente</h3>
-                <div className="flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-[11px]">
-                  {['Gastos', 'Ingresos', 'Ahorros', 'Resúmenes'].map((sec) => (
-                    <button
-                      key={sec}
-                      onClick={() => setActiveSection(sec as typeof activeSection)}
-                      className={`px-2 py-0.5 rounded-lg font-semibold transition-all ${
-                        activeSection === sec
-                          ? 'bg-indigo-600 text-white shadow-sm'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {sec}
-                    </button>
-                  ))}
-                </div>
-              </div>
+                {/* RECENT ACTIVITY SECTION */}
+                <div className="space-y-4">
 
-              {activeSection === 'Resúmenes' ? (
-                <div className="space-y-3">
-                  <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
-                    <button
-                      onClick={() => setSummarySubTab('comparative')}
-                      className={`flex-1 py-1.5 rounded-lg font-semibold transition-all ${
-                        summarySubTab === 'comparative'
-                          ? 'bg-indigo-600 text-white shadow-md'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      Reportes
-                    </button>
-                    <button
-                      onClick={() => setSummarySubTab('user')}
-                      className={`flex-1 py-1.5 rounded-lg font-semibold transition-all ${
-                        summarySubTab === 'user'
-                          ? 'bg-indigo-600 text-white shadow-md'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      Por Integrante
-                    </button>
-                  </div>
+                  {activeSection === 'Resúmenes' ? (
+                    <div className="space-y-4">
+                      <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs">
+                        <button
+                          onClick={() => setSummarySubTab('comparative')}
+                          className={`flex-1 py-2 rounded-xl font-bold transition-all ${summarySubTab === 'comparative'
+                            ? 'bg-indigo-600 text-white shadow-md'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                        >
+                          Reportes Comparativos
+                        </button>
+                        <button
+                          onClick={() => setSummarySubTab('user')}
+                          className={`flex-1 py-2 rounded-xl font-bold transition-all ${summarySubTab === 'user'
+                            ? 'bg-indigo-600 text-white shadow-md'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                        >
+                          Distribución por Integrante
+                        </button>
+                      </div>
 
-                  {summarySubTab === 'comparative' ? (
-                    <ComparativeReportsDashboard interfaceId={interfaceId} categories={categories} />
-                  ) : (
-                    <UserExpenseChart transactions={transactions} title="Distribución de Movimientos" />
-                  )}
-                </div>
-              ) : (
-                <div className="bg-slate-900/60 rounded-2xl border border-slate-800/80 divide-y divide-slate-800/60 overflow-hidden shadow-lg">
-                  {isLoading ? (
-                    <div className="p-8 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
-                      <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" />
-                      Cargando movimientos...
-                    </div>
-                  ) : sortedTransactions.length === 0 ? (
-                    <div className="p-8 text-center text-slate-500 text-xs">
-                      No hay movimientos registrados en esta sección.
+                      {summarySubTab === 'comparative' ? (
+                        <ComparativeReportsDashboard interfaceId={interfaceId} categories={categories} />
+                      ) : (
+                        <UserExpenseChart transactions={transactions} title="Distribución de Movimientos" />
+                      )}
                     </div>
                   ) : (
-                    sortedTransactions.map((tx) => (
-                      <TransactionCard
-                        key={tx.id}
-                        transaction={tx}
-                        onSelect={(transaction) => setSelectedTransactionForModal(transaction)}
-                      />
-                    ))
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800/60 overflow-hidden shadow-sm">
+                      {isLoading ? (
+                        <div className="p-6 space-y-3">
+                          {[1, 2, 3, 4].map((n) => (
+                            <div key={n} className="flex items-center justify-between py-2">
+                              <div className="flex items-center gap-3">
+                                <Skeleton className="w-10 h-10 rounded-full" />
+                                <div className="space-y-1.5">
+                                  <Skeleton className="h-4 w-36 rounded-md" />
+                                  <Skeleton className="h-3 w-24 rounded-md" />
+                                </div>
+                              </div>
+                              <Skeleton className="h-5 w-20 rounded-md" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : sortedTransactions.length === 0 ? (
+                        <div className="p-12 text-center text-slate-500 dark:text-slate-400 text-xs sm:text-sm space-y-2">
+                          <p className="font-semibold text-slate-700 dark:text-slate-300">
+                            No hay registros de {activeSection.toLowerCase()} para mostrar.
+                          </p>
+                          <p className="text-slate-500">
+                            Utiliza el botón flotante (+) para registrar una nueva operación.
+                          </p>
+                        </div>
+                      ) : (
+                        sortedTransactions.map((tx) => (
+                          <TransactionCard
+                            key={tx.id}
+                            transaction={tx}
+                            onSelect={(transaction) => setSelectedTransactionForModal(transaction)}
+                          />
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {totalPages > 1 && (
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      pageSize={pageSize}
+                      onPageChange={setCurrentPage}
+                    />
                   )}
                 </div>
-              )}
+              </div>
 
-              {totalPages > 1 && (
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  pageSize={pageSize}
-                  onPageChange={setCurrentPage}
-                />
+              {/* COLUMN 2: INLINE DESKTOP TRANSACTION DETAIL PANEL */}
+              {hasSelectedDetail && (
+                <div className="hidden lg:block lg:col-span-5 sticky top-24 self-start animate-in fade-in duration-200">
+                  <TransactionDetailPanel
+                    transaction={selectedTransactionForModal}
+                    isOpen={true}
+                    isInline={true}
+                    onClose={() => setSelectedTransactionForModal(null)}
+                    onEdit={handleEditClick}
+                    onDelete={handleDeleteTransaction}
+                    onViewHistory={(tx) =>
+                      handleOpenAuditModal(
+                        activeSection === 'Gastos'
+                          ? 'gasto'
+                          : activeSection === 'Ingresos'
+                            ? 'ingreso'
+                            : 'ahorro',
+                        tx.id,
+                        tx.comment || tx.user
+                      )
+                    }
+                  />
+                </div>
               )}
             </div>
           </main>
         </div>
 
-        {/* Bottom Navigation */}
-        <BottomNav
-          activeSection={activeSection}
-          onSectionChange={(sec) => setActiveSection(sec as typeof activeSection)}
+        {/* FIXED MOBILE BOTTOM NAVIGATION */}
+        <div className="lg:hidden">
+          <BottomNav
+            activeSection={activeSection}
+            onSectionChange={(sec) => setActiveSection(sec as typeof activeSection)}
+          />
+        </div>
+      </div >
+
+      {/* FLOATING ACTION BUTTON (FAB) */}
+      < FabButton
+        onOpenGastoModal={() => { setEditingGasto(null); setIsGastoModalOpen(true); }
+        }
+        onOpenIngresoModal={() => { setEditingIngreso(null); setIsIngresoModalOpen(true); }}
+        onOpenAhorroModal={() => { setEditingAhorro(null); setIsAhorroModalOpen(true); }}
+      />
+
+      {/* MOBILE BOTTOM SHEET FOR TRANSACTION DETAIL */}
+      <div className="lg:hidden">
+        <TransactionDetailPanel
+          transaction={selectedTransactionForModal}
+          isOpen={!!selectedTransactionForModal}
+          onClose={() => setSelectedTransactionForModal(null)}
+          onEdit={handleEditClick}
+          onDelete={handleDeleteTransaction}
+          onViewHistory={(tx) =>
+            handleOpenAuditModal(
+              activeSection === 'Gastos'
+                ? 'gasto'
+                : activeSection === 'Ingresos'
+                  ? 'ingreso'
+                  : 'ahorro',
+              tx.id,
+              tx.comment || tx.user
+            )
+          }
         />
       </div>
 
-      {/* Transaction Detail Bottom Sheet Modal */}
-      <TransactionDetailModal
-        transaction={selectedTransactionForModal}
-        isOpen={!!selectedTransactionForModal}
-        onClose={() => setSelectedTransactionForModal(null)}
-        onEdit={handleEditClick}
-        onDelete={handleDeleteTransaction}
-        onViewHistory={(tx) =>
-          handleOpenAuditModal(
-            activeSection === 'Gastos'
-              ? 'gasto'
-              : activeSection === 'Ingresos'
-              ? 'ingreso'
-              : 'ahorro',
-            tx.id,
-            tx.comment || tx.user
-          )
-        }
-      />
-
-      {/* ABM Form Modals */}
+      {/* ABM FORM MODALS */}
       <GastoFormModal
         key={editingGasto?.idgasto || (isGastoModalOpen ? 'new-gasto-open' : 'new-gasto-closed')}
         isOpen={isGastoModalOpen}
@@ -818,12 +813,22 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         titleFilter={auditTitle}
       />
 
-      <InviteModal
-        isOpen={isInviteModalOpen}
-        onClose={() => setIsInviteModalOpen(false)}
-        interfaceId={interfaceId}
-        interfaceName={interfaceData?.nombre}
+      {/* CONFIRMATION DIALOG FOR DELETING OR LEAVING INTERFACE */}
+      <CustomDialog
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={executeDeleteOrLeaveInterface}
+        isLoading={isDeletingInterface}
+        title={userRole === 'Administrador' ? 'Eliminar Interfaz' : 'Salir de la Interfaz'}
+        description={
+          userRole === 'Administrador'
+            ? `¿Estás seguro de que deseas eliminar permanentemente la interfaz "${interfaceData?.nombre}"? Se eliminarán todas las operaciones.`
+            : `¿Estás seguro de que deseas salir de la interfaz "${interfaceData?.nombre}"?`
+        }
+        variant={userRole === 'Administrador' ? 'danger' : 'warning'}
+        confirmText={userRole === 'Administrador' ? 'Sí, Eliminar' : 'Sí, Salir'}
+        cancelText="Cancelar"
       />
-    </div>
+    </div >
   );
 }

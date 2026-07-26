@@ -60,8 +60,11 @@ export async function GET(
 
     const andConditions: Record<string, unknown>[] = [];
 
-    if (moneda && ['ARS', 'USD', 'UYU'].includes(moneda)) {
-      andConditions.push({ moneda: moneda as TMoneda });
+    if (moneda) {
+      const monedasList = moneda.split(',').map((m) => m.trim()).filter((m) => ['ARS', 'USD', 'UYU'].includes(m));
+      if (monedasList.length > 0) {
+        andConditions.push({ moneda: { in: monedasList as TMoneda[] } });
+      }
     }
 
     if (periodo && ['Semanal', 'Mensual', 'Trimestral', 'Anual'].includes(periodo)) {

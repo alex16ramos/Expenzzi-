@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/interfaces
- * Retrieves all active interfaces accessible by the current authenticated user (RF30)
+ * Retrieves all active interfaces accessible by the current authenticated user with calculated net balances.
  */
 export async function GET() {
   try {
@@ -35,19 +35,57 @@ export async function GET() {
       },
     });
 
-    const interfaces = userInterfaces
-      .filter((item) => item.interfazoperacion != null)
-      .map((item) => ({
-        id: String(item.interfazoperacion.idinterfazoperacion),
-        nombre: item.interfazoperacion.nombre || 'Sin nombre',
-        descripcion: item.interfazoperacion.descripcion || '',
-        rol: item.rol || 'Visualizador',
-        estado: item.interfazoperacion.estado ?? true,
-        linkinvitado: item.interfazoperacion.linkinvitado || randomUUID(),
-        linkvisualizador: item.interfazoperacion.linkvisualizador || randomUUID(),
-        fechacreacion: item.interfazoperacion.fechacreacion ? item.interfazoperacion.fechacreacion.toISOString().split('T')[0] : '',
-        fechaunion: item.fechaunion ? item.fechaunion.toISOString().split('T')[0] : '',
-      }));
+    const activeInterfaces = userInterfaces.filter((item) => item.interfazoperacion != null);
+
+    // Calculate balances per interface for ARS, USD, UYU
+    const interfaces = await Promise.all(
+      activeInterfaces.map(async (item) => {
+        const interfaceId = item.interfazoperacion.idinterfazoperacion;
+
+        const [gastos, ingresos, ahorros] = await Promise.all([
+          prisma.gasto.findMany({
+            where: {
+              estado: true,
+              OR: [
+                { categoria: { idinterfazoperacion: interfaceId } },
+                { submetodopago: { idinterfazoperacion: interfaceId } },
+              ],
+            },
+            select: { moneda: true, importe: true },
+          }),
+          prisma.ingreso.findMany({
+            where: { idinterfazoperacion: interfaceId, estado: true },
+            select: { moneda: true, importe: true },
+          }),
+          prisma.ahorro.findMany({
+            where: { idinterfazoperacion: interfaceId, estado: true },
+            select: { moneda: true, importe: true },
+          }),
+        ]);
+
+        const calcNet = (curr: 'ARS' | 'USD' | 'UYU') => {
+          const totalIngresos = ingresos.filter((i) => i.moneda === curr).reduce((acc, i) => acc + Number(i.importe || 0), 0);
+          const totalGastos = gastos.filter((g) => g.moneda === curr).reduce((acc, g) => acc + Number(g.importe || 0), 0);
+          const totalAhorros = ahorros.filter((a) => a.moneda === curr).reduce((acc, a) => acc + Number(a.importe || 0), 0);
+          return totalIngresos - totalGastos + totalAhorros;
+        };
+
+        return {
+          id: String(item.interfazoperacion.idinterfazoperacion),
+          nombre: item.interfazoperacion.nombre || 'Sin nombre',
+          descripcion: item.interfazoperacion.descripcion || '',
+          rol: item.rol || 'Visualizador',
+          estado: item.interfazoperacion.estado ?? true,
+          linkinvitado: item.interfazoperacion.linkinvitado || randomUUID(),
+          linkvisualizador: item.interfazoperacion.linkvisualizador || randomUUID(),
+          fechacreacion: item.interfazoperacion.fechacreacion ? item.interfazoperacion.fechacreacion.toISOString().split('T')[0] : '',
+          fechaunion: item.fechaunion ? item.fechaunion.toISOString().split('T')[0] : '',
+          balanceARS: calcNet('ARS'),
+          balanceUSD: calcNet('USD'),
+          balanceUYU: calcNet('UYU'),
+        };
+      })
+    );
 
     return NextResponse.json({ interfaces });
   } catch (err: unknown) {
@@ -59,8 +97,7 @@ export async function GET() {
 
 /**
  * POST /api/interfaces
- * Creates a new operation interface (CU03 / RF31).
- * Assigns 'Administrador' role to creator in `usuariointerfaz`.
+ * Creates a new operation interface.
  */
 export async function POST(req: Request) {
   try {
@@ -90,14 +127,12 @@ export async function POST(req: Request) {
     const userEmail = (userObj?.email as string) || '';
     const userName = (userObj?.name as string) || userEmail.split('@')[0] || 'Usuario';
 
-    // 1. Ensure user exists in custom 'usuario' table for foreign key constraint
     await prisma.usuario.upsert({
       where: { idusuario: userId },
       update: { nombreusuario: userName, email: userEmail },
       create: { idusuario: userId, nombreusuario: userName, email: userEmail },
     });
 
-    // 2. Create interface with UUID invite links
     const newInterfaz = await prisma.interfazOperacion.create({
       data: {
         nombre: nombre.trim(),
@@ -107,7 +142,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // 3. Associate creator as Administrador in usuariointerfaz (CU03 / RF31)
     await prisma.usuarioInterfaz.create({
       data: {
         idinterfazoperacion: newInterfaz.idinterfazoperacion,
@@ -131,4 +165,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
 }
-

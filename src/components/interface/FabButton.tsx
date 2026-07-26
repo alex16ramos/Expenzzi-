@@ -1,136 +1,101 @@
+'use client';
+
 import React, { useState } from 'react';
-import { Plus, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Plus, ArrowUpCircle, ArrowDownCircle, PiggyBank } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface FabButtonProps {
-  onAddTransaction?: (data: {
-    amount: number;
-    currency: string;
-    comment: string;
-    method: string;
-  }) => void;
+  onOpenGastoModal: () => void;
+  onOpenIngresoModal: () => void;
+  onOpenAhorroModal: () => void;
 }
 
-export function FabButton({ onAddTransaction }: FabButtonProps) {
+export function FabButton({
+  onOpenGastoModal,
+  onOpenIngresoModal,
+  onOpenAhorroModal,
+}: FabButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState('ARS');
-  const [comment, setComment] = useState('');
-  const [method, setMethod] = useState('Débito');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const val = parseFloat(amount);
-    if (isNaN(val)) return;
-
-    onAddTransaction?.({
-      amount: val,
-      currency,
-      comment,
-      method,
-    });
-
-    setAmount('');
-    setComment('');
-    setIsOpen(false);
-  };
 
   return (
-    <>
-      <div className="relative shrink-0">
-        <button
-          onClick={() => setIsOpen(true)}
-          className="absolute -top-6 right-4 w-12 h-12 rounded-full bg-violet-600 hover:bg-violet-700 active:scale-95 text-white shadow-lg shadow-violet-600/30 flex items-center justify-center transition-all z-20"
-          title="Agregar Movimiento"
-        >
-          <Plus className="w-6 h-6" />
-        </button>
-      </div>
+    <div className="fixed bottom-20 lg:bottom-8 right-5 z-40 flex flex-col items-end gap-3 pointer-events-auto">
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            {/* Backdrop for closing when tapping outside */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsOpen(false)}
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-30"
+            />
 
-      {isOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="w-full max-w-sm bg-slate-900 rounded-2xl p-5 space-y-4 shadow-2xl border border-slate-800 text-white">
-            <div className="flex justify-between items-center">
-              <h3 className="text-base font-bold text-white tracking-tight">
-                Nuevo Movimiento
-              </h3>
+            <motion.div
+              initial={{ opacity: 0, y: 15, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 15, scale: 0.9 }}
+              className="flex flex-col items-end gap-2.5 z-40"
+            >
+              {/* Option Ahorro */}
               <button
-                onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+                onClick={() => {
+                  setIsOpen(false);
+                  onOpenAhorroModal();
+                }}
+                className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-500 transition-all font-bold text-xs group cursor-pointer"
               >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">
-                  Importe y Moneda
-                </label>
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    step="any"
-                    required
-                    placeholder="0.00"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="flex-1"
-                  />
-                  <select
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                    className="h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-sm font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
-                  >
-                    <option value="ARS">ARS ($)</option>
-                    <option value="USD">USD (US$)</option>
-                    <option value="UYU">UYU ($U)</option>
-                  </select>
+                <span>Nuevo Ahorro</span>
+                <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <PiggyBank className="w-4 h-4" />
                 </div>
-              </div>
+              </button>
 
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">
-                  Comentario
-                </label>
-                <Input
-                  type="text"
-                  placeholder="Ej: Supermercado, Nafta, Hospedaje..."
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                />
-              </div>
+              {/* Option Ingreso */}
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  onOpenIngresoModal();
+                }}
+                className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition-all font-bold text-xs group cursor-pointer"
+              >
+                <span>Nuevo Ingreso</span>
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <ArrowDownCircle className="w-4 h-4" />
+                </div>
+              </button>
 
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">
-                  Método de Pago
-                </label>
-                <Input
-                  type="text"
-                  placeholder="Ej: Débito, Efectivo, Visa..."
-                  value={method}
-                  onChange={(e) => setMethod(e.target.value)}
-                />
-              </div>
+              {/* Option Gasto */}
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  onOpenGastoModal();
+                }}
+                className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl border border-slate-200 dark:border-slate-800 hover:border-rose-500 transition-all font-bold text-xs group cursor-pointer"
+              >
+                <span>Nuevo Gasto</span>
+                <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <ArrowUpCircle className="w-4 h-4" />
+                </div>
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
-              <div className="flex gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsOpen(false)}
-                  className="flex-1"
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" className="flex-1">
-                  Guardar
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </>
+      {/* Main Trigger FAB */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-13 h-13 rounded-2xl text-white shadow-xl shadow-indigo-600/30 flex items-center justify-center transition-all z-40 cursor-pointer ${
+          isOpen
+            ? 'bg-slate-800 dark:bg-slate-700 rotate-45 scale-95 hover:bg-red-600/80 dark:hover:bg-red-500/80'
+            : 'bg-indigo-600 hover:bg-indigo-500 hover:scale-105 active:scale-95'
+        }`}
+        aria-label="Registrar nueva operación"
+        title="Registrar Operación"
+      >
+        <Plus className="w-6 h-6 stroke-[2.5]" />
+      </button>
+    </div>
   );
 }

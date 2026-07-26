@@ -1,5 +1,9 @@
-import React from 'react';
-import { Wallet, PiggyBank, TrendingUp, TrendingDown } from 'lucide-react';
+'use client';
+
+import React, { useState } from 'react';
+import { PiggyBank, TrendingUp, TrendingDown } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export interface CurrencyBalance {
   ingresos: number;
@@ -17,6 +21,8 @@ export interface GeneralBalances {
 interface BalanceCardsProps {
   balances?: GeneralBalances;
   isLoading?: boolean;
+  selectedCurrency?: 'ARS' | 'USD' | 'UYU';
+  onCurrencySelect?: (curr: 'ARS' | 'USD' | 'UYU') => void;
 }
 
 const DEFAULT_BALANCES: GeneralBalances = {
@@ -25,92 +31,152 @@ const DEFAULT_BALANCES: GeneralBalances = {
   UYU: { ingresos: 0, gastos: 0, ahorros: 0, net: 0 },
 };
 
-export function BalanceCards({ balances = DEFAULT_BALANCES, isLoading = false }: BalanceCardsProps) {
+export function BalanceCards({
+  balances = DEFAULT_BALANCES,
+  isLoading = false,
+  selectedCurrency: externalSelectedCurrency,
+  onCurrencySelect,
+}: BalanceCardsProps) {
+  const [internalCurrency, setInternalCurrency] = useState<'ARS' | 'USD' | 'UYU'>('ARS');
+  const activeCurrency = externalSelectedCurrency || internalCurrency;
+
+  const handleSelectCurrency = (curr: 'ARS' | 'USD' | 'UYU') => {
+    setInternalCurrency(curr);
+    if (onCurrencySelect) {
+      onCurrencySelect(curr);
+    }
+  };
+
   const currencyConfigs = [
-    { code: 'ARS', label: 'Pesos Argentinos', symbol: '$', bgGradient: 'from-blue-600/20 via-indigo-600/10 to-slate-900', border: 'border-blue-500/30', accent: 'text-blue-400' },
-    { code: 'USD', label: 'Dólares Estadounidenses', symbol: 'US$', bgGradient: 'from-emerald-600/20 via-teal-600/10 to-slate-900', border: 'border-emerald-500/30', accent: 'text-emerald-400' },
-    { code: 'UYU', label: 'Pesos Uruguayos', symbol: '$U', bgGradient: 'from-amber-600/20 via-orange-600/10 to-slate-900', border: 'border-amber-500/30', accent: 'text-amber-400' },
-  ] as const;
+    {
+      code: 'ARS' as const,
+      label: 'Pesos Argentinos',
+      symbol: '$',
+      tabColor: 'bg-indigo-600 dark:bg-indigo-700 text-white',
+      inactiveTabColor: 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/60',
+      bgGradient: 'from-indigo-600/10 via-blue-600/5 to-transparent',
+      border: 'border-indigo-500/30 dark:border-indigo-500/40',
+      accent: 'text-indigo-600 dark:text-indigo-400',
+    },
+    {
+      code: 'USD' as const,
+      label: 'Dólares Estadounidenses',
+      symbol: 'US$',
+      tabColor: 'bg-emerald-600 dark:bg-emerald-700 text-white',
+      inactiveTabColor: 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/60',
+      bgGradient: 'from-emerald-600/10 via-teal-600/5 to-transparent',
+      border: 'border-emerald-500/30 dark:border-emerald-500/40',
+      accent: 'text-emerald-600 dark:text-emerald-400',
+    },
+    {
+      code: 'UYU' as const,
+      label: 'Pesos Uruguayos',
+      symbol: '$U',
+      tabColor: 'bg-amber-600 dark:bg-amber-700 text-white',
+      inactiveTabColor: 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/60',
+      bgGradient: 'from-amber-600/10 via-orange-600/5 to-transparent',
+      border: 'border-amber-500/30 dark:border-amber-500/40',
+      accent: 'text-amber-600 dark:text-amber-400',
+    },
+  ];
 
   const formatMoney = (val: number, symbol: string) => {
     return `${symbol} ${val.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
+  const activeConfig = currencyConfigs.find((c) => c.code === activeCurrency) || currencyConfigs[0];
+  const activeData = balances[activeConfig.code] || DEFAULT_BALANCES[activeConfig.code];
+  const isPositive = activeData.net >= 0;
+
   return (
     <div className="w-full space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-slate-200 tracking-tight flex items-center gap-2">
-          <Wallet className="w-4 h-4 text-violet-400" />
-          Balance General Multimoneda (RF19)
-        </h3>
-        {isLoading && <span className="text-xs text-slate-400 animate-pulse">Actualizando...</span>}
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {currencyConfigs.map((cfg) => {
-          const data = balances[cfg.code] || DEFAULT_BALANCES[cfg.code];
-          const isPositive = data.net >= 0;
+      {/* FOLDER TABS HEADER BAR */}
+      <div className="relative pt-2">
+        <div className="flex items-end gap-1.5 relative z-10 -mb-[2px]">
+          {currencyConfigs.map((cfg) => {
+            const isActive = activeCurrency === cfg.code;
+            return (
+              <button
+                key={cfg.code}
+                onClick={() => handleSelectCurrency(cfg.code)}
+                className={`relative px-4 py-2 text-xs font-extrabold rounded-t-2xl transition-all duration-200 flex items-center gap-1.5 ${
+                  isActive
+                    ? `bg-white dark:bg-slate-900 bg-gradient-to-t ${cfg.bgGradient} border-t border-x ${cfg.border} rounded-t-xl p-5 -translate-y-[0.7px] z-20`
+                    : `${cfg.inactiveTabColor} opacity-85 hover:opacity-100 z-10 -translate-y-[1.5px] cursor-pointer`
+                }`}
+              >
+                <span>{cfg.code}</span>
+                <span className="text-[10px] font-normal opacity-80">({cfg.symbol})</span>
+              </button>
+            );
+          })}
+        </div>
 
-          return (
-            <div
-              key={cfg.code}
-              className={`bg-gradient-to-br ${cfg.bgGradient} rounded-2xl p-4 border ${cfg.border} shadow-xl relative overflow-hidden backdrop-blur-md transition-all hover:border-slate-700`}
+        {/* ACTIVE FOLDER CONTENT CARD */}
+        <AnimatePresence mode="popLayout" initial={false}>
+          {isLoading ? (
+            <div className="p-5 bg-white dark:bg-slate-900 rounded-b-3xl rounded-tr-3xl border border-slate-200 dark:border-slate-800 space-y-3 shadow-md">
+              <Skeleton className="h-5 w-24 rounded-md" />
+              <Skeleton className="h-8 w-44 rounded-lg" />
+              <Skeleton className="h-12 w-full rounded-xl" />
+            </div>
+          ) : (
+            <motion.div
+              key={activeConfig.code}
+              initial={{ opacity: 0, x: 0 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -4 }}
+              transition={{ duration: 0.20, ease: 'easeInOut', type: 'tween' }}
+              className={`bg-white dark:bg-slate-900 bg-gradient-to-br ${activeConfig.bgGradient} rounded-b-3xl rounded-tr-3xl p-5 border ${activeConfig.border} shadow-lg relative overflow-hidden transition-all`}
             >
-              {/* Card Header */}
-              <div className="flex justify-between items-center mb-2">
-                <span className={`text-xs font-extrabold uppercase tracking-wider ${cfg.accent} bg-slate-950/60 px-2.5 py-0.5 rounded-lg border border-slate-800`}>
-                  {cfg.code}
-                </span>
-                <span className="text-[11px] font-medium text-slate-400">{cfg.label}</span>
-              </div>
-
-              {/* Net Balance Large Display */}
-              <div className="my-2">
-                <p className="text-[11px] text-slate-400 font-medium">Balance Neto</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className={`text-xl sm:text-2xl font-black ${isPositive ? 'text-white' : 'text-rose-400'}`}>
-                    {formatMoney(data.net, cfg.symbol)}
+              {/* Net Balance Display */}
+              <div className="py-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Balance Neto Consolidado</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${isPositive ? 'text-slate-900 dark:text-white' : 'text-rose-600 dark:text-rose-400'}`}>
+                    {formatMoney(activeData.net, activeConfig.symbol)}
                   </span>
                   {isPositive ? (
-                    <TrendingUp className="w-4 h-4 text-emerald-400" />
+                    <TrendingUp className="w-5 h-5 text-emerald-500" />
                   ) : (
-                    <TrendingDown className="w-4 h-4 text-rose-400" />
+                    <TrendingDown className="w-5 h-5 text-rose-500" />
                   )}
                 </div>
               </div>
 
               {/* Breakdown Grid */}
-              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-800/80 text-[11px]">
-                <div className="bg-slate-950/40 p-2 rounded-xl border border-slate-800/40">
-                  <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                    <TrendingUp className="w-3 h-3" /> Ingresos
+              <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/80 text-xs">
+                <div className="bg-slate-50 dark:bg-slate-950/60 p-2.5 rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                    <TrendingUp className="w-3.5 h-3.5" /> Ingresos
                   </span>
-                  <p className="font-bold text-slate-200 mt-0.5 truncate">
-                    {formatMoney(data.ingresos, cfg.symbol)}
+                  <p className="font-extrabold text-slate-800 dark:text-slate-100 mt-1 truncate">
+                    {formatMoney(activeData.ingresos, activeConfig.symbol)}
                   </p>
                 </div>
 
-                <div className="bg-slate-950/40 p-2 rounded-xl border border-slate-800/40">
-                  <span className="text-rose-400 font-semibold flex items-center gap-1">
-                    <TrendingDown className="w-3 h-3" /> Egresos
+                <div className="bg-slate-50 dark:bg-slate-950/60 p-2.5 rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
+                  <span className="text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1">
+                    <TrendingDown className="w-3.5 h-3.5" /> Egresos
                   </span>
-                  <p className="font-bold text-slate-200 mt-0.5 truncate">
-                    {formatMoney(data.gastos, cfg.symbol)}
+                  <p className="font-extrabold text-slate-800 dark:text-slate-100 mt-1 truncate">
+                    {formatMoney(activeData.gastos, activeConfig.symbol)}
                   </p>
                 </div>
 
-                <div className="bg-slate-950/40 p-2 rounded-xl border border-slate-800/40">
-                  <span className="text-violet-400 font-semibold flex items-center gap-1">
-                    <PiggyBank className="w-3 h-3" /> Ahorros
+                <div className="bg-slate-50 dark:bg-slate-950/60 p-2.5 rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
+                  <span className="text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1">
+                    <PiggyBank className="w-3.5 h-3.5" /> Ahorros
                   </span>
-                  <p className="font-bold text-slate-200 mt-0.5 truncate">
-                    {formatMoney(data.ahorros, cfg.symbol)}
+                  <p className="font-extrabold text-slate-800 dark:text-slate-100 mt-1 truncate">
+                    {formatMoney(activeData.ahorros, activeConfig.symbol)}
                   </p>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

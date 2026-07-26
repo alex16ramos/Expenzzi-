@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Bell, Check, X, Shield, Sparkles, Loader2, RefreshCw, Trash2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { getAvatarBg, getAvatarClass } from '@/app/dashboard/perfil/page';
 
@@ -48,33 +49,76 @@ export function NotificationBell({
   const [activeTab, setActiveTab] = useState<'general' | 'interfaz' | 'todas'>('general');
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const isMountedRef = useRef(true);
 
   const fetchNotificaciones = useCallback(async () => {
     try {
       const res = await fetch('/api/notificaciones');
+      if (!res.ok) return;
       const data = await res.json();
-      if (res.ok && data.success) {
+      if (isMountedRef.current && data.success) {
         setNotificaciones(data.notificaciones || []);
         setUnreadCount(data.unreadCount || 0);
       }
     } catch (err) {
       console.error('Error loading notifications:', err);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchNotificaciones();
-    }, 0);
+    isMountedRef.current = true;
 
-    const interval = setInterval(fetchNotificaciones, 30000);
+    const loadNotifs = async () => {
+      try {
+        const res = await fetch('/api/notificaciones');
+        if (res.status === 401) {
+          setTimeout(async () => {
+            if (!isMountedRef.current) return;
+            try {
+              const retryRes = await fetch('/api/notificaciones');
+              if (retryRes.ok) {
+                const data = await retryRes.json();
+                if (isMountedRef.current && data.success) {
+                  setNotificaciones(data.notificaciones || []);
+                  setUnreadCount(data.unreadCount || 0);
+                }
+              }
+            } catch {
+              // Ignore
+            }
+          }, 400);
+          return;
+        }
+
+        if (!res.ok) return;
+        const data = await res.json();
+        if (isMountedRef.current && data.success) {
+          setNotificaciones(data.notificaciones || []);
+          setUnreadCount(data.unreadCount || 0);
+        }
+      } catch (err) {
+        console.error('Error loading notifications:', err);
+      }
+    };
+
+    loadNotifs();
+
+    // Pause polling when document is hidden to save memory and network calls
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadNotifs();
+      }
+    }, 30000);
+
     return () => {
-      clearTimeout(timer);
+      isMountedRef.current = false;
       clearInterval(interval);
     };
-  }, [fetchNotificaciones]);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -97,8 +141,7 @@ export function NotificationBell({
       });
       const data = await res.json();
 
-      if (res.ok && data.success) {
-        // Optimistic UI update
+      if (res.ok && data.success && isMountedRef.current) {
         setNotificaciones((prev) =>
           prev.map((n) =>
             n.idnotificacion === idnotificacion
@@ -115,30 +158,32 @@ export function NotificationBell({
     } catch (err) {
       console.error('Error responding to notification:', err);
     } finally {
-      setActionLoading(null);
+      if (isMountedRef.current) {
+        setActionLoading(null);
+      }
     }
   };
 
   const handleDeleteNotification = async (idnotificacion: string) => {
     setActionLoading(idnotificacion);
     try {
+      const target = notificaciones.find((n) => n.idnotificacion === idnotificacion);
       const res = await fetch(`/api/notificaciones?id=${idnotificacion}`, {
         method: 'DELETE',
       });
       const data = await res.json();
-      if (res.ok && data.success) {
-        setNotificaciones((prev) => {
-          const target = prev.find((n) => n.idnotificacion === idnotificacion);
-          if (target && !target.leido) {
-            setUnreadCount((count) => Math.max(0, count - 1));
-          }
-          return prev.filter((n) => n.idnotificacion !== idnotificacion);
-        });
+      if (res.ok && data.success && isMountedRef.current) {
+        if (target && !target.leido) {
+          setUnreadCount((count) => Math.max(0, count - 1));
+        }
+        setNotificaciones((prev) => prev.filter((n) => n.idnotificacion !== idnotificacion));
       }
     } catch (err) {
       console.error('Error deleting notification:', err);
     } finally {
-      setActionLoading(null);
+      if (isMountedRef.current) {
+        setActionLoading(null);
+      }
     }
   };
 
@@ -169,6 +214,7 @@ export function NotificationBell({
         }}
         className="relative p-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors shadow-sm focus:outline-none"
         title="Centro de Notificaciones"
+        aria-label="Centro de Notificaciones"
       >
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
@@ -233,7 +279,7 @@ export function NotificationBell({
 
             <button
               onClick={() => setActiveTab('todas')}
-              className={`py-1.5 px-2.5 rounded-lg transition-all flex items-center justify-center gap-1 ${
+              className={`flex-1 py-1.5 px-2.5 rounded-lg transition-all flex items-center justify-center gap-1 ${
                 activeTab === 'todas'
                   ? 'bg-white dark:bg-slate-900 text-violet-600 dark:text-violet-400 shadow-sm border border-slate-200 dark:border-slate-800 font-bold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -272,14 +318,28 @@ export function NotificationBell({
                 const initials = emisorNombre.slice(0, 2).toUpperCase();
 
                 return (
-                  <div
-                    key={n.idnotificacion}
-                    className={`p-3.5 transition-colors ${
-                      !n.leido && n.estado === 'Pendiente'
-                        ? 'bg-violet-50/50 dark:bg-violet-950/20'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                    }`}
-                  >
+                  <div key={n.idnotificacion} className="relative overflow-hidden bg-rose-500/10 group">
+                    {/* Background Delete Button visible when sliding */}
+                    <div className="absolute inset-y-0 right-0 w-20 bg-rose-600 flex items-center justify-center text-white z-0">
+                      <button
+                        onClick={() => handleDeleteNotification(n.idnotificacion)}
+                        className="w-full h-full flex items-center justify-center gap-1 text-[11px] font-bold text-white"
+                      >
+                        <Trash2 className="w-4 h-4" /> Borrar
+                      </button>
+                    </div>
+
+                    {/* Draggable Card Body */}
+                    <motion.div
+                      drag="x"
+                      dragConstraints={{ left: -75, right: 0 }}
+                      dragElastic={0.1}
+                      className={`relative z-10 p-3.5 bg-white dark:bg-slate-900 transition-colors ${
+                        !n.leido && n.estado === 'Pendiente'
+                          ? 'bg-violet-50 dark:bg-violet-950'
+                          : ''
+                      }`}
+                    >
                     <div className="flex gap-3 items-start">
                       {/* Avatar */}
                       <div className={`w-9 h-9 rounded-full ${getAvatarBg(n.emisor?.fotoperfil)} border border-slate-300 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0 shadow-sm mt-0.5`}>
@@ -373,7 +433,7 @@ export function NotificationBell({
                               onClick={() => handleRespond(n.idnotificacion, false)}
                               className="h-7 text-[11px] px-2.5 gap-1 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg"
                             >
-                              <X className="w-3 h-3" />
+                              <X className="w-3.5 h-3.5" />
                               Rechazar
                             </Button>
                           </div>
@@ -400,9 +460,10 @@ export function NotificationBell({
                         )}
                       </div>
                     </div>
-                  </div>
-                );
-              })
+                  </motion.div>
+                </div>
+              );
+            })
             )}
           </div>
         </div>

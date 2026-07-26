@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { X, UserPlus, Search, Check, Shield, Loader2, Sparkles, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -95,6 +95,16 @@ export function InviteModal({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleSendInvite = async () => {
     if (!selectedUser) return;
     setSending(true);
@@ -118,7 +128,8 @@ export function InviteModal({
         if (onInviteSent) {
           onInviteSent(selectedUser.nombreusuario);
         }
-        setTimeout(() => {
+        if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = setTimeout(() => {
           onClose();
         }, 1500);
       } else {

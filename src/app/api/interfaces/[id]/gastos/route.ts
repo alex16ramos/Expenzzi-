@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { TMoneda } from '@prisma/client';
 import { notifyInterfaceMembers } from '@/lib/notify-members';
+import { emitRealtimeEvent } from '@/lib/events';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,19 +60,31 @@ export async function GET(
     const andConditions: Record<string, unknown>[] = [];
 
     if (categoryId) {
-      andConditions.push({ idcategoria: BigInt(categoryId) });
+      const ids = categoryId.split(',').map((id) => BigInt(id.trim())).filter(Boolean);
+      if (ids.length > 0) {
+        andConditions.push({ idcategoria: { in: ids } });
+      }
     }
 
     if (submethodId) {
-      andConditions.push({ idsubmetodopago: BigInt(submethodId) });
+      const ids = submethodId.split(',').map((id) => BigInt(id.trim())).filter(Boolean);
+      if (ids.length > 0) {
+        andConditions.push({ idsubmetodopago: { in: ids } });
+      }
     }
 
     if (metodo) {
-      andConditions.push({ submetodopago: { metodo: metodo } });
+      const metodosList = metodo.split(',').map((m) => m.trim()).filter(Boolean);
+      if (metodosList.length > 0) {
+        andConditions.push({ submetodopago: { metodo: { in: metodosList } } });
+      }
     }
 
-    if (moneda && ['ARS', 'USD', 'UYU'].includes(moneda)) {
-      andConditions.push({ moneda: moneda as TMoneda });
+    if (moneda) {
+      const monedasList = moneda.split(',').map((m) => m.trim()).filter((m) => ['ARS', 'USD', 'UYU'].includes(m));
+      if (monedasList.length > 0) {
+        andConditions.push({ moneda: { in: monedasList as TMoneda[] } });
+      }
     }
 
     if (fechaDesde || fechaHasta) {
@@ -225,6 +238,8 @@ export async function POST(
       titulo: 'Nuevo Gasto Registrado',
       mensaje: `${emisorNombre} registró un gasto de ${formattedAmount}${comentario ? ` ("${comentario}")` : ''} en "${interfazNombre}".`,
     });
+
+    emitRealtimeEvent(String(interfaceId), { type: 'MUTATION', entity: 'gasto', action: 'create' });
 
     return NextResponse.json({
       success: true,
