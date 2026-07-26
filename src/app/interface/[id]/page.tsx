@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, use, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, use, useRef } from 'react';
 import { Layers } from 'lucide-react';
 import { Header } from '@/components/interface/Header';
 import { SideMenu } from '@/components/interface/SideMenu';
@@ -254,6 +254,10 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         });
 
         recordsCacheRef.current[activeSection] = mapped;
+        const cacheKeys = Object.keys(recordsCacheRef.current);
+        if (cacheKeys.length > 5) {
+          delete recordsCacheRef.current[cacheKeys[0]];
+        }
         setTransactions(mapped);
         if (json.pagination) {
           setTotalPages(json.pagination.totalPages || 1);
@@ -306,10 +310,13 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     if (!interfaceId) return;
 
     let eventSource: EventSource | null = null;
+    let retryCount = 0;
+
     try {
       eventSource = new EventSource(`/api/interfaces/${interfaceId}/realtime`);
 
       eventSource.onmessage = (event) => {
+        retryCount = 0;
         try {
           const payload = JSON.parse(event.data);
           if (payload.type === 'MUTATION') {
@@ -319,6 +326,16 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
           }
         } catch {
           // Ignore
+        }
+      };
+
+      eventSource.onerror = () => {
+        retryCount++;
+        if (retryCount >= 5) {
+          console.warn('Realtime SSE desconectado tras superar el máximo de reintentos.');
+          if (eventSource) {
+            eventSource.close();
+          }
         }
       };
     } catch (err) {
@@ -361,31 +378,34 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
   };
 
   // Delete Transaction Handler
-  const handleDeleteTransaction = async (id: string | number) => {
-    try {
-      const endpoint =
-        activeSection === 'Gastos'
-          ? `/api/interfaces/${interfaceId}/gastos?idgasto=${id}`
-          : activeSection === 'Ingresos'
-            ? `/api/interfaces/${interfaceId}/ingresos?idingreso=${id}`
-            : `/api/interfaces/${interfaceId}/ahorros?idahorro=${id}`;
+  const handleDeleteTransaction = useCallback(
+    async (id: string | number) => {
+      try {
+        const endpoint =
+          activeSection === 'Gastos'
+            ? `/api/interfaces/${interfaceId}/gastos?idgasto=${id}`
+            : activeSection === 'Ingresos'
+              ? `/api/interfaces/${interfaceId}/ingresos?idingreso=${id}`
+              : `/api/interfaces/${interfaceId}/ahorros?idahorro=${id}`;
 
-      const res = await fetch(endpoint, { method: 'DELETE' });
-      if (res.ok) {
-        toast.success('Movimiento eliminado correctamente');
-        setTransactions(transactions.filter((tx) => String(tx.id) !== String(id)));
-        loadBalances();
-        if (selectedTransactionForModal && String(selectedTransactionForModal.id) === String(id)) {
-          setSelectedTransactionForModal(null);
+        const res = await fetch(endpoint, { method: 'DELETE' });
+        if (res.ok) {
+          toast.success('Movimiento eliminado correctamente');
+          setTransactions((prev) => prev.filter((tx) => String(tx.id) !== String(id)));
+          loadBalances();
+          if (selectedTransactionForModal && String(selectedTransactionForModal.id) === String(id)) {
+            setSelectedTransactionForModal(null);
+          }
+        } else {
+          const err = await res.json();
+          toast.error(err.error || 'Error al eliminar movimiento');
         }
-      } else {
-        const err = await res.json();
-        toast.error(err.error || 'Error al eliminar movimiento');
+      } catch {
+        toast.error('Error de conexión al eliminar');
       }
-    } catch {
-      toast.error('Error de conexión al eliminar');
-    }
-  };
+    },
+    [activeSection, interfaceId, loadBalances, selectedTransactionForModal]
+  );
 
   // Edit Click Handler
   const handleEditClick = (tx: Transaction) => {
@@ -485,103 +505,123 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
   };
 
   // Category ABM Handlers
-  const handleCreateCategory = async (data: Omit<CategoriaItem, 'id'>) => {
-    const res = await fetch(`/api/interfaces/${interfaceId}/categorias`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Error al crear categoría');
-    }
-    await res.json();
-    toast.success('Categoría creada correctamente');
-    loadInterfaceDetails();
-  };
+  const handleCreateCategory = useCallback(
+    async (data: Omit<CategoriaItem, 'id'>) => {
+      const res = await fetch(`/api/interfaces/${interfaceId}/categorias`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Error al crear categoría');
+      }
+      await res.json();
+      toast.success('Categoría creada correctamente');
+      loadInterfaceDetails();
+    },
+    [interfaceId, loadInterfaceDetails]
+  );
 
-  const handleUpdateCategory = async (data: CategoriaItem) => {
-    const res = await fetch(`/api/interfaces/${interfaceId}/categorias`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idcategoria: data.id, ...data }),
-    });
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Error al actualizar categoría');
-    }
-    await res.json();
-    toast.success('Categoría actualizada');
-    loadInterfaceDetails();
-  };
+  const handleUpdateCategory = useCallback(
+    async (data: CategoriaItem) => {
+      const res = await fetch(`/api/interfaces/${interfaceId}/categorias`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idcategoria: data.id, ...data }),
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Error al actualizar categoría');
+      }
+      await res.json();
+      toast.success('Categoría actualizada');
+      loadInterfaceDetails();
+    },
+    [interfaceId, loadInterfaceDetails]
+  );
 
-  const handleDeleteCategory = async (id: string) => {
-    const res = await fetch(`/api/interfaces/${interfaceId}/categorias?idcategoria=${id}`, {
-      method: 'DELETE',
-    });
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Error al eliminar categoría');
-    }
-    await res.json();
-    toast.success('Categoría eliminada');
-    loadInterfaceDetails();
-  };
+  const handleDeleteCategory = useCallback(
+    async (id: string) => {
+      const res = await fetch(`/api/interfaces/${interfaceId}/categorias?idcategoria=${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Error al eliminar categoría');
+      }
+      await res.json();
+      toast.success('Categoría eliminada');
+      loadInterfaceDetails();
+    },
+    [interfaceId, loadInterfaceDetails]
+  );
 
   // Submethod ABM Handlers
-  const handleCreateSubmethod = async (data: Omit<SubmetodoItem, 'id'>) => {
-    const res = await fetch(`/api/interfaces/${interfaceId}/submetodos`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Error al crear submétodo');
-    }
-    await res.json();
-    toast.success('Submétodo de pago creado');
-    loadInterfaceDetails();
-  };
+  const handleCreateSubmethod = useCallback(
+    async (data: Omit<SubmetodoItem, 'id'>) => {
+      const res = await fetch(`/api/interfaces/${interfaceId}/submetodos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Error al crear submétodo');
+      }
+      await res.json();
+      toast.success('Submétodo de pago creado');
+      loadInterfaceDetails();
+    },
+    [interfaceId, loadInterfaceDetails]
+  );
 
-  const handleUpdateSubmethod = async (data: SubmetodoItem) => {
-    const res = await fetch(`/api/interfaces/${interfaceId}/submetodos`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idsubmetodopago: data.id, ...data }),
-    });
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Error al actualizar submétodo');
-    }
-    await res.json();
-    toast.success('Submétodo de pago actualizado');
-    loadInterfaceDetails();
-  };
+  const handleUpdateSubmethod = useCallback(
+    async (data: SubmetodoItem) => {
+      const res = await fetch(`/api/interfaces/${interfaceId}/submetodos`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idsubmetodopago: data.id, ...data }),
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Error al actualizar submétodo');
+      }
+      await res.json();
+      toast.success('Submétodo de pago actualizado');
+      loadInterfaceDetails();
+    },
+    [interfaceId, loadInterfaceDetails]
+  );
 
-  const handleDeleteSubmethod = async (id: string) => {
-    const res = await fetch(`/api/interfaces/${interfaceId}/submetodos?idsubmetodopago=${id}`, {
-      method: 'DELETE',
-    });
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}));
-      throw new Error(errJson.error || 'Error al eliminar submétodo');
-    }
-    await res.json();
-    toast.success('Submétodo de pago eliminado');
-    loadInterfaceDetails();
-  };
+  const handleDeleteSubmethod = useCallback(
+    async (id: string) => {
+      const res = await fetch(`/api/interfaces/${interfaceId}/submetodos?idsubmetodopago=${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Error al eliminar submétodo');
+      }
+      await res.json();
+      toast.success('Submétodo de pago eliminado');
+      loadInterfaceDetails();
+    },
+    [interfaceId, loadInterfaceDetails]
+  );
 
   // Sorted Transactions
-  const sortedTransactions = [...transactions].sort((a, b) => {
-    if (sortBy === 'amount') {
-      return sortOrder === 'desc' ? b.amount - a.amount : a.amount - b.amount;
-    }
-    if (sortBy === 'user') {
-      return sortOrder === 'desc' ? b.user.localeCompare(a.user) : a.user.localeCompare(b.user);
-    }
-    return sortOrder === 'desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
-  });
+  const sortedTransactions = useMemo(() => {
+    return [...transactions].sort((a, b) => {
+      if (sortBy === 'amount') {
+        return sortOrder === 'desc' ? b.amount - a.amount : a.amount - b.amount;
+      }
+      if (sortBy === 'user') {
+        return sortOrder === 'desc' ? b.user.localeCompare(a.user) : a.user.localeCompare(b.user);
+      }
+      return sortOrder === 'desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
+    });
+  }, [transactions, sortBy, sortOrder]);
 
   const hasSelectedDetail = !!selectedTransactionForModal;
 

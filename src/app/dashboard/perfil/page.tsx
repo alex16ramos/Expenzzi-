@@ -36,6 +36,7 @@ interface UserProfile {
 }
 
 import { getAvatarBg, getAvatarClass } from '@/lib/avatar-utils';
+import { AvatarAdjustModal } from '@/components/profile/AvatarAdjustModal';
 
 export const SIMPSONS_PRESETS = [
   { name: 'Homer', url: '/avatars/homer.png', bg: 'bg-gradient-to-b from-blue-500 to-indigo-700', imgClass: 'object-contain p-0.5 object-center scale-110' },
@@ -90,8 +91,8 @@ export default function ProfilePage() {
   const [avatarTab, setAvatarTab] = useState<'upload' | 'presets' | 'url'>('upload');
   const [customUrlInput, setCustomUrlInput] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [pendingAdjustImage, setPendingAdjustImage] = useState<string | null>(null);
 
-  // eslint-disable-next-line react-doctor/no-fetch-in-effect
   useEffect(() => {
     let ignore = false;
     async function loadProfile() {
@@ -131,10 +132,10 @@ export default function ProfilePage() {
 
     setUploadingImage(true);
     const reader = new FileReader();
-    reader.onload = async (event) => {
+    reader.onload = (event) => {
       const base64Url = event.target?.result as string;
       if (base64Url) {
-        await handleSelectAvatar(base64Url);
+        setPendingAdjustImage(base64Url);
       }
       setUploadingImage(false);
     };
@@ -143,13 +144,19 @@ export default function ProfilePage() {
       setUploadingImage(false);
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
-  const handleApplyCustomUrl = async (e: React.FormEvent) => {
+  const handleApplyCustomUrl = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customUrlInput.trim()) return;
-    await handleSelectAvatar(customUrlInput.trim());
+    setPendingAdjustImage(customUrlInput.trim());
     setCustomUrlInput('');
+  };
+
+  const handleConfirmAdjustImage = async (croppedUrl: string) => {
+    setPendingAdjustImage(null);
+    await handleSelectAvatar(croppedUrl);
   };
 
   const handleSelectAvatar = async (avatarUrl: string) => {
@@ -363,9 +370,19 @@ export default function ProfilePage() {
                 uploadingImage={uploadingImage}
                 customUrlInput={customUrlInput}
                 setCustomUrlInput={setCustomUrlInput}
-                onSelectAvatar={handleSelectAvatar}
+                onSelectPreset={(presetUrl) => setPendingAdjustImage(presetUrl)}
                 onFileUpload={handleFileUpload}
                 onApplyCustomUrl={handleApplyCustomUrl}
+              />
+            )}
+
+            {/* AVATAR ADJUSTMENT / CROPPER MODAL */}
+            {pendingAdjustImage && (
+              <AvatarAdjustModal
+                key={pendingAdjustImage}
+                imageSrc={pendingAdjustImage}
+                onClose={() => setPendingAdjustImage(null)}
+                onConfirm={handleConfirmAdjustImage}
               />
             )}
 
@@ -463,7 +480,7 @@ function ProfileAvatarSelectorModal({
   uploadingImage,
   customUrlInput,
   setCustomUrlInput,
-  onSelectAvatar,
+  onSelectPreset,
   onFileUpload,
   onApplyCustomUrl,
 }: {
@@ -473,7 +490,7 @@ function ProfileAvatarSelectorModal({
   uploadingImage: boolean;
   customUrlInput: string;
   setCustomUrlInput: (val: string) => void;
-  onSelectAvatar: (url: string) => void;
+  onSelectPreset: (url: string) => void;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onApplyCustomUrl: (e: React.FormEvent) => void;
 }) {
@@ -529,7 +546,7 @@ function ProfileAvatarSelectorModal({
             <button
               key={preset.name}
               type="button"
-              onClick={() => onSelectAvatar(preset.url)}
+              onClick={() => onSelectPreset(preset.url)}
               className={`p-1.5 rounded-2xl border-2 transition-colors flex flex-col items-center gap-1 group ${
                 fotoperfil === preset.url
                   ? 'border-indigo-500 bg-indigo-500/10 scale-105'

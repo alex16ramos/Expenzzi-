@@ -48,7 +48,6 @@ export function AuditHistoryModal({
   const [errorMsg, setErrorMsg] = useState('');
 
   // Fetch history records from API without synchronous setState in effect body
-  // eslint-disable-next-line react-doctor/no-fetch-in-effect
   useEffect(() => {
     let isMounted = true;
     if (!isOpen) return;

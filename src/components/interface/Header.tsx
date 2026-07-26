@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Menu, ArrowLeft, Users, Shield } from 'lucide-react';
@@ -59,7 +59,6 @@ export function Header({
   }, []);
 
   // Fetch real profile photo from public.usuario (Simpson avatar / custom upload)
-  // eslint-disable-next-line react-doctor/no-fetch-in-effect
   useEffect(() => {
     let isMounted = true;
     const fetchProfile = async () => {
@@ -95,17 +94,19 @@ export function Header({
   const displayFoto = profileFoto || userAvatar || currentUser?.image || null;
 
   // Fallback member list
-  const displayMembers: HeaderMember[] = members.length > 0
-    ? members
-    : [
-        {
-          idusuario: currentUser?.id || '1',
-          nombreusuario: displayName,
-          email: currentUser?.email || 'usuario@expenzzi.local',
-          fotoperfil: displayFoto,
-          rol: userRole || 'Visualizador',
-        },
-      ];
+  const displayMembers: HeaderMember[] = useMemo(() => {
+    return members.length > 0
+      ? members
+      : [
+          {
+            idusuario: currentUser?.id || '1',
+            nombreusuario: displayName,
+            email: currentUser?.email || 'usuario@expenzzi.local',
+            fotoperfil: displayFoto,
+            rol: userRole || 'Visualizador',
+          },
+        ];
+  }, [members, currentUser, displayName, displayFoto, userRole]);
 
   return (
     <header className="px-4 sm:px-6 py-3.5 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md sticky top-0 z-30 transition-colors">

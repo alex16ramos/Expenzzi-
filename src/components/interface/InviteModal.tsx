@@ -49,8 +49,23 @@ export function InviteModal({
     }
   }, []);
 
+  const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const clearCloseTimer = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  };
+
+  const handleClose = () => {
+    clearCloseTimer();
+    onClose();
+  };
+
   useEffect(() => {
     if (isOpen) {
+      clearCloseTimer();
       const timer = setTimeout(() => {
         fetchFriends();
         setSearchQuery('');
@@ -63,7 +78,6 @@ export function InviteModal({
   }, [isOpen, fetchFriends]);
 
   // Search users by name/email
-  // eslint-disable-next-line react-doctor/no-fetch-in-effect
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 2) {
       const timer = setTimeout(() => {
@@ -91,13 +105,9 @@ export function InviteModal({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
-
   useEffect(() => {
     return () => {
-      if (closeTimerRef.current) {
-        clearTimeout(closeTimerRef.current);
-      }
+      clearCloseTimer();
     };
   }, []);
 
@@ -128,7 +138,7 @@ export function InviteModal({
         if (onInviteSent) {
           onInviteSent(selectedUser.nombreusuario);
         }
-        if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+        clearCloseTimer();
         closeTimerRef.current = setTimeout(() => {
           onClose();
         }, 1500);
@@ -163,7 +173,7 @@ export function InviteModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Cerrar modal de invitación"
             className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
@@ -304,7 +314,7 @@ export function InviteModal({
         <div className="flex justify-end gap-3 pt-2">
           <Button
             variant="outline"
-            onClick={onClose}
+            onClick={handleClose}
             className="px-4 h-10 rounded-xl text-xs font-semibold"
           >
             Cancelar

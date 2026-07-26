@@ -96,7 +96,6 @@ export default function DashboardPage() {
   const [profileFoto, setProfileFoto] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string>('');
 
-  // eslint-disable-next-line react-doctor/no-fetch-in-effect
   useEffect(() => {
     let isMounted = true;
     const fetchProfile = async () => {
@@ -365,36 +364,57 @@ export default function DashboardPage() {
   const favoriteSet = React.useMemo(() => new Set(favorites), [favorites]);
 
   // Compute Consolidated Balance Totals across selected interfaces
-  const selectedInterfaces = interfaces.filter((item) => selectedInterfaceSet.has(item.id));
-  const consolidatedARS = selectedInterfaces.reduce((acc, item) => acc + (item.balanceARS || 0), 0);
-  const consolidatedUSD = selectedInterfaces.reduce((acc, item) => acc + (item.balanceUSD || 0), 0);
-  const consolidatedUYU = selectedInterfaces.reduce((acc, item) => acc + (item.balanceUYU || 0), 0);
+  const selectedInterfaces = React.useMemo(
+    () => interfaces.filter((item) => selectedInterfaceSet.has(item.id)),
+    [interfaces, selectedInterfaceSet]
+  );
 
-  const activeConsolidated =
-    balanceCurrency === 'ARS' ? consolidatedARS : balanceCurrency === 'USD' ? consolidatedUSD : consolidatedUYU;
-  const currencySymbol = balanceCurrency === 'ARS' ? '$' : balanceCurrency === 'USD' ? 'US$' : '$U';
+  const { consolidatedARS, consolidatedUSD, consolidatedUYU } = React.useMemo(() => {
+    return selectedInterfaces.reduce(
+      (acc, item) => ({
+        consolidatedARS: acc.consolidatedARS + (item.balanceARS || 0),
+        consolidatedUSD: acc.consolidatedUSD + (item.balanceUSD || 0),
+        consolidatedUYU: acc.consolidatedUYU + (item.balanceUYU || 0),
+      }),
+      { consolidatedARS: 0, consolidatedUSD: 0, consolidatedUYU: 0 }
+    );
+  }, [selectedInterfaces]);
+
+  const activeConsolidated = React.useMemo(() => {
+    return balanceCurrency === 'ARS' ? consolidatedARS : balanceCurrency === 'USD' ? consolidatedUSD : consolidatedUYU;
+  }, [balanceCurrency, consolidatedARS, consolidatedUSD, consolidatedUYU]);
+
+  const currencySymbol = React.useMemo(() => {
+    return balanceCurrency === 'ARS' ? '$' : balanceCurrency === 'USD' ? 'US$' : '$U';
+  }, [balanceCurrency]);
 
   // Filter & Search Interface items
-  const filteredInterfaces = interfaces.filter((item) => {
-    const matchesSearch =
-      item.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.descripcion && item.descripcion.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredInterfaces = React.useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    return interfaces.filter((item) => {
+      const matchesSearch =
+        !query ||
+        item.nombre.toLowerCase().includes(query) ||
+        (item.descripcion && item.descripcion.toLowerCase().includes(query));
 
-    if (!matchesSearch) return false;
+      if (!matchesSearch) return false;
 
-    if (filterPill === 'favoritas') {
-      return favoriteSet.has(item.id);
-    }
+      if (filterPill === 'favoritas') {
+        return favoriteSet.has(item.id);
+      }
 
-    return true;
-  });
+      return true;
+    });
+  }, [interfaces, searchQuery, filterPill, favoriteSet]);
 
-  const sortedInterfaces = [...filteredInterfaces].sort((a, b) => {
-    if (filterPill === 'ultimo-acceso') {
-      return (b.fechaunion || '').localeCompare(a.fechaunion || '');
-    }
-    return 0;
-  });
+  const sortedInterfaces = React.useMemo(() => {
+    return [...filteredInterfaces].sort((a, b) => {
+      if (filterPill === 'ultimo-acceso') {
+        return (b.fechaunion || '').localeCompare(a.fechaunion || '');
+      }
+      return 0;
+    });
+  }, [filteredInterfaces, filterPill]);
 
   return (
     <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">

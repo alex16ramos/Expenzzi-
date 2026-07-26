@@ -106,16 +106,21 @@ export function NotificationBell({
     }
   }, []);
 
+  const loadNotifsRef = useRef(loadNotifs);
+  useEffect(() => {
+    loadNotifsRef.current = loadNotifs;
+  });
+
   useEffect(() => {
     isMountedRef.current = true;
     Promise.resolve().then(() => {
-      if (isMountedRef.current) loadNotifs();
+      if (isMountedRef.current && loadNotifsRef.current) loadNotifsRef.current();
     });
 
     // Pause polling when document is hidden to save memory and network calls
     const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        loadNotifs();
+      if (document.visibilityState === 'visible' && loadNotifsRef.current) {
+        loadNotifsRef.current();
       }
     }, 30000);
 
@@ -123,7 +128,7 @@ export function NotificationBell({
       isMountedRef.current = false;
       clearInterval(interval);
     };
-  }, [loadNotifs]);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {

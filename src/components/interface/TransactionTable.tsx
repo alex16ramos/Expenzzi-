@@ -15,7 +15,6 @@ interface TransactionTableProps {
   onSortChange?: (field: SortField) => void;
 }
 
-// eslint-disable-next-line react-doctor/unused-file
 export function TransactionTable({
   transactions,
   onSelect,

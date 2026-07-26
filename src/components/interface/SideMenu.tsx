@@ -66,7 +66,6 @@ export function SideMenu({
   const [profileFoto, setProfileFoto] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string>('');
 
-  // eslint-disable-next-line react-doctor/no-fetch-in-effect
   useEffect(() => {
     let isMounted = true;
     const fetchProfile = async () => {

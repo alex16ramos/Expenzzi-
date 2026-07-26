@@ -5,7 +5,6 @@ import { Mail, Lock, User, Eye, EyeOff, LogIn, UserPlus, KeyRound, ArrowRight } 
 import { authClient } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { toast } from 'sonner';
 
 type AuthTab = 'login' | 'register' | 'forgot';

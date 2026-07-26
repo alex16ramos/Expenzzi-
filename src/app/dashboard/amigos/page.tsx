@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import {
   Users,
@@ -83,7 +83,7 @@ export default function AmigosPage() {
   const [isSideMenuCollapsed, setIsSideMenuCollapsed] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const refreshAmigos = async () => {
+  const refreshAmigos = useCallback(async () => {
     try {
       const res = await fetch('/api/amigos');
       if (!res.ok) return;
@@ -96,9 +96,8 @@ export default function AmigosPage() {
     } catch {
       // Ignore
     }
-  };
+  }, []);
 
-  // eslint-disable-next-line react-doctor/no-fetch-in-effect
   useEffect(() => {
     let ignore = false;
     async function loadAmigos() {
@@ -124,7 +123,6 @@ export default function AmigosPage() {
   }, []);
 
   // Debounced search for public user profiles
-  // eslint-disable-next-line react-doctor/no-fetch-in-effect
   useEffect(() => {
     if (!searchQuery.trim()) return;
 

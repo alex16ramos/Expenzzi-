@@ -147,10 +147,6 @@ function ChartTooltipContent({
   >) {
   const { config } = useChart()
 
-  if (!active || !payload?.length) {
-    return null
-  }
-
   const tooltipLabel = React.useMemo(() => {
     if (hideLabel || !payload?.length) {
       return null
@@ -177,7 +173,6 @@ function ChartTooltipContent({
     }
 
     return <div className={cn("font-medium", labelClassName)}>{value}</div>
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     label,
     labelFormatter,
@@ -187,6 +182,10 @@ function ChartTooltipContent({
     config,
     labelKey,
   ])
+
+  if (!active || !payload?.length) {
+    return null
+  }
 
   const nestLabel = payload.length === 1 && indicator !== "dot"
 
