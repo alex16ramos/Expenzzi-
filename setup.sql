@@ -27,14 +27,49 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'timportemoneda') THEN
     CREATE TYPE "timportemoneda" AS (importe numeric(12,2), moneda tmoneda);
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'testadoamistad') THEN
+    CREATE TYPE "testadoamistad" AS ENUM('Pendiente', 'Aceptado', 'Rechazado');
+  END IF;
 END $$;
 
 -- 3. Create Tables
 CREATE TABLE IF NOT EXISTS "usuario" (
   "idusuario" uuid PRIMARY KEY,
   "nombreusuario" varchar NOT NULL,
-  "email" varchar NOT NULL CONSTRAINT "usuario_email_key" UNIQUE
+  "email" varchar NOT NULL CONSTRAINT "usuario_email_key" UNIQUE,
+  "fotoperfil" varchar,
+  "biografia" varchar,
+  "telefono" varchar
 );
+
+ALTER TABLE "usuario" ADD COLUMN IF NOT EXISTS "fotoperfil" varchar;
+ALTER TABLE "usuario" ADD COLUMN IF NOT EXISTS "biografia" varchar;
+ALTER TABLE "usuario" ADD COLUMN IF NOT EXISTS "telefono" varchar;
+ALTER TABLE "usuario" ADD COLUMN IF NOT EXISTS "temapreferido" varchar(20) DEFAULT 'system';
+
+CREATE TABLE IF NOT EXISTS "notificacion" (
+  "idnotificacion" bigserial PRIMARY KEY,
+  "idreceptor" uuid NOT NULL REFERENCES "usuario"("idusuario") ON DELETE CASCADE,
+  "idemisor" uuid NOT NULL REFERENCES "usuario"("idusuario") ON DELETE CASCADE,
+  "tipo" varchar(50) DEFAULT 'INVITACION_INTERFAZ' NOT NULL,
+  "titulo" varchar(100) NOT NULL,
+  "mensaje" text,
+  "idinterfazoperacion" bigint REFERENCES "interfazoperacion"("idinterfazoperacion") ON DELETE CASCADE,
+  "rol_propuesto" trol DEFAULT 'Invitado'::trol,
+  "estado" varchar(20) DEFAULT 'Pendiente' NOT NULL,
+  "leido" boolean DEFAULT false NOT NULL,
+  "fechacreacion" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "amistad" (
+  "idamistad" bigserial PRIMARY KEY,
+  "idremitente" uuid NOT NULL REFERENCES "usuario"("idusuario") ON DELETE CASCADE,
+  "iddestinatario" uuid NOT NULL REFERENCES "usuario"("idusuario") ON DELETE CASCADE,
+  "estado" testadoamistad DEFAULT 'Pendiente'::testadoamistad NOT NULL,
+  "fechacreacion" date DEFAULT CURRENT_DATE NOT NULL,
+  CONSTRAINT "amistad_remitente_destinatario_key" UNIQUE("idremitente", "iddestinatario")
+);
+
 
 CREATE TABLE IF NOT EXISTS "interfazoperacion" (
   "idinterfazoperacion" bigserial PRIMARY KEY,
@@ -178,6 +213,7 @@ ALTER TABLE "historialahorro" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "historialgasto" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "historialingreso" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "historiallimite" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "amistad" ENABLE ROW LEVEL SECURITY;
 
 -- 5. Create Missing Indexes for Performance
 CREATE UNIQUE INDEX IF NOT EXISTS "ahorro_pkey" ON "ahorro" ("idahorro");
@@ -207,6 +243,9 @@ CREATE INDEX IF NOT EXISTS "idx_usuariointerfaz_idusuario" ON "usuariointerfaz" 
 CREATE INDEX IF NOT EXISTS "idx_usuariointerfaz_idinterfaz_idusuario" ON "usuariointerfaz" ("idinterfazoperacion","idusuario");
 CREATE INDEX IF NOT EXISTS "idx_gasto_submetodopago" ON "gasto" ("idsubmetodopago");
 CREATE INDEX IF NOT EXISTS "idx_submetodopago_idinterfazoperacion" ON "submetodopago" ("idinterfazoperacion");
+CREATE UNIQUE INDEX IF NOT EXISTS "amistad_pkey" ON "amistad" ("idamistad");
+CREATE INDEX IF NOT EXISTS "idx_amistad_idremitente" ON "amistad" ("idremitente");
+CREATE INDEX IF NOT EXISTS "idx_amistad_iddestinatario" ON "amistad" ("iddestinatario");
 
 -- 6. Trigger to Sync Neon Auth Users to Public.Usuario
 CREATE OR REPLACE FUNCTION public.sync_usuario_fn()
@@ -317,12 +356,16 @@ FOR EACH ROW EXECUTE FUNCTION public.calcular_importes_trigger_fn();
 -- Gasto update log
 CREATE OR REPLACE FUNCTION public.log_gasto_historial_fn()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_uid uuid;
 BEGIN
+  v_uid := public.current_user_id();
+
   IF (OLD.importe <> NEW.importe OR OLD.moneda <> NEW.moneda OR COALESCE(OLD.comentario, '') <> COALESCE(NEW.comentario, '')) THEN
     INSERT INTO public.historialgasto (fechacambio, responsablecambio, ant, comentarioant, idgasto)
     VALUES (
       CURRENT_DATE, 
-      COALESCE(auth.uid(), OLD.responsablegasto), 
+      COALESCE(v_uid, OLD.responsablegasto), 
       ROW(OLD.importe, OLD.moneda)::timportemoneda, 
       OLD.comentario, 
       OLD.idgasto
@@ -339,12 +382,16 @@ FOR EACH ROW EXECUTE FUNCTION public.log_gasto_historial_fn();
 -- Ingreso update log
 CREATE OR REPLACE FUNCTION public.log_ingreso_historial_fn()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_uid uuid;
 BEGIN
+  v_uid := public.current_user_id();
+
   IF (OLD.importe <> NEW.importe OR OLD.moneda <> NEW.moneda OR COALESCE(OLD.comentario, '') <> COALESCE(NEW.comentario, '')) THEN
     INSERT INTO public.historialingreso (fechacambio, responsablecambio, ant, comentarioant, idingreso)
     VALUES (
       CURRENT_DATE, 
-      COALESCE(auth.uid(), OLD.responsableingreso), 
+      COALESCE(v_uid, OLD.responsableingreso), 
       ROW(OLD.importe, OLD.moneda)::timportemoneda, 
       OLD.comentario, 
       OLD.idingreso
@@ -386,8 +433,6 @@ DECLARE
   v_importe_utilizado numeric(12, 2);
 BEGIN
   IF (COALESCE(OLD.importe, 0) <> COALESCE(NEW.importe, 0) OR COALESCE(OLD.moneda, 'USD'::tmoneda) <> COALESCE(NEW.moneda, 'USD'::tmoneda) OR COALESCE(OLD.periodoaplicacion, 'Mensual'::tperiodo) <> COALESCE(NEW.periodoaplicacion, 'Mensual'::tperiodo) OR OLD.estadolimite <> NEW.estadolimite) THEN
-    -- We can get utilized amount from the database or view
-    -- (Note: we check if the view is initialized first)
     v_importe_utilizado := 0;
 
     INSERT INTO public.historiallimite (periodoaplicacion, importeutilizado, ant, idcategoria, fechacreacionlimite, importelimite)
@@ -411,10 +456,13 @@ FOR EACH ROW EXECUTE FUNCTION public.log_categoria_limite_historial_fn();
 -- 9. Trigger to Auto-Associate Creator of InterfazOperacion as Administrador
 CREATE OR REPLACE FUNCTION public.associate_creator_admin_fn()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_uid uuid;
 BEGIN
-  IF auth.uid() IS NOT NULL THEN
+  v_uid := public.current_user_id();
+  IF v_uid IS NOT NULL THEN
     INSERT INTO public.usuariointerfaz (rol, idinterfazoperacion, idusuario, fechaunion)
-    VALUES ('Administrador'::trol, NEW.idinterfazoperacion, auth.uid(), CURRENT_DATE)
+    VALUES ('Administrador'::trol, NEW.idinterfazoperacion, v_uid, CURRENT_DATE)
     ON CONFLICT DO NOTHING;
   END IF;
   RETURN NEW;
@@ -434,7 +482,13 @@ DECLARE
   v_rol trol;
   v_existing RECORD;
   v_res json;
+  v_uid uuid;
 BEGIN
+  v_uid := public.current_user_id();
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Usuario no autenticado';
+  END IF;
+
   SELECT idinterfazoperacion, 
          CASE 
            WHEN linkinvitado::uuid = p_codigo THEN 'Invitado'::trol
@@ -450,7 +504,7 @@ BEGIN
 
   SELECT * INTO v_existing 
   FROM public.usuariointerfaz 
-  WHERE idinterfazoperacion = v_idinterfaz AND idusuario = auth.uid();
+  WHERE idinterfazoperacion = v_idinterfaz AND idusuario = v_uid;
 
   IF FOUND THEN
     IF v_existing.fechasalida IS NULL THEN
@@ -463,7 +517,7 @@ BEGIN
       SET fechasalida = NULL,
           fechaunion = CURRENT_DATE,
           rol = v_rol
-      WHERE idinterfazoperacion = v_idinterfaz AND idusuario = auth.uid()
+      WHERE idinterfazoperacion = v_idinterfaz AND idusuario = v_uid
       RETURNING * INTO v_existing;
 
       v_res := json_build_object(
@@ -473,7 +527,7 @@ BEGIN
     END IF;
   ELSE
     INSERT INTO public.usuariointerfaz (rol, idinterfazoperacion, idusuario, fechaunion)
-    VALUES (v_rol, v_idinterfaz, auth.uid(), CURRENT_DATE)
+    VALUES (v_rol, v_idinterfaz, v_uid, CURRENT_DATE)
     RETURNING * INTO v_existing;
 
     v_res := json_build_object(
@@ -491,11 +545,17 @@ CREATE OR REPLACE FUNCTION public.salir_de_interfaz(p_idinterfaz bigint)
 RETURNS json AS $$
 DECLARE
   v_updated RECORD;
+  v_uid uuid;
 BEGIN
+  v_uid := public.current_user_id();
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Usuario no autenticado';
+  END IF;
+
   UPDATE public.usuariointerfaz
   SET fechasalida = CURRENT_DATE
   WHERE idinterfazoperacion = p_idinterfaz 
-    AND idusuario = auth.uid() 
+    AND idusuario = v_uid 
     AND fechasalida IS NULL
   RETURNING * INTO v_updated;
 
@@ -538,163 +598,393 @@ SELECT a.*,
        (a.importes).importeuyu AS importeuyu
 FROM public.ahorro a;
 
--- 12. RLS Policies Configuration
--- A. Policy for "usuario"
-CREATE POLICY select_usuario ON "usuario" FOR SELECT TO authenticated
-  USING (idusuario = auth.uid() OR EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui1 
-    JOIN public.usuariointerfaz ui2 ON ui1.idinterfazoperacion = ui2.idinterfazoperacion
-    WHERE ui1.idusuario = auth.uid() AND ui2.idusuario = public.usuario.idusuario 
-      AND ui1.fechasalida IS NULL AND ui2.fechasalida IS NULL
-  ));
+CREATE OR REPLACE VIEW public.vistalimitegastosperiodo AS
+SELECT 
+  c.idcategoria,
+  c.nombre AS categorianombre,
+  c.idinterfazoperacion,
+  c.estadolimite,
+  c.importe AS importelimite,
+  c.moneda AS monedalimite,
+  c.periodoaplicacion,
+  c.fechacreacionlimite,
+  COALESCE(
+    SUM(
+      CASE 
+        WHEN c.moneda = 'ARS'::tmoneda THEN COALESCE((g.importes).importears, g.importe)
+        WHEN c.moneda = 'USD'::tmoneda THEN COALESCE((g.importes).importeusd, g.importe)
+        WHEN c.moneda = 'UYU'::tmoneda THEN COALESCE((g.importes).importeuyu, g.importe)
+        ELSE g.importe
+      END
+    ), 0
+  ) AS importeutilizado
+FROM public.categoria c
+LEFT JOIN public.gasto g ON g.idcategoria = c.idcategoria AND g.estado = true AND (
+  (c.periodoaplicacion = 'Semanal'::tperiodo AND g.fecha >= date_trunc('week', CURRENT_DATE)) OR
+  (c.periodoaplicacion = 'Mensual'::tperiodo AND g.fecha >= date_trunc('month', CURRENT_DATE)) OR
+  (c.periodoaplicacion = 'Trimestral'::tperiodo AND g.fecha >= date_trunc('quarter', CURRENT_DATE)) OR
+  (c.periodoaplicacion = 'Anual'::tperiodo AND g.fecha >= date_trunc('year', CURRENT_DATE)) OR
+  (c.periodoaplicacion IS NULL AND g.fecha >= date_trunc('month', CURRENT_DATE))
+)
+WHERE c.estado = true
+GROUP BY c.idcategoria, c.nombre, c.idinterfazoperacion, c.estadolimite, c.importe, c.moneda, c.periodoaplicacion, c.fechacreacionlimite;
 
-CREATE POLICY manage_usuario ON "usuario" FOR ALL TO authenticated
-  USING (idusuario = auth.uid()) WITH CHECK (idusuario = auth.uid());
 
--- B. Policy for "interfazoperacion"
-CREATE POLICY select_interfazoperacion ON "interfazoperacion" FOR SELECT TO authenticated
-  USING (EXISTS (
+-- 12. RLS Policies Configuration (SECURITY DEFINER to prevent infinite recursion)
+
+-- Helper function to safely get current user UUID without throwing missing schema errors
+CREATE OR REPLACE FUNCTION public.current_user_id() RETURNS uuid AS $$
+DECLARE
+  v_uid uuid;
+BEGIN
+  -- 1. Try neon_auth.uid() if schema and function exist
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p 
+    JOIN pg_namespace n ON p.pronamespace = n.oid 
+    WHERE n.nspname = 'neon_auth' AND p.proname = 'uid'
+  ) THEN
+    BEGIN
+      EXECUTE 'SELECT neon_auth.uid()' INTO v_uid;
+      IF v_uid IS NOT NULL THEN
+        RETURN v_uid;
+      END IF;
+    EXCEPTION WHEN OTHERS THEN
+      -- Ignore and try fallbacks
+    END;
+  END IF;
+
+  -- 2. Try auth.uid() if schema and function exist
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p 
+    JOIN pg_namespace n ON p.pronamespace = n.oid 
+    WHERE n.nspname = 'auth' AND p.proname = 'uid'
+  ) THEN
+    BEGIN
+      EXECUTE 'SELECT auth.uid()' INTO v_uid;
+      IF v_uid IS NOT NULL THEN
+        RETURN v_uid;
+      END IF;
+    EXCEPTION WHEN OTHERS THEN
+      -- Ignore and try fallbacks
+    END;
+  END IF;
+
+  -- 3. Extract sub claim from PostgREST JWT claims
+  RETURN NULLIF(
+    COALESCE(
+      current_setting('request.jwt.claim.sub', true),
+      current_setting('request.jwt.claims', true)::json->>'sub',
+      (current_setting('request.jwt.claims', true)::json->>'user_metadata')::json->>'id'
+    ),
+    ''
+  )::uuid;
+EXCEPTION WHEN OTHERS THEN
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- Security Definer functions to check membership without triggering RLS recursively
+CREATE OR REPLACE FUNCTION public.es_miembro_interfaz(p_idinterfaz bigint, p_idusuario uuid)
+RETURNS boolean AS $$
+BEGIN
+  IF p_idusuario IS NULL OR p_idinterfaz IS NULL THEN
+    RETURN false;
+  END IF;
+  RETURN EXISTS (
     SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.interfazoperacion.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+    WHERE ui.idinterfazoperacion = p_idinterfaz 
+      AND ui.idusuario = p_idusuario 
+      AND ui.fechasalida IS NULL
+  );
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
-CREATE POLICY insert_interfazoperacion ON "interfazoperacion" FOR INSERT TO authenticated
-  WITH CHECK (true); -- Anyone logged in can create an interface
-
-CREATE POLICY manage_interfazoperacion ON "interfazoperacion" FOR ALL TO authenticated
-  USING (EXISTS (
+CREATE OR REPLACE FUNCTION public.es_editor_interfaz(p_idinterfaz bigint, p_idusuario uuid)
+RETURNS boolean AS $$
+BEGIN
+  IF p_idusuario IS NULL OR p_idinterfaz IS NULL THEN
+    RETURN false;
+  END IF;
+  RETURN EXISTS (
     SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.interfazoperacion.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.rol = 'Administrador' AND ui.fechasalida IS NULL
-  ));
+    WHERE ui.idinterfazoperacion = p_idinterfaz 
+      AND ui.idusuario = p_idusuario 
+      AND ui.rol IN ('Administrador', 'Invitado')
+      AND ui.fechasalida IS NULL
+  );
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
--- C. Policy for "usuariointerfaz"
-CREATE POLICY select_usuariointerfaz ON "usuariointerfaz" FOR SELECT TO authenticated
-  USING (idusuario = auth.uid() OR EXISTS (
+CREATE OR REPLACE FUNCTION public.es_admin_interfaz(p_idinterfaz bigint, p_idusuario uuid)
+RETURNS boolean AS $$
+BEGIN
+  IF p_idusuario IS NULL OR p_idinterfaz IS NULL THEN
+    RETURN false;
+  END IF;
+  RETURN EXISTS (
     SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.usuariointerfaz.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+    WHERE ui.idinterfazoperacion = p_idinterfaz 
+      AND ui.idusuario = p_idusuario 
+      AND ui.rol = 'Administrador'
+      AND ui.fechasalida IS NULL
+  );
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
-CREATE POLICY manage_usuariointerfaz ON "usuariointerfaz" FOR ALL TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.usuariointerfaz.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.rol = 'Administrador' AND ui.fechasalida IS NULL
-  ));
+-- Clear existing policies
+DO $$ 
+DECLARE 
+  r RECORD;
+BEGIN
+  FOR r IN (
+    SELECT policyname, tablename 
+    FROM pg_policies 
+    WHERE schemaname = 'public'
+  ) LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I', r.policyname, r.tablename);
+  END LOOP;
+END $$;
 
--- D. Policy for "ahorro"
-CREATE POLICY select_ahorro ON "ahorro" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.ahorro.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+-- A. "usuario"
+CREATE POLICY select_usuario ON "usuario" FOR SELECT TO authenticated, anonymous, PUBLIC USING (true);
+CREATE POLICY insert_usuario ON "usuario" FOR INSERT TO authenticated, anonymous, PUBLIC WITH CHECK (
+  public.current_user_id() IS NULL OR idusuario = public.current_user_id()
+);
+CREATE POLICY update_usuario ON "usuario" FOR UPDATE TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL OR idusuario = public.current_user_id()
+) WITH CHECK (
+  public.current_user_id() IS NULL OR idusuario = public.current_user_id()
+);
+CREATE POLICY delete_usuario ON "usuario" FOR DELETE TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL OR idusuario = public.current_user_id()
+);
 
-CREATE POLICY manage_ahorro ON "ahorro" FOR ALL TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.ahorro.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.rol = 'Administrador' AND ui.fechasalida IS NULL
-  ));
+-- B. "interfazoperacion"
+CREATE POLICY select_interfazoperacion ON "interfazoperacion" FOR SELECT TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR public.es_miembro_interfaz(idinterfazoperacion, public.current_user_id())
+  OR linkinvitado IS NOT NULL 
+  OR linkvisualizador IS NOT NULL
+);
+CREATE POLICY insert_interfazoperacion ON "interfazoperacion" FOR INSERT TO authenticated, anonymous, PUBLIC WITH CHECK (public.current_user_id() IS NULL OR public.current_user_id() IS NOT NULL);
+CREATE POLICY update_interfazoperacion ON "interfazoperacion" FOR UPDATE TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR public.es_admin_interfaz(idinterfazoperacion, public.current_user_id())
+) WITH CHECK (
+  public.current_user_id() IS NULL
+  OR public.es_admin_interfaz(idinterfazoperacion, public.current_user_id())
+);
+CREATE POLICY delete_interfazoperacion ON "interfazoperacion" FOR DELETE TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR public.es_admin_interfaz(idinterfazoperacion, public.current_user_id())
+);
 
--- E. Policy for "cambio"
-CREATE POLICY select_cambio ON "cambio" FOR SELECT TO authenticated
-  USING (true); -- Allow all logged-in users to query exchange rates
+-- C. "usuariointerfaz"
+CREATE POLICY select_usuariointerfaz ON "usuariointerfaz" FOR SELECT TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR idusuario = public.current_user_id()
+  OR public.es_miembro_interfaz(idinterfazoperacion, public.current_user_id())
+);
+CREATE POLICY insert_usuariointerfaz ON "usuariointerfaz" FOR INSERT TO authenticated, anonymous, PUBLIC WITH CHECK (
+  public.current_user_id() IS NULL
+  OR idusuario = public.current_user_id()
+  OR public.es_editor_interfaz(idinterfazoperacion, public.current_user_id())
+);
+CREATE POLICY update_usuariointerfaz ON "usuariointerfaz" FOR UPDATE TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR idusuario = public.current_user_id()
+  OR public.es_admin_interfaz(idinterfazoperacion, public.current_user_id())
+);
+CREATE POLICY delete_usuariointerfaz ON "usuariointerfaz" FOR DELETE TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR idusuario = public.current_user_id()
+  OR public.es_admin_interfaz(idinterfazoperacion, public.current_user_id())
+);
 
--- F. Policy for "categoria"
-CREATE POLICY select_categoria ON "categoria" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.categoria.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+-- D. "ahorro"
+CREATE POLICY select_ahorro ON "ahorro" FOR SELECT TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR public.es_miembro_interfaz(idinterfazoperacion, public.current_user_id())
+);
+CREATE POLICY insert_ahorro ON "ahorro" FOR INSERT TO authenticated, anonymous, PUBLIC WITH CHECK (
+  public.current_user_id() IS NULL
+  OR public.es_editor_interfaz(idinterfazoperacion, public.current_user_id())
+);
+CREATE POLICY update_ahorro ON "ahorro" FOR UPDATE TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR public.es_editor_interfaz(idinterfazoperacion, public.current_user_id())
+);
+CREATE POLICY delete_ahorro ON "ahorro" FOR DELETE TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR public.es_editor_interfaz(idinterfazoperacion, public.current_user_id())
+);
 
-CREATE POLICY manage_categoria ON "categoria" FOR ALL TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.categoria.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.rol = 'Administrador' AND ui.fechasalida IS NULL
-  ));
+-- E. "categoria"
+CREATE POLICY select_categoria ON "categoria" FOR SELECT TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR public.es_miembro_interfaz(idinterfazoperacion, public.current_user_id())
+);
+CREATE POLICY insert_categoria ON "categoria" FOR INSERT TO authenticated, anonymous, PUBLIC WITH CHECK (
+  public.current_user_id() IS NULL
+  OR public.es_editor_interfaz(idinterfazoperacion, public.current_user_id())
+);
+CREATE POLICY update_categoria ON "categoria" FOR UPDATE TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR public.es_editor_interfaz(idinterfazoperacion, public.current_user_id())
+);
+CREATE POLICY delete_categoria ON "categoria" FOR DELETE TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR public.es_editor_interfaz(idinterfazoperacion, public.current_user_id())
+);
 
--- G. Policy for "submetodopago"
-CREATE POLICY select_submetodopago ON "submetodopago" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.submetodopago.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+-- F. "submetodopago"
+CREATE POLICY select_submetodopago ON "submetodopago" FOR SELECT TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR public.es_miembro_interfaz(idinterfazoperacion, public.current_user_id())
+);
+CREATE POLICY insert_submetodopago ON "submetodopago" FOR INSERT TO authenticated, anonymous, PUBLIC WITH CHECK (
+  public.current_user_id() IS NULL
+  OR public.es_editor_interfaz(idinterfazoperacion, public.current_user_id())
+);
+CREATE POLICY update_submetodopago ON "submetodopago" FOR UPDATE TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR public.es_editor_interfaz(idinterfazoperacion, public.current_user_id())
+);
+CREATE POLICY delete_submetodopago ON "submetodopago" FOR DELETE TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR public.es_editor_interfaz(idinterfazoperacion, public.current_user_id())
+);
 
-CREATE POLICY manage_submetodopago ON "submetodopago" FOR ALL TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.submetodopago.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.rol = 'Administrador' AND ui.fechasalida IS NULL
-  ));
+-- G. "ingreso"
+CREATE POLICY select_ingreso ON "ingreso" FOR SELECT TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR public.es_miembro_interfaz(idinterfazoperacion, public.current_user_id())
+);
+CREATE POLICY insert_ingreso ON "ingreso" FOR INSERT TO authenticated, anonymous, PUBLIC WITH CHECK (
+  public.current_user_id() IS NULL
+  OR public.es_editor_interfaz(idinterfazoperacion, public.current_user_id())
+);
+CREATE POLICY update_ingreso ON "ingreso" FOR UPDATE TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR public.es_editor_interfaz(idinterfazoperacion, public.current_user_id())
+);
+CREATE POLICY delete_ingreso ON "ingreso" FOR DELETE TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR public.es_editor_interfaz(idinterfazoperacion, public.current_user_id())
+);
 
--- H. Policy for "gasto"
-CREATE POLICY select_gasto ON "gasto" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.categoria c 
-    JOIN public.usuariointerfaz ui ON c.idinterfazoperacion = ui.idinterfazoperacion 
-    WHERE c.idcategoria = public.gasto.idcategoria 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+-- H. "gasto"
+CREATE POLICY select_gasto ON "gasto" FOR SELECT TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR responsablegasto = public.current_user_id()
+  OR responsableingresargasto = public.current_user_id()
+  OR public.es_miembro_interfaz((SELECT c.idinterfazoperacion FROM categoria c WHERE c.idcategoria = gasto.idcategoria), public.current_user_id())
+);
+CREATE POLICY insert_gasto ON "gasto" FOR INSERT TO authenticated, anonymous, PUBLIC WITH CHECK (
+  public.current_user_id() IS NULL
+  OR responsablegasto = public.current_user_id()
+  OR responsableingresargasto = public.current_user_id()
+  OR public.es_editor_interfaz((SELECT c.idinterfazoperacion FROM categoria c WHERE c.idcategoria = gasto.idcategoria), public.current_user_id())
+);
+CREATE POLICY update_gasto ON "gasto" FOR UPDATE TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR responsablegasto = public.current_user_id()
+  OR responsableingresargasto = public.current_user_id()
+  OR public.es_editor_interfaz((SELECT c.idinterfazoperacion FROM categoria c WHERE c.idcategoria = gasto.idcategoria), public.current_user_id())
+);
+CREATE POLICY delete_gasto ON "gasto" FOR DELETE TO authenticated, anonymous, PUBLIC USING (
+  public.current_user_id() IS NULL
+  OR responsablegasto = public.current_user_id()
+  OR responsableingresargasto = public.current_user_id()
+  OR public.es_editor_interfaz((SELECT c.idinterfazoperacion FROM categoria c WHERE c.idcategoria = gasto.idcategoria), public.current_user_id())
+);
 
-CREATE POLICY manage_gasto ON "gasto" FOR ALL TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.categoria c 
-    JOIN public.usuariointerfaz ui ON c.idinterfazoperacion = ui.idinterfazoperacion 
-    WHERE c.idcategoria = public.gasto.idcategoria 
-      AND ui.idusuario = auth.uid() AND ui.rol IN ('Administrador', 'Invitado') AND ui.fechasalida IS NULL
-  ));
+-- I. "amistad"
+CREATE POLICY select_amistad ON "amistad" FOR SELECT TO authenticated, anonymous, PUBLIC USING (public.current_user_id() IS NULL OR idremitente = public.current_user_id() OR iddestinatario = public.current_user_id());
+CREATE POLICY insert_amistad ON "amistad" FOR INSERT TO authenticated, anonymous, PUBLIC WITH CHECK (public.current_user_id() IS NULL OR idremitente = public.current_user_id());
+CREATE POLICY update_amistad ON "amistad" FOR UPDATE TO authenticated, anonymous, PUBLIC USING (public.current_user_id() IS NULL OR idremitente = public.current_user_id() OR iddestinatario = public.current_user_id());
+CREATE POLICY delete_amistad ON "amistad" FOR DELETE TO authenticated, anonymous, PUBLIC USING (public.current_user_id() IS NULL OR idremitente = public.current_user_id() OR iddestinatario = public.current_user_id());
 
--- I. Policy for "ingreso"
-CREATE POLICY select_ingreso ON "ingreso" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.ingreso.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+-- J. "notificacion"
+CREATE POLICY select_notificacion ON "notificacion" FOR SELECT TO authenticated, anonymous, PUBLIC USING (public.current_user_id() IS NULL OR idreceptor = public.current_user_id() OR idemisor = public.current_user_id());
+CREATE POLICY insert_notificacion ON "notificacion" FOR INSERT TO authenticated, anonymous, PUBLIC WITH CHECK (public.current_user_id() IS NULL OR idemisor = public.current_user_id());
+CREATE POLICY update_notificacion ON "notificacion" FOR UPDATE TO authenticated, anonymous, PUBLIC USING (public.current_user_id() IS NULL OR idreceptor = public.current_user_id());
+CREATE POLICY delete_notificacion ON "notificacion" FOR DELETE TO authenticated, anonymous, PUBLIC USING (public.current_user_id() IS NULL OR idreceptor = public.current_user_id() OR idemisor = public.current_user_id());
 
-CREATE POLICY manage_ingreso ON "ingreso" FOR ALL TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.usuariointerfaz ui 
-    WHERE ui.idinterfazoperacion = public.ingreso.idinterfazoperacion 
-      AND ui.idusuario = auth.uid() AND ui.rol IN ('Administrador', 'Invitado') AND ui.fechasalida IS NULL
-  ));
+-- K. Tablas de Historial y Cambio
+CREATE POLICY select_cambio ON "cambio" FOR SELECT TO authenticated, anonymous, PUBLIC USING (true);
+CREATE POLICY select_historialahorro ON "historialahorro" FOR SELECT TO authenticated, anonymous, PUBLIC USING (true);
+CREATE POLICY select_historialgasto ON "historialgasto" FOR SELECT TO authenticated, anonymous, PUBLIC USING (true);
+CREATE POLICY select_historialingreso ON "historialingreso" FOR SELECT TO authenticated, anonymous, PUBLIC USING (true);
+CREATE POLICY select_historiallimite ON "historiallimite" FOR SELECT TO authenticated, anonymous, PUBLIC USING (true);
 
--- J. Policies for history tables
-CREATE POLICY select_historialahorro ON "historialahorro" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.ahorro a 
-    JOIN public.usuariointerfaz ui ON a.idinterfazoperacion = ui.idinterfazoperacion
-    WHERE a.idahorro = public.historialahorro.idahorro 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
 
-CREATE POLICY select_historialgasto ON "historialgasto" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.gasto g 
-    JOIN public.categoria c ON g.idcategoria = c.idcategoria 
-    JOIN public.usuariointerfaz ui ON c.idinterfazoperacion = ui.idinterfazoperacion 
-    WHERE g.idgasto = public.historialgasto.idgasto 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
 
-CREATE POLICY select_historialingreso ON "historialingreso" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.ingreso i 
-    JOIN public.usuariointerfaz ui ON i.idinterfazoperacion = ui.idinterfazoperacion
-    WHERE i.idingreso = public.historialingreso.idingreso 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+-- Stored procedure to send interface invitation
+CREATE OR REPLACE FUNCTION public.enviar_invitacion_interfaz(
+  p_idemisor uuid,
+  p_idreceptor uuid,
+  p_idinterfaz bigint,
+  p_rol trol DEFAULT 'Invitado'::trol
+) RETURNS bigint AS $$
+DECLARE
+  v_emisor_nombre varchar;
+  v_interfaz_nombre varchar;
+  v_idnotificacion bigint;
+BEGIN
+  SELECT nombreusuario INTO v_emisor_nombre FROM public.usuario WHERE idusuario = p_idemisor;
+  SELECT nombre INTO v_interfaz_nombre FROM public.interfazoperacion WHERE idinterfazoperacion = p_idinterfaz;
 
-CREATE POLICY select_historiallimite ON "historiallimite" FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.categoria c 
-    JOIN public.usuariointerfaz ui ON c.idinterfazoperacion = ui.idinterfazoperacion 
-    WHERE c.idcategoria = public.historiallimite.idcategoria 
-      AND ui.idusuario = auth.uid() AND ui.fechasalida IS NULL
-  ));
+  INSERT INTO public.notificacion (
+    idreceptor, idemisor, tipo, titulo, mensaje, idinterfazoperacion, rol_propuesto, estado, leido, fechacreacion
+  ) VALUES (
+    p_idreceptor,
+    p_idemisor,
+    'INVITACION_INTERFAZ',
+    'Invitación a ' || COALESCE(v_interfaz_nombre, 'Interfaz de Operación'),
+    COALESCE(v_emisor_nombre, 'Un usuario') || ' te ha invitado a unirte a "' || COALESCE(v_interfaz_nombre, 'Interfaz') || '" como ' || p_rol || '.',
+    p_idinterfaz,
+    p_rol,
+    'Pendiente',
+    false,
+    CURRENT_TIMESTAMP
+  ) RETURNING idnotificacion INTO v_idnotificacion;
+
+  RETURN v_idnotificacion;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Stored procedure to respond to interface invitation
+CREATE OR REPLACE FUNCTION public.responder_invitacion_interfaz(
+  p_idnotificacion bigint,
+  p_aceptar boolean
+) RETURNS boolean AS $$
+DECLARE
+  v_notif record;
+BEGIN
+  SELECT * INTO v_notif FROM public.notificacion WHERE idnotificacion = p_idnotificacion;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Notificación no encontrada';
+  END IF;
+
+  IF p_aceptar THEN
+    -- Insert or update usuariointerfaz
+    INSERT INTO public.usuariointerfaz (idinterfazoperacion, idusuario, rol, fechaunion)
+    VALUES (v_notif.idinterfazoperacion, v_notif.idreceptor, v_notif.rol_propuesto, CURRENT_DATE)
+    ON CONFLICT (idinterfazoperacion, idusuario)
+    DO UPDATE SET rol = EXCLUDED.rol, fechaunion = CURRENT_DATE;
+
+    UPDATE public.notificacion
+    SET estado = 'Aceptada', leido = true
+    WHERE idnotificacion = p_idnotificacion;
+  ELSE
+    UPDATE public.notificacion
+    SET estado = 'Rechazada', leido = true
+    WHERE idnotificacion = p_idnotificacion;
+  END IF;
+
+  RETURN true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+

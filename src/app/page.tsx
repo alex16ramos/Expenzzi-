@@ -1,223 +1,279 @@
 'use client';
 
-import React, { useState } from 'react';
-
+import React, { useState, useEffect } from 'react';
+import { Mail, Lock, User, Eye, EyeOff, LogIn, UserPlus, KeyRound, ArrowRight } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
-export default function Home() {
-  const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
+type AuthTab = 'login' | 'register' | 'forgot';
+
+const AUTH_TABS: { id: AuthTab; label: string; icon: React.ReactNode; color: string }[] = [
+  { id: 'login', label: 'Iniciar Sesión', icon: <LogIn className="w-4 h-4" />, color: 'from-indigo-600 to-indigo-700' },
+  { id: 'register', label: 'Registrarse', icon: <UserPlus className="w-4 h-4" />, color: 'from-purple-600 to-purple-700' },
+  { id: 'forgot', label: 'Olvidé Clave', icon: <KeyRound className="w-4 h-4" />, color: 'from-amber-600 to-amber-700' },
+];
+
+export default function LandingAuthPage() {
+  const session = authClient.useSession();
+  const user = session?.data?.user;
+
+  const [activeTab, setActiveTab] = useState<AuthTab>('login');
+
+  // Form states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [message, setMessage] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user) {
+      window.location.href = '/dashboard';
+    }
+  }, [user]);
+
+  // Google OAuth handler
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      await authClient.signIn.social({
+        provider: 'google',
+        callbackURL: '/dashboard',
+      });
+    } catch (err) {
+      console.error('Google Sign In Error:', err);
+      toast.error('Error al conectar con Google OAuth');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Submit handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setMessage('');
 
     try {
       if (activeTab === 'login') {
-        const res = await authClient.signIn.email({
-          email,
+        const { error } = await authClient.signIn.email({
+          email: email.trim(),
           password,
         });
 
-        console.log('[DEBUG AUTH] signIn response:', res);
-
-        if (res?.error) {
-          const detail = res.error.message || JSON.stringify(res.error);
-          setMessage(`Error (${res.error.status || 400}): ${detail}`);
-        } else if (res?.data) {
-          setMessage('Inicio de sesión exitoso. Redirigiendo...');
+        if (error) {
+          toast.error(error.message || 'Correo electrónico o contraseña incorrectos');
+        } else {
+          toast.success('¡Bienvenido de nuevo!');
           window.location.href = '/dashboard';
-        } else {
-          setMessage('Error: Sin respuesta de Neon Auth. Revisa la variable NEON_AUTH_BASE_URL en .env');
         }
-      } else {
-        const res = await authClient.signUp.email({
-          email,
+      } else if (activeTab === 'register') {
+        if (!name.trim()) {
+          toast.error('Por favor ingresa tu nombre');
+          setLoading(false);
+          return;
+        }
+
+        const { error } = await authClient.signUp.email({
+          email: email.trim(),
           password,
-          name,
+          name: name.trim(),
         });
 
-        console.log('[DEBUG AUTH] signUp response:', res);
-
-        if (res?.error) {
-          const detail = res.error.message || JSON.stringify(res.error);
-          setMessage(`Error (${res.error.status || 400}): ${detail}`);
-        } else if (res?.data) {
-          setActiveTab('login');
-          setMessage('¡Registro exitoso! Por favor inicia sesión con tus credenciales.');
+        if (error) {
+          toast.error(error.message || 'Error al registrar usuario');
         } else {
-          setMessage('Error: Sin respuesta de Neon Auth. Revisa la variable NEON_AUTH_BASE_URL en .env');
+          toast.success('¡Cuenta creada con éxito!');
+          window.location.href = '/dashboard';
         }
+      } else if (activeTab === 'forgot') {
+        toast.info('Si el correo existe en el sistema, recibirás las instrucciones de recuperación.');
+        setEmail('');
+        setActiveTab('login');
       }
-    } catch (error: unknown) {
-      console.error('[DEBUG AUTH] Catch exception:', error);
-      const err = error as { status?: number; message?: string; error_description?: string };
-      const status = err?.status ? ` (${err.status})` : '';
-      const msg = err?.message || err?.error_description || 'Ocurrió un error al procesar la solicitud';
-      setMessage(`Error${status}: ${msg}`);
+    } catch (err) {
+      console.error('Auth submit error:', err);
+      toast.error('Ocurrió un error inesperado');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between font-sans selection:bg-indigo-500 selection:text-white relative overflow-hidden">
-      {/* Background Radial Gradients */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -z-10" />
-      <div className="absolute bottom-10 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl -z-10" />
+    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col justify-between p-4 sm:p-6 font-sans relative overflow-hidden">
+      {/* Dynamic Background Glows */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-10 right-10 w-[350px] h-[350px] bg-purple-600/15 rounded-full blur-[100px] pointer-events-none" />
 
-      {/* Header */}
-      <header className="w-full max-w-7xl mx-auto px-6 py-6 flex justify-between items-center z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <span className="font-extrabold text-xl tracking-tight text-white">E</span>
-          </div>
-          <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+      {/* Main Content Body */}
+      <main className="w-full max-w-md mx-auto my-auto z-10 space-y-6 py-8">
+        <div className="text-center space-y-2">
+          <h1 className="text-6xl font-extrabold text-white tracking-tight">
             Expenzzi
-          </span>
-        </div>
-        <div className="hidden sm:flex items-center gap-6 text-sm text-slate-400">
-          <a href="#features" className="hover:text-white transition-colors">Características</a>
-          <a href="#docs" className="hover:text-white transition-colors">Documentación</a>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-6 flex flex-col lg:flex-row items-center justify-center gap-12 py-12 z-10">
-        
-        {/* Left Side: Pitch and Branding */}
-        <div className="flex-1 text-center lg:text-left space-y-6 max-w-xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs text-indigo-400 font-medium">
-            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-            Integración Nativa con Neon Data API
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-tight">
-            Control de Finanzas Inteligente y{" "}
-            <span className="bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent">
-              Colaborativo
-            </span>
           </h1>
-          <p className="text-slate-400 text-base sm:text-lg leading-relaxed">
-            Expenzzi es la plataforma moderna diseñada para gestionar tus gastos, ingresos y ahorros compartidos. Soporta múltiples monedas (ARS, USD, UYU) con conversión automática integrada y seguridad a nivel de filas (RLS) en tiempo real.
+          <h2 className="text-2xl font-bold text-white tracking-tight">
+            Control Financiero Grupal
+          </h2>
+          <p className="text-xs text-slate-400 max-w-xs mx-auto">
+            Gestiona tus ingresos, gastos y ahorros en tiempo real con interfaces compartidas.
           </p>
-          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-6 text-slate-500 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-indigo-400 font-bold">✓</span> RLS Activo
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-indigo-400 font-bold">✓</span> Neon Auth
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-indigo-400 font-bold">✓</span> Conversión Auto
-            </div>
-          </div>
         </div>
 
-        {/* Right Side: Auth Glassmorphic Form Card */}
-        <div className="w-full max-w-md bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-8 shadow-2xl relative">
-          <div className="absolute top-0 right-10 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl -z-10" />
-
-          {/* Form Tabs */}
-          <div className="flex p-1 bg-slate-950/80 rounded-xl mb-8 border border-slate-800/50">
-            <button
-              onClick={() => { setActiveTab('login'); setMessage(''); }}
-              className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
-                activeTab === 'login' 
-                  ? 'bg-gradient-to-tr from-indigo-500 to-indigo-600 text-white shadow-md' 
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Iniciar Sesión
-            </button>
-            <button
-              onClick={() => { setActiveTab('signup'); setMessage(''); }}
-              className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
-                activeTab === 'signup' 
-                  ? 'bg-gradient-to-tr from-indigo-500 to-indigo-600 text-white shadow-md' 
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Registrarse
-            </button>
+        {/* FOLDER TABS CONTAINER (Matching BalanceCards.tsx Folder Index Behavior) */}
+        <div className="relative pt-10">
+          {/* Folder Index Tab Solapas Header Row */}
+          <div className="absolute top-0 left-0 right-0 flex gap-1 z-20">
+            {AUTH_TABS.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  type="button"
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-t-2xl text-xs font-bold transition-colors duration-200 border-t border-x translate-y-1 ${
+                    isActive
+                      ? 'bg-slate-900 text-white border-slate-800 z-30'
+                      : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border-slate-800/30'
+                  }`}
+                >
+                  {tab.icon}
+                  <span className="truncate">{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Auth Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {activeTab === 'signup' && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Nombre Completo</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Tu nombre"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-                />
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Correo Electrónico</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="correo@ejemplo.com"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Contraseña</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-              />
-            </div>
-
+          {/* Active Folder Card Content Body */}
+          <div className="relative bg-slate-900 border border-slate-800 rounded-b-3xl p-6 sm:p-8 shadow-2xl space-y-6 z-10 animate-in fade-in zoom-in-95 duration-200">
+            {/* Google OAuth Button */}
             <button
-              type="submit"
+              type="button"
+              onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-700/50 font-bold rounded-xl shadow-lg shadow-indigo-600/25 transition-all text-sm mt-6 flex items-center justify-center gap-2"
+              className="w-full flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-750 text-white text-xs font-bold py-3 px-4 rounded-2xl border border-slate-700 transition-colors shadow-sm group"
             >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : activeTab === 'login' ? (
-                'Entrar a la Aplicación'
-              ) : (
-                'Crear Cuenta'
-              )}
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                />
+              </svg>
+              <span>Continuar con Google</span>
+              <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-opacity" />
             </button>
-          </form>
 
-          {message && (
-            <div className={`mt-6 p-4 rounded-xl text-center text-sm border ${
-              message.includes('Error') 
-                ? 'bg-red-500/10 border-red-500/20 text-red-400' 
-                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-            }`}>
-              {message}
+            <div className="flex items-center gap-3 my-2">
+              <div className="flex-1 h-px bg-slate-800" />
+              <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">o con correo</span>
+              <div className="flex-1 h-px bg-slate-800" />
             </div>
-          )}
+
+            {/* AUTH FORM */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {activeTab === 'register' && (
+                <div className="space-y-1.5">
+                <label htmlFor="auth-name" className="text-xs font-bold text-slate-300 block">Nombre Completo</label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Input
+                    id="auth-name"
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Juan Pérez"
+                    className="pl-10 text-xs bg-slate-950/80 border-slate-800 rounded-xl h-11 text-white placeholder:text-slate-500"
+                  />
+                </div>
+              </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label htmlFor="auth-email" className="text-xs font-bold text-slate-300 block">Correo Electrónico</label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Input
+                    id="auth-email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="ejemplo@expenzzi.local"
+                    className="pl-10 text-xs bg-slate-950/80 border-slate-800 rounded-xl h-11 text-white placeholder:text-slate-500"
+                  />
+                </div>
+              </div>
+
+              {activeTab !== 'forgot' && (
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <label htmlFor="auth-password" className="text-xs font-bold text-slate-300 block">Contraseña</label>
+                    {activeTab === 'login' && (
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => setActiveTab('forgot')}
+                        className="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+                      >
+                        ¿Olvidaste tu contraseña?
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <Input
+                      id="auth-password"
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="pl-10 pr-10 text-xs bg-slate-950/80 border-slate-800 rounded-xl h-11 text-white placeholder:text-slate-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                disabled={loading}
+                className={`w-full h-11 mt-5 rounded-xl text-xs font-extrabold text-white shadow-lg cursor-pointer bg-gradient-to-r ${AUTH_TABS.find((t) => t.id === activeTab)?.color
+                  } hover:brightness-110 transition-colors gap-2`}
+              >
+                {loading
+                  ? 'Procesando...'
+                  : activeTab === 'login'
+                    ? 'Iniciar Sesión'
+                    : activeTab === 'register'
+                      ? 'Crear Cuenta'
+                      : 'Enviar Instrucciones'}
+              </Button>
+            </form>
+          </div>
         </div>
-
       </main>
-
-      {/* Footer */}
-      <footer className="w-full max-w-7xl mx-auto px-6 py-6 border-t border-slate-900 text-center text-xs text-slate-600 z-10">
-        <p>&copy; {new Date().getFullYear()} Expenzzi. Seminario Integrador Habilitación Profesional 2025.</p>
-      </footer>
     </div>
   );
 }

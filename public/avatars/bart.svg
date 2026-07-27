@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <radialGradient id="bartBg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#c2410c"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="200" rx="100" fill="url(#bartBg)"/>
+  
+  <g transform="translate(100, 105) scale(1.3) translate(-100, -100)">
+    <!-- Red Shirt & Neck -->
+    <path d="M 76 135 L 76 170 L 124 170 L 124 135 Z" fill="#FED434" />
+    <path d="M 50 165 L 150 165 L 165 200 L 35 200 Z" fill="#EF4444" />
+    
+    <!-- Spiky Hair Top & Head Base -->
+    <path d="M 64 85 
+             L 64 45 L 71 55 L 78 45 L 85 55 L 92 45 L 99 55 L 106 45 L 113 55 L 120 45 L 127 55 L 134 45 L 136 85 Z" 
+          fill="#FED434" stroke="#000000" stroke-width="2.2" stroke-linejoin="round" />
+    <ellipse cx="100" cy="100" rx="36" ry="42" fill="#FED434" />
+    
+    <!-- Eyes -->
+    <circle cx="82" cy="94" r="16" fill="#FFFFFF" stroke="#000000" stroke-width="2.5" />
+    <circle cx="118" cy="94" r="16" fill="#FFFFFF" stroke="#000000" stroke-width="2.5" />
+    <circle cx="86" cy="94" r="3.5" fill="#000000" />
+    <circle cx="114" cy="94" r="3.5" fill="#000000" />
+    
+    <!-- Nose -->
+    <path d="M 94 96 Q 80 110 102 108" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" />
+    
+    <!-- Smirk Mouth -->
+    <path d="M 76 124 Q 102 142 126 120" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" />
+    
+    <!-- Ears -->
+    <circle cx="62" cy="106" r="6.5" fill="#FED434" stroke="#000000" stroke-width="2" />
+  </g>
+</svg>
