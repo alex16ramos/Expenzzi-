@@ -20,6 +20,7 @@ import { UserExpenseChart } from '@/components/interface/UserExpenseChart';
 import { CategoriaManagerModal, CategoriaItem } from '@/components/interface/CategoriaManagerModal';
 import { SubmetodoManagerModal, SubmetodoItem } from '@/components/interface/SubmetodoManagerModal';
 import { AuditHistoryModal } from '@/components/interface/AuditHistoryModal';
+import { InviteModal } from '@/components/interface/InviteModal';
 import { CustomDialog } from '@/components/ui/custom-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
@@ -107,10 +108,22 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     editingAhorro: null as AhorroFormData | null,
     isCategoryModalOpen: false,
     isSubmethodModalOpen: false,
+    isInviteModalOpen: false,
     selectedTransactionForModal: null as Transaction | null,
   });
 
-  const { selectedTransactionForModal } = modalsState;
+  const {
+    isGastoModalOpen,
+    editingGasto,
+    isIngresoModalOpen,
+    editingIngreso,
+    isAhorroModalOpen,
+    editingAhorro,
+    isCategoryModalOpen,
+    isSubmethodModalOpen,
+    isInviteModalOpen,
+    selectedTransactionForModal,
+  } = modalsState;
 
   const setIsGastoModalOpen = (val: boolean) => setModalsState((prev) => ({ ...prev, isGastoModalOpen: val }));
   const setEditingGasto = (val: GastoFormData | null) => setModalsState((prev) => ({ ...prev, editingGasto: val }));
@@ -120,6 +133,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
   const setEditingAhorro = (val: AhorroFormData | null) => setModalsState((prev) => ({ ...prev, editingAhorro: val }));
   const setIsCategoryModalOpen = (val: boolean) => setModalsState((prev) => ({ ...prev, isCategoryModalOpen: val }));
   const setIsSubmethodModalOpen = (val: boolean) => setModalsState((prev) => ({ ...prev, isSubmethodModalOpen: val }));
+  const setIsInviteModalOpen = (val: boolean) => setModalsState((prev) => ({ ...prev, isInviteModalOpen: val }));
   const setSelectedTransactionForModal = (val: Transaction | null) => setModalsState((prev) => ({ ...prev, selectedTransactionForModal: val }));
 
   // Delete Confirm Dialog state
@@ -776,6 +790,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         onOpenCategories={() => setIsCategoryModalOpen(true)}
         onOpenSubmethods={() => setIsSubmethodModalOpen(true)}
         onOpenDelete={() => setIsDeleteConfirmOpen(true)}
+        onOpenInvite={() => setIsInviteModalOpen(true)}
         interfaceName={interfaceData?.nombre}
       />
 
@@ -789,6 +804,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
             userRole={userRole}
             onMenuClick={() => setIsSideMenuOpen(!isSideMenuOpen)}
             onNotificationHandled={loadInterfaceDetails}
+            onOpenInvite={() => setIsInviteModalOpen(true)}
           />
 
           <main className="py-2 px-4 pb-40 sm:py-4 lg:py-6">
@@ -1000,6 +1016,8 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         setIsAhorroModalOpen={setIsAhorroModalOpen}
         setIsCategoryModalOpen={setIsCategoryModalOpen}
         setIsSubmethodModalOpen={setIsSubmethodModalOpen}
+        setIsInviteModalOpen={setIsInviteModalOpen}
+        onInviteSent={loadInterfaceDetails}
         isDeleteConfirmOpen={isDeleteConfirmOpen}
         setIsDeleteConfirmOpen={setIsDeleteConfirmOpen}
         isDeletingInterface={isDeletingInterface}
@@ -1037,6 +1055,8 @@ function InterfaceModalsContainer({
   setIsAhorroModalOpen,
   setIsCategoryModalOpen,
   setIsSubmethodModalOpen,
+  setIsInviteModalOpen,
+  onInviteSent,
   isDeleteConfirmOpen,
   setIsDeleteConfirmOpen,
   isDeletingInterface,
@@ -1072,12 +1092,15 @@ function InterfaceModalsContainer({
     editingAhorro: AhorroFormData | null;
     isCategoryModalOpen: boolean;
     isSubmethodModalOpen: boolean;
+    isInviteModalOpen: boolean;
   };
   setIsGastoModalOpen: (val: boolean) => void;
   setIsIngresoModalOpen: (val: boolean) => void;
   setIsAhorroModalOpen: (val: boolean) => void;
   setIsCategoryModalOpen: (val: boolean) => void;
   setIsSubmethodModalOpen: (val: boolean) => void;
+  setIsInviteModalOpen: (val: boolean) => void;
+  onInviteSent?: () => void;
   isDeleteConfirmOpen: boolean;
   setIsDeleteConfirmOpen: (val: boolean) => void;
   isDeletingInterface: boolean;
@@ -1107,6 +1130,7 @@ function InterfaceModalsContainer({
     editingAhorro,
     isCategoryModalOpen,
     isSubmethodModalOpen,
+    isInviteModalOpen,
   } = modalsState;
 
   return (
@@ -1169,6 +1193,14 @@ function InterfaceModalsContainer({
         initialTypeFilter={auditTypeFilter}
         entityIdFilter={auditEntityId}
         titleFilter={auditTitle}
+      />
+
+      <InviteModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        interfaceId={interfaceId}
+        interfaceName={interfaceData?.nombre}
+        onInviteSent={onInviteSent}
       />
 
       {/* CONFIRMATION DIALOG FOR DELETING OR LEAVING INTERFACE */}

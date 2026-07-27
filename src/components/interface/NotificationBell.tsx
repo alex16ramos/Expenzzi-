@@ -351,7 +351,26 @@ function NotificationCardItem({
   onDelete: (id: string) => void;
 }) {
   const emisorNombre = n.emisor?.nombreusuario || 'Un usuario';
-  const initials = emisorNombre.slice(0, 2).toUpperCase();
+  const initials = emisorNombre
+    ? emisorNombre
+        .split(' ')
+        .map((w) => w[0])
+        .filter(Boolean)
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : 'US';
+
+  let displayMensaje = n.mensaje || '';
+  if (n.emisor?.nombreusuario) {
+    if (!displayMensaje || displayMensaje.includes('Un usuario')) {
+      if (n.tipo === 'SOLICITUD_AMISTAD') {
+        displayMensaje = `${n.emisor.nombreusuario} te ha enviado una solicitud de amistad.`;
+      } else if (displayMensaje.includes('Un usuario')) {
+        displayMensaje = displayMensaje.replace(/Un usuario/g, n.emisor.nombreusuario);
+      }
+    }
+  }
 
   return (
     <div className="relative overflow-hidden bg-rose-500/10 group">
@@ -421,7 +440,7 @@ function NotificationCardItem({
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">{n.mensaje}</p>
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">{displayMensaje}</p>
 
             {n.rolPropuesto && (
               <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800/50">

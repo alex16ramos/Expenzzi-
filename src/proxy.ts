@@ -6,6 +6,7 @@ export default auth.middleware({
 
 export const config = {
   matcher: [
+    '/dashboard',
     '/dashboard/:path*',
     '/interface/:path*',
   ],

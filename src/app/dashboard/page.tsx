@@ -51,15 +51,10 @@ interface InterfazItem {
   balanceUYU?: number;
 }
 
-async function handleSignOut() {
-  try {
-    await authClient.signOut();
-    // toast can't be called here easily without dynamic import, so we let page redirect
-  } catch {
-    // Ignore
-  } finally {
-    window.location.href = '/';
-  }
+import { performSignOut } from '@/lib/logout';
+
+function handleSignOut() {
+  performSignOut();
 }
 
 export default function DashboardPage() {

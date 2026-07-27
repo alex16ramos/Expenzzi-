@@ -71,20 +71,22 @@ export async function GET() {
       },
     });
 
-    const amigos = acceptedFriendships.map((item) => {
-      const serialized = serializeAmistad(item);
-      // The friend is the opposite user
-      const amigoDetails = item.idremitente === userId ? item.destinatario : item.remitente;
-      return {
-        idamistad: serialized.idamistad,
-        fechaamistad: serialized.fechacreacion,
-        idusuario: amigoDetails.idusuario,
-        nombreusuario: amigoDetails.nombreusuario,
-        email: amigoDetails.email,
-        fotoperfil: amigoDetails.fotoperfil,
-        biografia: amigoDetails.biografia,
-      };
-    });
+    const amigos = acceptedFriendships
+      .map((item) => {
+        const serialized = serializeAmistad(item);
+        const amigoDetails = item.idremitente === userId ? item.destinatario : item.remitente;
+        if (!amigoDetails) return null;
+        return {
+          idamistad: serialized.idamistad,
+          fechaamistad: serialized.fechacreacion,
+          idusuario: amigoDetails.idusuario,
+          nombreusuario: amigoDetails.nombreusuario,
+          email: amigoDetails.email,
+          fotoperfil: amigoDetails.fotoperfil,
+          biografia: amigoDetails.biografia,
+        };
+      })
+      .filter((a): a is NonNullable<typeof a> => a !== null);
 
     // 2. Get received pending requests
     const receivedPending = await prisma.amistad.findMany({
@@ -97,14 +99,17 @@ export async function GET() {
       },
     });
 
-    const solicitudesRecibidas = receivedPending.map((item) => {
-      const serialized = serializeAmistad(item);
-      return {
-        idamistad: serialized.idamistad,
-        fechacreacion: serialized.fechacreacion,
-        remitente: serialized.remitente,
-      };
-    });
+    const solicitudesRecibidas = receivedPending
+      .map((item) => {
+        const serialized = serializeAmistad(item);
+        if (!serialized.remitente) return null;
+        return {
+          idamistad: serialized.idamistad,
+          fechacreacion: serialized.fechacreacion,
+          remitente: serialized.remitente,
+        };
+      })
+      .filter((a): a is NonNullable<typeof a> => a !== null);
 
     // 3. Get sent pending requests
     const sentPending = await prisma.amistad.findMany({
@@ -117,14 +122,17 @@ export async function GET() {
       },
     });
 
-    const solicitudesEnviadas = sentPending.map((item) => {
-      const serialized = serializeAmistad(item);
-      return {
-        idamistad: serialized.idamistad,
-        fechacreacion: serialized.fechacreacion,
-        destinatario: serialized.destinatario,
-      };
-    });
+    const solicitudesEnviadas = sentPending
+      .map((item) => {
+        const serialized = serializeAmistad(item);
+        if (!serialized.destinatario) return null;
+        return {
+          idamistad: serialized.idamistad,
+          fechacreacion: serialized.fechacreacion,
+          destinatario: serialized.destinatario,
+        };
+      })
+      .filter((a): a is NonNullable<typeof a> => a !== null);
 
     return NextResponse.json({
       success: true,
@@ -236,9 +244,15 @@ export async function POST(req: Request) {
           },
         });
 
-        const emisor = await prisma.usuario.findUnique({
+        const userEmail = (userObj?.email) as string | undefined;
+        let emisor = await prisma.usuario.findUnique({
           where: { idusuario: userId },
         });
+        if (!emisor && userEmail) {
+          emisor = await prisma.usuario.findUnique({
+            where: { email: userEmail },
+          });
+        }
         const emisorNombre = emisor?.nombreusuario || 'Un usuario';
 
         await prisma.notificacion.create({
@@ -270,9 +284,15 @@ export async function POST(req: Request) {
       },
     });
 
-    const emisor = await prisma.usuario.findUnique({
+    const userEmail = (userObj?.email) as string | undefined;
+    let emisor = await prisma.usuario.findUnique({
       where: { idusuario: userId },
     });
+    if (!emisor && userEmail) {
+      emisor = await prisma.usuario.findUnique({
+        where: { email: userEmail },
+      });
+    }
     const emisorNombre = emisor?.nombreusuario || 'Un usuario';
 
     await prisma.notificacion.create({

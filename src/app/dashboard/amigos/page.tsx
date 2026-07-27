@@ -493,50 +493,57 @@ function SolicitudesTab({
           </div>
         ) : (
           <div className="space-y-2">
-            {solicitudesRecibidas.map((sol) => (
-              <div
-                key={sol.idamistad}
-                className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between gap-3 shadow-sm"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className={`w-10 h-10 rounded-full ${getAvatarBg(sol.remitente.fotoperfil)} border flex items-center justify-center overflow-hidden shrink-0`}
-                  >
-                    {sol.remitente.fotoperfil ? (
-                      <Image src={sol.remitente.fotoperfil} alt={sol.remitente.nombreusuario} width={40} height={40} unoptimized className={getAvatarClass(sol.remitente.fotoperfil)} />
-                    ) : (
-                      <User className="w-5 h-5 text-indigo-400" />
-                    )}
+            {solicitudesRecibidas.map((sol) => {
+              const remitente = sol.remitente || {
+                nombreusuario: 'Usuario desconocido',
+                email: '',
+                fotoperfil: null,
+              };
+              return (
+                <div
+                  key={sol.idamistad}
+                  className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between gap-3 shadow-sm"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`w-10 h-10 rounded-full ${getAvatarBg(remitente.fotoperfil)} border flex items-center justify-center overflow-hidden shrink-0`}
+                    >
+                      {remitente.fotoperfil ? (
+                        <Image src={remitente.fotoperfil} alt={remitente.nombreusuario || 'Avatar'} width={40} height={40} unoptimized className={getAvatarClass(remitente.fotoperfil)} />
+                      ) : (
+                        <User className="w-5 h-5 text-indigo-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {remitente.nombreusuario || 'Usuario desconocido'}
+                      </h4>
+                      <p className="text-[11px] text-slate-500 truncate">{remitente.email}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                      {sol.remitente.nombreusuario}
-                    </h4>
-                    <p className="text-[11px] text-slate-500 truncate">{sol.remitente.email}</p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    size="sm"
-                    disabled={actionLoading === sol.idamistad}
-                    onClick={() => onRespond(sol.idamistad, true)}
-                    className="h-8 px-3 text-xs bg-emerald-600 hover:bg-emerald-500 text-white gap-1 rounded-xl"
-                  >
-                    <Check className="w-3.5 h-3.5" /> Aceptar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={actionLoading === sol.idamistad}
-                    onClick={() => onRespond(sol.idamistad, false)}
-                    className="h-8 px-2.5 text-xs text-rose-600 border-rose-500/30 hover:bg-rose-50 rounded-xl"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </Button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      disabled={actionLoading === sol.idamistad}
+                      onClick={() => onRespond(sol.idamistad, true)}
+                      className="h-8 px-3 text-xs bg-emerald-600 hover:bg-emerald-500 text-white gap-1 rounded-xl"
+                    >
+                      <Check className="w-3.5 h-3.5" /> Aceptar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={actionLoading === sol.idamistad}
+                      onClick={() => onRespond(sol.idamistad, false)}
+                      className="h-8 px-2.5 text-xs text-rose-600 border-rose-500/30 hover:bg-rose-50 rounded-xl"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -553,40 +560,47 @@ function SolicitudesTab({
           </div>
         ) : (
           <div className="space-y-2">
-            {solicitudesEnviadas.map((sol) => (
-              <div
-                key={sol.idamistad}
-                className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between gap-3 shadow-sm"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className={`w-10 h-10 rounded-full ${getAvatarBg(sol.destinatario.fotoperfil)} border flex items-center justify-center overflow-hidden shrink-0`}
-                  >
-                    {sol.destinatario.fotoperfil ? (
-                      <Image src={sol.destinatario.fotoperfil} alt={sol.destinatario.nombreusuario} width={40} height={40} unoptimized className={getAvatarClass(sol.destinatario.fotoperfil)} />
-                    ) : (
-                      <User className="w-5 h-5 text-indigo-400" />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                      {sol.destinatario.nombreusuario}
-                    </h4>
-                    <p className="text-[11px] text-slate-500 truncate">{sol.destinatario.email}</p>
-                  </div>
-                </div>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={actionLoading === sol.idamistad}
-                  onClick={() => onCancel(sol.idamistad)}
-                  className="h-8 text-xs text-slate-500 hover:text-rose-600 rounded-xl"
+            {solicitudesEnviadas.map((sol) => {
+              const destinatario = sol.destinatario || {
+                nombreusuario: 'Usuario desconocido',
+                email: '',
+                fotoperfil: null,
+              };
+              return (
+                <div
+                  key={sol.idamistad}
+                  className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between gap-3 shadow-sm"
                 >
-                  Cancelar
-                </Button>
-              </div>
-            ))}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`w-10 h-10 rounded-full ${getAvatarBg(destinatario.fotoperfil)} border flex items-center justify-center overflow-hidden shrink-0`}
+                    >
+                      {destinatario.fotoperfil ? (
+                        <Image src={destinatario.fotoperfil} alt={destinatario.nombreusuario || 'Avatar'} width={40} height={40} unoptimized className={getAvatarClass(destinatario.fotoperfil)} />
+                      ) : (
+                        <User className="w-5 h-5 text-indigo-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {destinatario.nombreusuario || 'Usuario desconocido'}
+                      </h4>
+                      <p className="text-[11px] text-slate-500 truncate">{destinatario.email}</p>
+                    </div>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={actionLoading === sol.idamistad}
+                    onClick={() => onCancel(sol.idamistad)}
+                    className="h-8 text-xs text-slate-500 hover:text-rose-600 rounded-xl"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
