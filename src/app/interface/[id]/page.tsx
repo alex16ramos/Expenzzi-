@@ -226,6 +226,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       if (filters.fechaHasta) queryParams.set('fechaHasta', filters.fechaHasta);
       if (filters.minImporte) queryParams.set('minImporte', filters.minImporte);
       if (filters.maxImporte) queryParams.set('maxImporte', filters.maxImporte);
+      if (filters.estadoFilter) queryParams.set('estado', filters.estadoFilter);
 
       const endpoint =
         activeSection === 'Gastos'
@@ -264,6 +265,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
             method: item.submetodoNombre ? `${item.metodoBase || ''} - ${item.submetodoNombre}` : String(item.categoriaNombre || item.periodoaporte || 'General'),
             category: catName,
             type: isGasto ? 'Gasto' : isIngreso ? 'Ingreso' : 'Ahorro',
+            estado: item.estado !== false,
             rawItem: item,
           };
         });
@@ -392,7 +394,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     }
   };
 
-  // Delete Transaction Handler
+  // Delete Transaction Handler (Baja Lógica)
   const handleDeleteTransaction = useCallback(
     async (id: string | number) => {
       try {
@@ -405,21 +407,58 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
         const res = await fetch(endpoint, { method: 'DELETE' });
         if (res.ok) {
-          toast.success('Movimiento eliminado correctamente');
-          setTransactions((prev) => prev.filter((tx) => String(tx.id) !== String(id)));
+          toast.success('Movimiento dado de baja correctamente');
+          loadSectionRecords();
           loadBalances();
           if (selectedTransactionForModal && String(selectedTransactionForModal.id) === String(id)) {
             setSelectedTransactionForModal(null);
           }
         } else {
           const err = await res.json();
-          toast.error(err.error || 'Error al eliminar movimiento');
+          toast.error(err.error || 'Error al dar de baja movimiento');
         }
       } catch {
-        toast.error('Error de conexión al eliminar');
+        toast.error('Error de conexión al dar de baja');
       }
     },
-    [activeSection, interfaceId, loadBalances, selectedTransactionForModal]
+    [activeSection, interfaceId, loadBalances, loadSectionRecords, selectedTransactionForModal]
+  );
+
+  // Restore Transaction Handler (Reactivación)
+  const handleRestoreTransaction = useCallback(
+    async (id: string | number) => {
+      try {
+        const endpoint =
+          activeSection === 'Gastos'
+            ? `/api/interfaces/${interfaceId}/gastos`
+            : activeSection === 'Ingresos'
+              ? `/api/interfaces/${interfaceId}/ingresos`
+              : `/api/interfaces/${interfaceId}/ahorros`;
+
+        const idKey = activeSection === 'Gastos' ? 'idgasto' : activeSection === 'Ingresos' ? 'idingreso' : 'idahorro';
+
+        const res = await fetch(endpoint, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ [idKey]: id, estado: true }),
+        });
+
+        if (res.ok) {
+          toast.success('Movimiento reactivado correctamente');
+          loadSectionRecords();
+          loadBalances();
+          if (selectedTransactionForModal && String(selectedTransactionForModal.id) === String(id)) {
+            setSelectedTransactionForModal(null);
+          }
+        } else {
+          const err = await res.json();
+          toast.error(err.error || 'Error al reactivar movimiento');
+        }
+      } catch {
+        toast.error('Error de conexión al reactivar');
+      }
+    },
+    [activeSection, interfaceId, loadBalances, loadSectionRecords, selectedTransactionForModal]
   );
 
   // Edit Click Handler
@@ -945,6 +984,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
                     onClose={() => setSelectedTransactionForModal(null)}
                     onEdit={handleEditClick}
                     onDelete={handleDeleteTransaction}
+                    onRestore={handleRestoreTransaction}
                     onViewHistory={(tx) =>
                       handleOpenAuditModal(
                         activeSection === 'Gastos'
@@ -988,6 +1028,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
           onClose={() => setSelectedTransactionForModal(null)}
           onEdit={handleEditClick}
           onDelete={handleDeleteTransaction}
+          onRestore={handleRestoreTransaction}
           onViewHistory={(tx) =>
             handleOpenAuditModal(
               activeSection === 'Gastos'
