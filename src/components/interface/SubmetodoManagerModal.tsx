@@ -93,7 +93,7 @@ export function SubmetodoManagerModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-[60] animate-in fade-in duration-200">
       <div className="w-full max-w-lg bg-slate-900 rounded-2xl p-5 space-y-4 shadow-2xl border border-slate-800 text-white max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex justify-between items-center pb-3 border-b border-slate-800 shrink-0">

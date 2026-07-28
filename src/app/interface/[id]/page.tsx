@@ -1201,6 +1201,8 @@ function InterfaceModalsContainer({
         categories={categories}
         submethods={submethods}
         members={members}
+        onOpenCategoryManager={() => setIsCategoryModalOpen(true)}
+        onOpenSubmethodManager={() => setIsSubmethodModalOpen(true)}
       />
 
       <IngresoFormModal

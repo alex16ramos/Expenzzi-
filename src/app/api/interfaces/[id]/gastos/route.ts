@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { TMoneda } from '@prisma/client';
-import { notifyInterfaceMembers } from '@/lib/notify-members';
 import { emitRealtimeEvent } from '@/lib/events';
 import { getExchangeRatesForDate } from '@/lib/exchange-rate';
 
@@ -280,13 +279,82 @@ export async function POST(
     const interfazNombre = interfaz?.nombre || 'la interfaz';
     const formattedAmount = `${Number(importe).toLocaleString('es-AR')} ${moneda}`;
 
-    notifyInterfaceMembers({
-      idinterfazoperacion: interfaceId,
-      idemisor: userId,
-      tipo: 'NUEVO_GASTO',
-      titulo: 'Nuevo Gasto Registrado',
-      mensaje: `${emisorNombre} registró un gasto de ${formattedAmount}${comentario ? ` ("${comentario}")` : ''} en "${interfazNombre}".`,
+    const allMembers = await prisma.usuarioInterfaz.findMany({
+      where: {
+        idinterfazoperacion: interfaceId,
+        idusuario: { not: userId },
+      },
+      select: { idusuario: true },
     });
+
+    const notifiedUserIds = new Set<string>();
+    const notificationsToCreate: {
+      idreceptor: string;
+      idemisor: string;
+      tipo: string;
+      titulo: string;
+      mensaje: string;
+      idinterfazoperacion: bigint;
+      estado: string;
+      leido: boolean;
+    }[] = [];
+
+    // 1. Target notification for assigned user
+    if (respUser && respUser !== userId) {
+      notificationsToCreate.push({
+        idreceptor: respUser,
+        idemisor: userId,
+        tipo: 'GASTO_ASIGNADO',
+        titulo: 'Gasto Asignado',
+        mensaje: `${emisorNombre} te asignó un gasto de ${formattedAmount}${comentario ? ` ("${comentario}")` : ''} en "${interfazNombre}".`,
+        idinterfazoperacion: interfaceId,
+        estado: 'Informativa',
+        leido: false,
+      });
+      notifiedUserIds.add(respUser);
+    }
+
+    // 2. Target notification for shared participants
+    if (escompartido && recordedParticipants.length > 0) {
+      for (const pId of recordedParticipants) {
+        if (pId !== userId && !notifiedUserIds.has(pId)) {
+          notificationsToCreate.push({
+            idreceptor: pId,
+            idemisor: userId,
+            tipo: 'GASTO_COMPARTIDO',
+            titulo: 'Gasto Compartido',
+            mensaje: `${emisorNombre} incluyó tu participación en un gasto compartido de ${formattedAmount}${comentario ? ` ("${comentario}")` : ''} en "${interfazNombre}".`,
+            idinterfazoperacion: interfaceId,
+            estado: 'Informativa',
+            leido: false,
+          });
+          notifiedUserIds.add(pId);
+        }
+      }
+    }
+
+    // 3. General notification for remaining members
+    for (const m of allMembers) {
+      if (!notifiedUserIds.has(m.idusuario)) {
+        notificationsToCreate.push({
+          idreceptor: m.idusuario,
+          idemisor: userId,
+          tipo: 'NUEVO_GASTO',
+          titulo: 'Nuevo Gasto Registrado',
+          mensaje: `${emisorNombre} registró un gasto de ${formattedAmount}${comentario ? ` ("${comentario}")` : ''} en "${interfazNombre}".`,
+          idinterfazoperacion: interfaceId,
+          estado: 'Informativa',
+          leido: false,
+        });
+        notifiedUserIds.add(m.idusuario);
+      }
+    }
+
+    if (notificationsToCreate.length > 0) {
+      await prisma.notificacion.createMany({
+        data: notificationsToCreate,
+      });
+    }
 
     emitRealtimeEvent(String(interfaceId), { type: 'MUTATION', entity: 'gasto', action: 'create' });
 
