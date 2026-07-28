@@ -46,7 +46,19 @@ export async function checkUserInterfaceMembership(
 
   const role = userInterfaz.rol || 'Visualizador';
 
-  // 3. Save to TTL cache
+  // 3. Save to TTL cache (with auto-pruning to prevent memory growth)
+  if (membershipCache.size >= 200) {
+    for (const [k, v] of membershipCache.entries()) {
+      if (v.expiresAt <= now) {
+        membershipCache.delete(k);
+      }
+    }
+    if (membershipCache.size >= 200) {
+      const firstKey = membershipCache.keys().next().value;
+      if (firstKey) membershipCache.delete(firstKey);
+    }
+  }
+
   membershipCache.set(cacheKey, {
     role,
     expiresAt: now + TTL_MS,
