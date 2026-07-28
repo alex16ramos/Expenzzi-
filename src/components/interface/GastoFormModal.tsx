@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save, AlertCircle, AlertTriangle } from 'lucide-react';
+import { X, Save, AlertCircle, AlertTriangle, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -34,6 +34,8 @@ interface GastoFormModalProps {
   categories: CategoryOption[];
   submethods: { id: string; nombre: string; metodo: string }[];
   members: { idusuario: string; nombreusuario: string }[];
+  onOpenCategoryManager?: () => void;
+  onOpenSubmethodManager?: () => void;
 }
 
 function convertCurrency(val: number, from: string, to: string): number {
@@ -55,6 +57,8 @@ export function GastoFormModal({
   categories = [],
   submethods = [],
   members = [],
+  onOpenCategoryManager,
+  onOpenSubmethodManager,
 }: GastoFormModalProps) {
   const [fecha, setFecha] = useState(initialData?.fecha || new Date().toISOString().split('T')[0]);
   const [moneda, setMoneda] = useState(initialData?.moneda || 'ARS');
@@ -233,16 +237,33 @@ export function GastoFormModal({
             <div className="space-y-1">
               <div className="flex justify-between items-center">
                 <label htmlFor="gasto-categoria" className="text-xs font-medium text-slate-300">Categoría</label>
-                {selectedCategory?.estadolimite && (
-                  <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                    Límite {limitPeriod}: ${limitAmount.toLocaleString('es-AR')} {limitCurrency}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {selectedCategory?.estadolimite && (
+                    <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                      Límite {limitPeriod}: ${limitAmount.toLocaleString('es-AR')} {limitCurrency}
+                    </span>
+                  )}
+                  {onOpenCategoryManager && (
+                    <button
+                      type="button"
+                      onClick={onOpenCategoryManager}
+                      className="text-[11px] font-semibold text-violet-400 hover:text-violet-300 transition-colors flex items-center gap-1 bg-violet-500/10 hover:bg-violet-500/20 px-2 py-0.5 rounded-lg border border-violet-500/20"
+                    >
+                      <Plus className="w-3 h-3" /> Crear categoría
+                    </button>
+                  )}
+                </div>
               </div>
               <select
                 id="gasto-categoria"
                 value={idcategoria}
-                onChange={(e) => setIdcategoria(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value === '__CREATE_NEW_CATEGORY__') {
+                    onOpenCategoryManager?.();
+                  } else {
+                    setIdcategoria(e.target.value);
+                  }
+                }}
                 className="w-full h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-xs font-medium text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
               >
                 <option value="">Sin categoría asignada</option>
@@ -251,6 +272,11 @@ export function GastoFormModal({
                     {c.nombre} {c.estadolimite && c.importe ? `(Límite: ${c.moneda || 'ARS'} $${c.importe})` : ''}
                   </option>
                 ))}
+                {onOpenCategoryManager && (
+                  <option value="__CREATE_NEW_CATEGORY__" className="font-bold text-violet-400">
+                    + Crear nueva categoría...
+                  </option>
+                )}
               </select>
 
               {/* Status Indicator for Selected Category Limit */}
@@ -282,11 +308,28 @@ export function GastoFormModal({
 
             {/* Submétodo de Pago */}
             <div className="space-y-1">
-              <label htmlFor="gasto-submetodo" className="text-xs font-medium text-slate-300">Submétodo de Pago</label>
+              <div className="flex justify-between items-center">
+                <label htmlFor="gasto-submetodo" className="text-xs font-medium text-slate-300">Submétodo de Pago</label>
+                {onOpenSubmethodManager && (
+                  <button
+                    type="button"
+                    onClick={onOpenSubmethodManager}
+                    className="text-[11px] font-semibold text-violet-400 hover:text-violet-300 transition-colors flex items-center gap-1 bg-violet-500/10 hover:bg-violet-500/20 px-2 py-0.5 rounded-lg border border-violet-500/20"
+                  >
+                    <Plus className="w-3 h-3" /> Crear método
+                  </button>
+                )}
+              </div>
               <select
                 id="gasto-submetodo"
                 value={idsubmetodopago}
-                onChange={(e) => setIdsubmetodopago(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value === '__CREATE_NEW_SUBMETHOD__') {
+                    onOpenSubmethodManager?.();
+                  } else {
+                    setIdsubmetodopago(e.target.value);
+                  }
+                }}
                 className="w-full h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-xs font-medium text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
               >
                 <option value="">Sin método específico</option>
@@ -295,6 +338,11 @@ export function GastoFormModal({
                     {s.nombre} ({s.metodo})
                   </option>
                 ))}
+                {onOpenSubmethodManager && (
+                  <option value="__CREATE_NEW_SUBMETHOD__" className="font-bold text-violet-400">
+                    + Crear nuevo método de pago...
+                  </option>
+                )}
               </select>
             </div>
 

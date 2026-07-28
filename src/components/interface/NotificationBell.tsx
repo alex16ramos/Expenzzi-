@@ -40,11 +40,6 @@ interface NotificationBellProps {
 const isGeneralNotif = (n: NotificacionItem) =>
   n.tipo === 'SOLICITUD_AMISTAD' || n.tipo === 'INVITACION_INTERFAZ' || !n.idinterfazoperacion;
 
-const isCurrentInterfaceNotif = (n: NotificacionItem, interfaceId?: string | number | null) =>
-  interfaceId
-    ? String(n.idinterfazoperacion) === String(interfaceId)
-    : n.tipo.startsWith('NUEVO_') || !!n.idinterfazoperacion;
-
 export function NotificationBell({
   interfaceId,
   interfaceName,
@@ -56,9 +51,28 @@ export function NotificationBell({
   const [unreadCount, setUnreadCount] = useState(0);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'general' | 'interfaz' | 'todas'>('general');
+  const [selectedInterfaceFilter, setSelectedInterfaceFilter] = useState<string>('ALL');
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const isMountedRef = useRef(true);
+
+  const availableInterfaces = React.useMemo(() => {
+    const map = new Map<string, { id: string; nombre: string; count: number }>();
+    if (interfaceId && interfaceName) {
+      map.set(String(interfaceId), { id: String(interfaceId), nombre: String(interfaceName), count: 0 });
+    }
+    for (const n of notificaciones) {
+      if (n.interfaz) {
+        const existing = map.get(n.interfaz.id);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          map.set(n.interfaz.id, { id: n.interfaz.id, nombre: n.interfaz.nombre, count: 1 });
+        }
+      }
+    }
+    return Array.from(map.values());
+  }, [notificaciones, interfaceId, interfaceName]);
 
   const fetchNotificaciones = useCallback(async () => {
     try {
@@ -200,11 +214,16 @@ export function NotificationBell({
   };
 
   const unreadGeneral = notificaciones.filter((n) => !n.leido && isGeneralNotif(n)).length;
-  const unreadInterfaz = notificaciones.filter((n) => !n.leido && isCurrentInterfaceNotif(n, interfaceId)).length;
+  const activityNotifs = notificaciones.filter((n) => !isGeneralNotif(n));
+  const unreadInterfaz = activityNotifs.filter((n) => !n.leido).length;
 
   const filteredNotificaciones = notificaciones.filter((n) => {
     if (activeTab === 'general') return isGeneralNotif(n);
-    if (activeTab === 'interfaz') return isCurrentInterfaceNotif(n, interfaceId);
+    if (activeTab === 'interfaz') {
+      if (isGeneralNotif(n)) return false;
+      if (selectedInterfaceFilter === 'ALL') return true;
+      return String(n.idinterfazoperacion) === selectedInterfaceFilter;
+    }
     return true;
   });
 
@@ -279,7 +298,7 @@ export function NotificationBell({
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              <span className="truncate">{interfaceName ? `Esta Interfaz` : `Actividad`}</span>
+              <span className="truncate">Actividad</span>
               {unreadInterfaz > 0 && (
                 <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
               )}
@@ -298,6 +317,28 @@ export function NotificationBell({
             </button>
           </div>
 
+          {/* Interface Sub-Filter Dropdown inside Actividad tab */}
+          {activeTab === 'interfaz' && (
+            <div className="px-3.5 py-2 bg-slate-100/90 dark:bg-slate-950/90 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+              <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 shrink-0">
+                Filtrar por interfaz:
+              </span>
+              <select
+                value={selectedInterfaceFilter}
+                onChange={(e) => setSelectedInterfaceFilter(e.target.value)}
+                aria-label="Filtrar actividad por interfaz"
+                className="h-7 px-2 text-[11px] font-semibold rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-500 max-w-[200px] truncate cursor-pointer"
+              >
+                <option value="ALL">Todas las interfaces ({activityNotifs.length})</option>
+                {availableInterfaces.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.nombre} ({item.count})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* List Content */}
           <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
             {loading ? (
@@ -312,7 +353,9 @@ export function NotificationBell({
                   {activeTab === 'general'
                     ? 'Sin solicitudes ni invitaciones pendientes'
                     : activeTab === 'interfaz'
-                    ? 'Sin actividad reciente en esta interfaz'
+                    ? selectedInterfaceFilter === 'ALL'
+                      ? 'Sin actividad reciente en ninguna interfaz'
+                      : 'Sin actividad reciente en la interfaz seleccionada'
                     : 'Sin notificaciones por ahora'}
                 </p>
                 <p className="text-[11px] text-slate-500 mt-0.5">
@@ -450,19 +493,37 @@ function NotificationCardItem({
             )}
 
             {/* Action / Badge Section */}
-            {n.estado === 'Informativa' || n.tipo.startsWith('NUEVO_') ? (
-              <div className="pt-1.5 flex items-center justify-between">
+            {n.estado === 'Informativa' || n.tipo.startsWith('NUEVO_') || n.tipo.startsWith('GASTO_') ? (
+              <div className="pt-1.5 flex items-center justify-between gap-2 flex-wrap">
                 <span
                   className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                     n.tipo === 'NUEVO_GASTO'
                       ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30'
+                      : n.tipo === 'GASTO_ASIGNADO'
+                      ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                      : n.tipo === 'GASTO_COMPARTIDO'
+                      ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30'
                       : n.tipo === 'NUEVO_INGRESO'
                       ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
-                      : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                      : 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30'
                   }`}
                 >
-                  {n.tipo === 'NUEVO_GASTO' ? '💸 Gasto' : n.tipo === 'NUEVO_INGRESO' ? '💰 Ingreso' : '🏦 Ahorro'}
+                  {n.tipo === 'GASTO_ASIGNADO'
+                    ? '📌 Gasto Asignado'
+                    : n.tipo === 'GASTO_COMPARTIDO'
+                    ? '👥 Gasto Compartido'
+                    : n.tipo === 'NUEVO_GASTO'
+                    ? '💸 Gasto'
+                    : n.tipo === 'NUEVO_INGRESO'
+                    ? '💰 Ingreso'
+                    : '🏦 Ahorro'}
                 </span>
+
+                {n.interfaz?.nombre && (
+                  <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 truncate max-w-[140px]">
+                    {n.interfaz.nombre}
+                  </span>
+                )}
               </div>
             ) : n.estado === 'Pendiente' ? (
               <div className="flex gap-2 pt-2">
