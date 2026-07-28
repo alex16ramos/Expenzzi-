@@ -52,11 +52,25 @@ export async function GET(
     const gastosData = await prisma.gasto.findMany({
       where: {
         estado: true,
+        participantes: { some: {} },
         OR: [
           { categoria: { idinterfazoperacion: interfaceId } },
           { submetodopago: { idinterfazoperacion: interfaceId } },
+          {
+            usuarioResponsable: {
+              usuarioInterfaces: {
+                some: { idinterfazoperacion: interfaceId },
+              },
+            },
+          },
+          {
+            usuarioIngresador: {
+              usuarioInterfaces: {
+                some: { idinterfazoperacion: interfaceId },
+              },
+            },
+          },
         ],
-        participantes: { some: {} },
       },
       include: {
         usuarioResponsable: true,
@@ -173,7 +187,8 @@ export async function GET(
 
           if (debt1to2 > debt2to1) {
             const netAmount = debt1to2 - debt2to1;
-            if (netAmount > 0.001) {
+            const finalNet = Math.round(netAmount * 100) / 100;
+            if (finalNet > 0) {
               const pendingS = settlements.find(
                 (s) => s.moneda === curr && s.iddeudor === u1 && s.idacreedor === u2 && !s.fullySettled
               );
@@ -185,7 +200,7 @@ export async function GET(
                 idacreedor: u2,
                 acreedorNombre: memberMap.get(u2) || 'Usuario',
                 montoBruto: debt1to2,
-                montoNeto: Math.round(netAmount * 100) / 100,
+                montoNeto: finalNet,
                 pendingSettlement: pendingS
                   ? {
                       iddeuda: pendingS.iddeuda,
@@ -197,7 +212,8 @@ export async function GET(
             }
           } else if (debt2to1 > debt1to2) {
             const netAmount = debt2to1 - debt1to2;
-            if (netAmount > 0.001) {
+            const finalNet = Math.round(netAmount * 100) / 100;
+            if (finalNet > 0) {
               const pendingS = settlements.find(
                 (s) => s.moneda === curr && s.iddeudor === u2 && s.idacreedor === u1 && !s.fullySettled
               );
@@ -209,7 +225,7 @@ export async function GET(
                 idacreedor: u1,
                 acreedorNombre: memberMap.get(u1) || 'Usuario',
                 montoBruto: debt2to1,
-                montoNeto: Math.round(netAmount * 100) / 100,
+                montoNeto: finalNet,
                 pendingSettlement: pendingS
                   ? {
                       iddeuda: pendingS.iddeuda,

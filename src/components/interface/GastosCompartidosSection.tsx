@@ -166,15 +166,15 @@ export function GastosCompartidosSection({
     }
   };
 
-  const filteredBalances = netBalances.filter((b) => b.moneda === monedaFilter);
+  const filteredBalances = netBalances.filter((b) => b.moneda === monedaFilter && b.montoNeto > 0);
   const filteredExpenses = sharedExpenses.filter((e) => e.moneda === monedaFilter);
   const filteredSettlements = settlements.filter((s) => s.moneda === monedaFilter);
 
-  // Split balances into "Mis Deudas" and "Me Deben" and "Otras Deudas"
-  const myDebtsToPay = filteredBalances.filter((b) => b.iddeudor === currentUserId);
-  const myDebtsToCollect = filteredBalances.filter((b) => b.idacreedor === currentUserId);
+  // Split balances into "Mis Deudas" and "Me Deben" and "Otras Deudas" (excluding $0 balances)
+  const myDebtsToPay = filteredBalances.filter((b) => b.iddeudor === currentUserId && b.montoNeto > 0);
+  const myDebtsToCollect = filteredBalances.filter((b) => b.idacreedor === currentUserId && b.montoNeto > 0);
   const otherBalances = filteredBalances.filter(
-    (b) => b.iddeudor !== currentUserId && b.idacreedor !== currentUserId
+    (b) => b.iddeudor !== currentUserId && b.idacreedor !== currentUserId && b.montoNeto > 0
   );
 
   return (
