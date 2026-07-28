@@ -17,6 +17,7 @@ import { IngresoFormModal, IngresoFormData } from '@/components/interface/Ingres
 import { AhorroFormModal, AhorroFormData } from '@/components/interface/AhorroFormModal';
 import { ComparativeReportsDashboard } from '@/components/interface/ComparativeReportsDashboard';
 import { UserExpenseChart } from '@/components/interface/UserExpenseChart';
+import { GastosCompartidosSection } from '@/components/interface/GastosCompartidosSection';
 import { CategoriaManagerModal, CategoriaItem } from '@/components/interface/CategoriaManagerModal';
 import { SubmetodoManagerModal, SubmetodoItem } from '@/components/interface/SubmetodoManagerModal';
 import { AuditHistoryModal } from '@/components/interface/AuditHistoryModal';
@@ -79,7 +80,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
   // Navigation & View state
   const [activeSection, setActiveSection] = useState<'Gastos' | 'Ingresos' | 'Ahorros' | 'Resúmenes'>('Gastos');
-  const [summarySubTab, setSummarySubTab] = useState<'comparative' | 'user'>('comparative');
+  const [summarySubTab, setSummarySubTab] = useState<'comparative' | 'user' | 'shared'>('comparative');
   const [filters, setFilters] = useState<MultiFilterState>(DEFAULT_MULTI_FILTERS);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -474,6 +475,8 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         idcategoria: raw?.idcategoria ? String(raw.idcategoria) : undefined,
         idsubmetodopago: raw?.idsubmetodopago ? String(raw.idsubmetodopago) : undefined,
         responsablegasto: raw?.responsablegasto ? String(raw.responsablegasto) : undefined,
+        escompartido: Boolean(raw?.escompartido),
+        participantes: Array.isArray(raw?.participantes) ? raw.participantes : [],
       });
       setIsGastoModalOpen(true);
     } else if (activeSection === 'Ingresos') {
@@ -917,12 +920,24 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
                         >
                           Distribución por Integrante
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setSummarySubTab('shared')}
+                          className={`flex-1 py-2 rounded-xl font-bold transition-colors ${summarySubTab === 'shared'
+                            ? 'bg-indigo-600 text-white shadow-md'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                        >
+                          Gastos Compartidos & Deudas
+                        </button>
                       </div>
 
                       {summarySubTab === 'comparative' ? (
                         <ComparativeReportsDashboard interfaceId={interfaceId} categories={categories} />
-                      ) : (
+                      ) : summarySubTab === 'user' ? (
                         <UserExpenseChart transactions={transactions} title="Distribución de Movimientos" />
+                      ) : (
+                        <GastosCompartidosSection interfaceId={interfaceId} members={members} />
                       )}
                     </div>
                   ) : (

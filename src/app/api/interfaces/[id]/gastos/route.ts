@@ -134,6 +134,7 @@ export async function GET(
         usuarioResponsable: true,
         categoria: true,
         submetodopago: true,
+        participantes: true,
       },
       orderBy: { fecha: 'desc' },
       skip: (page - 1) * pageSize,
@@ -156,6 +157,8 @@ export async function GET(
         submetodoNombre: g.submetodopago?.nombre || 'Sin método',
         metodoBase: g.submetodopago?.metodo || 'Efectivo',
         estado: g.estado,
+        escompartido: g.participantes.length > 0,
+        participantes: g.participantes.map((p) => p.idusuario),
       })),
       pagination: {
         page,
@@ -190,7 +193,7 @@ export async function POST(
 
     const body = await req.json();
 
-    const { fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago } = body;
+    const { fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, escompartido, participantes } = body;
 
     if (!moneda || !importe || isNaN(Number(importe))) {
       return NextResponse.json(
@@ -239,6 +242,36 @@ export async function POST(
       },
     });
 
+    let recordedParticipants: string[] = [];
+
+    if (escompartido) {
+      let pList: string[] = Array.isArray(participantes) && participantes.length > 0 ? participantes : [];
+      if (pList.length === 0) {
+        const members = await prisma.usuarioInterfaz.findMany({
+          where: { idinterfazoperacion: interfaceId, fechasalida: null },
+          select: { idusuario: true },
+        });
+        pList = members.map((m) => m.idusuario);
+      }
+      if (pList.length > 0) {
+        for (const pId of pList) {
+          await prisma.usuario.upsert({
+            where: { idusuario: pId },
+            update: {},
+            create: { idusuario: pId, nombreusuario: 'Usuario', email: `${pId}@expenzzi.local` },
+          });
+        }
+        await prisma.gastoParticipante.createMany({
+          data: pList.map((pId) => ({
+            idgasto: newGasto.idgasto,
+            idusuario: pId,
+          })),
+          skipDuplicates: true,
+        });
+        recordedParticipants = pList;
+      }
+    }
+
     const [emisor, interfaz] = await Promise.all([
       prisma.usuario.findUnique({ where: { idusuario: userId } }),
       prisma.interfazOperacion.findUnique({ where: { idinterfazoperacion: interfaceId } }),
@@ -273,6 +306,8 @@ export async function POST(
         submetodoNombre: newGasto.submetodopago?.nombre || 'Sin método',
         metodoBase: newGasto.submetodopago?.metodo || 'Efectivo',
         estado: newGasto.estado,
+        escompartido: recordedParticipants.length > 0,
+        participantes: recordedParticipants,
       },
     });
   } catch (err: unknown) {
@@ -287,7 +322,8 @@ export async function POST(
  * Update an existing Gasto
  */
 export async function PUT(
-  req: Request
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromSession();
@@ -295,8 +331,11 @@ export async function PUT(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
+    const resolvedParams = await params;
+    const interfaceId = BigInt(resolvedParams.id);
+
     const body = await req.json();
-    const { idgasto, fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, estado } = body;
+    const { idgasto, fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, estado, escompartido, participantes } = body;
 
     if (!idgasto) {
       return NextResponse.json({ error: 'idgasto es requerido' }, { status: 400 });
@@ -321,6 +360,44 @@ export async function PUT(
       },
     });
 
+    let currentParticipants: string[] = [];
+
+    if (escompartido !== undefined) {
+      await prisma.gastoParticipante.deleteMany({ where: { idgasto: BigInt(idgasto) } });
+      if (escompartido) {
+        let pList: string[] = Array.isArray(participantes) && participantes.length > 0 ? participantes : [];
+        if (pList.length === 0) {
+          const members = await prisma.usuarioInterfaz.findMany({
+            where: { idinterfazoperacion: interfaceId, fechasalida: null },
+            select: { idusuario: true },
+          });
+          pList = members.map((m) => m.idusuario);
+        }
+        if (pList.length > 0) {
+          for (const pId of pList) {
+            await prisma.usuario.upsert({
+              where: { idusuario: pId },
+              update: {},
+              create: { idusuario: pId, nombreusuario: 'Usuario', email: `${pId}@expenzzi.local` },
+            });
+          }
+          await prisma.gastoParticipante.createMany({
+            data: pList.map((pId) => ({
+              idgasto: BigInt(idgasto),
+              idusuario: pId,
+            })),
+            skipDuplicates: true,
+          });
+          currentParticipants = pList;
+        }
+      }
+    } else {
+      const existing = await prisma.gastoParticipante.findMany({
+        where: { idgasto: BigInt(idgasto) },
+      });
+      currentParticipants = existing.map((p) => p.idusuario);
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -337,6 +414,8 @@ export async function PUT(
         submetodoNombre: updated.submetodopago?.nombre || 'Sin método',
         metodoBase: updated.submetodopago?.metodo || 'Efectivo',
         estado: updated.estado,
+        escompartido: currentParticipants.length > 0,
+        participantes: currentParticipants,
       },
     });
   } catch (err: unknown) {

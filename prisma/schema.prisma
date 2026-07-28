@@ -68,6 +68,9 @@ model Usuario {
   amigosRecibidos            Amistad[]          @relation("AmistadDestinatario")
   notificacionesRecibidas    Notificacion[]     @relation("NotificacionReceptor")
   notificacionesEnviadas     Notificacion[]     @relation("NotificacionEmisor")
+  gastosParticipando         GastoParticipante[]
+  deudasComoDeudor           DeudaSaldada[]     @relation("DeudaDeudor")
+  deudasComoAcreedor         DeudaSaldada[]     @relation("DeudaAcreedor")
 
   @@index([email], map: "idx_email")
   @@index([email], map: "idx_usuario_email")
@@ -89,6 +92,7 @@ model InterfazOperacion {
   submetodospago    SubMetodoPago[]
   ingresos          Ingreso[]
   notificaciones    Notificacion[]
+  deudasSaldadas    DeudaSaldada[]
 
   @@index([nombre, estado], map: "idx_io_nombre_estado")
   @@map("interfazoperacion")
@@ -194,17 +198,53 @@ model Gasto {
   idcategoria              BigInt?  @map("idcategoria")
   idsubmetodopago          BigInt?  @map("idsubmetodopago")
 
-  usuarioResponsable       Usuario        @relation("GastoResponsable", fields: [responsablegasto], references: [idusuario])
-  usuarioIngresador        Usuario        @relation("GastoIngresador", fields: [responsableingresargasto], references: [idusuario])
-  categoria                Categoria?     @relation(fields: [idcategoria], references: [idcategoria])
-  submetodopago            SubMetodoPago? @relation(fields: [idsubmetodopago], references: [idsubmetodopago])
+  usuarioResponsable       Usuario             @relation("GastoResponsable", fields: [responsablegasto], references: [idusuario])
+  usuarioIngresador        Usuario             @relation("GastoIngresador", fields: [responsableingresargasto], references: [idusuario])
+  categoria                Categoria?          @relation(fields: [idcategoria], references: [idcategoria])
+  submetodopago            SubMetodoPago?      @relation(fields: [idsubmetodopago], references: [idsubmetodopago])
   historialGastos          HistorialGasto[]
+  participantes            GastoParticipante[]
 
   @@index([idsubmetodopago], map: "idx_gasto_submetodopago")
   @@index([idcategoria, fecha, estado], map: "idx_idcategoria_fecha_estado")
   @@index([idsubmetodopago, estado], map: "idx_gasto_submetodopago_estado")
   @@index([responsablegasto, estado], map: "idx_gasto_responsable_estado")
   @@map("gasto")
+}
+
+model GastoParticipante {
+  idgasto   BigInt @map("idgasto")
+  idusuario String @map("idusuario") @db.Uuid
+
+  gasto   Gasto   @relation(fields: [idgasto], references: [idgasto], onDelete: Cascade)
+  usuario Usuario @relation(fields: [idusuario], references: [idusuario], onDelete: Cascade)
+
+  @@id([idgasto, idusuario], map: "gastoparticipante_pkey")
+  @@index([idusuario], map: "idx_gastoparticipante_idusuario")
+  @@map("gastoparticipante")
+}
+
+model DeudaSaldada {
+  iddeuda             BigInt    @id @default(autoincrement()) @map("iddeuda")
+  idinterfazoperacion BigInt    @map("idinterfazoperacion")
+  iddeudor            String    @map("iddeudor") @db.Uuid
+  idacreedor          String    @map("idacreedor") @db.Uuid
+  monto               Decimal   @map("monto") @db.Decimal(12, 2)
+  moneda              TMoneda   @map("moneda")
+  confirmadoDeudor    Boolean   @default(false) @map("confirmadodeudor")
+  confirmadoAcreedor  Boolean   @default(false) @map("confirmadoacreedor")
+  estado              Boolean?  @default(true) @map("estado")
+  fechacreacion       DateTime  @default(now()) @map("fechacreacion")
+  fechasaldado        DateTime? @map("fechasaldado")
+
+  interfazoperacion InterfazOperacion @relation(fields: [idinterfazoperacion], references: [idinterfazoperacion], onDelete: Cascade)
+  deudor            Usuario           @relation("DeudaDeudor", fields: [iddeudor], references: [idusuario], onDelete: Cascade)
+  acreedor          Usuario           @relation("DeudaAcreedor", fields: [idacreedor], references: [idusuario], onDelete: Cascade)
+
+  @@index([idinterfazoperacion], map: "idx_deudasaldada_idinterfaz")
+  @@index([iddeudor], map: "idx_deudasaldada_deudor")
+  @@index([idacreedor], map: "idx_deudasaldada_acreedor")
+  @@map("deudasaldada")
 }
 
 model Ingreso {

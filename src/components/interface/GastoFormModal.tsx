@@ -22,6 +22,8 @@ export interface GastoFormData {
   comentario: string;
   idcategoria?: string;
   idsubmetodopago?: string;
+  escompartido?: boolean;
+  participantes?: string[];
 }
 
 interface GastoFormModalProps {
@@ -63,6 +65,12 @@ export function GastoFormModal({
   const [idcategoria, setIdcategoria] = useState(initialData?.idcategoria || '');
   const [idsubmetodopago, setIdsubmetodopago] = useState(initialData?.idsubmetodopago || '');
   const [responsablegasto, setResponsablegasto] = useState(initialData?.responsablegasto || '');
+  const [escompartido, setEscompartido] = useState<boolean>(initialData?.escompartido ?? false);
+  const [selectedParticipants, setSelectedParticipants] = useState<string[]>(
+    initialData?.participantes && initialData.participantes.length > 0
+      ? initialData.participantes
+      : members.map((m) => m.idusuario)
+  );
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -94,6 +102,12 @@ export function GastoFormModal({
     }
   }
 
+  const handleToggleParticipant = (userId: string) => {
+    setSelectedParticipants((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -101,6 +115,11 @@ export function GastoFormModal({
     const val = parseFloat(importe);
     if (isNaN(val) || val <= 0) {
       setErrorMsg('Por favor ingrese un importe válido mayor a 0');
+      return;
+    }
+
+    if (escompartido && selectedParticipants.length === 0) {
+      setErrorMsg('Debe seleccionar al menos un participante para dividir el gasto');
       return;
     }
 
@@ -115,6 +134,8 @@ export function GastoFormModal({
         idcategoria: idcategoria || undefined,
         idsubmetodopago: idsubmetodopago || undefined,
         responsablegasto: responsablegasto || undefined,
+        escompartido,
+        participantes: escompartido ? selectedParticipants : [],
       });
       onClose();
     } catch (err: unknown) {
@@ -294,6 +315,70 @@ export function GastoFormModal({
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+
+            {/* Gasto Compartido (Habilitado para 2 o más miembros) */}
+            {members.length >= 2 && (
+              <div className="p-3 bg-slate-950/90 rounded-xl border border-slate-800/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="gasto-escompartido" className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-200">
+                    <input
+                      id="gasto-escompartido"
+                      type="checkbox"
+                      checked={escompartido}
+                      onChange={(e) => {
+                        setEscompartido(e.target.checked);
+                        if (e.target.checked && selectedParticipants.length === 0) {
+                          setSelectedParticipants(members.map((m) => m.idusuario));
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500 accent-violet-600"
+                    />
+                    <span>División de gastos (Gasto Compartido)</span>
+                  </label>
+                  {escompartido && (
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                      Equitativo
+                    </span>
+                  )}
+                </div>
+
+                {escompartido && (
+                  <div className="space-y-2 pt-2 border-t border-slate-800/60 animate-in fade-in duration-200">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-[11px] font-medium text-slate-400">Participantes del Gasto:</span>
+                      <span className="text-[10px] font-semibold text-violet-400">
+                        {numericVal > 0 && selectedParticipants.length > 0
+                          ? `$${(numericVal / selectedParticipants.length).toLocaleString('es-AR', { maximumFractionDigits: 2 })} ${moneda} / persona`
+                          : `${selectedParticipants.length} miembro(s)`}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                      {members.map((m) => {
+                        const isSelected = selectedParticipants.includes(m.idusuario);
+                        return (
+                          <button
+                            key={m.idusuario}
+                            type="button"
+                            onClick={() => handleToggleParticipant(m.idusuario)}
+                            className={`flex items-center justify-between p-2 rounded-lg text-xs transition-colors border text-left ${
+                              isSelected
+                                ? 'bg-violet-950/40 border-violet-700/50 text-white font-semibold'
+                                : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:bg-slate-800/40'
+                            }`}
+                          >
+                            <span className="truncate">{m.nombreusuario}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isSelected ? 'bg-violet-500/20 text-violet-300' : 'bg-slate-800 text-slate-500'}`}>
+                              {isSelected ? '✓' : '+'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
