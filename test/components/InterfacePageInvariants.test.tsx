@@ -147,19 +147,17 @@ describe('InterfaceDetailsPage - Test Invariante de Información e Interfaz', ()
   it('certifica invariante: la estructura HTML coincide con la expectativa y el contenedor main existe', async () => {
     // Arrange & Act
     const paramsPromise = Promise.resolve({ id: 'test-interface-123' });
-    let containerElement: HTMLElement | null = null;
 
     await React.act(async () => {
-      const { container } = render(<InterfaceDetailsPage params={paramsPromise} />);
-      containerElement = container;
+      render(<InterfaceDetailsPage params={paramsPromise} />);
     });
 
     await waitFor(() => {
       expect(screen.getAllByText('Finanzas Personales 2026').length).toBeGreaterThan(0);
     });
 
-    // Snapshot assertion: si alguien altera la estructura DOM básica o elimina componentes, este test falla
-    expect(containerElement).toBeDefined();
-    expect(containerElement?.querySelector('main')).not.toBeNull();
+    // Invariante de estructura: certificar que el contenedor principal <main> existe en el DOM
+    const mainElement = screen.getByRole('main');
+    expect(mainElement).toBeInTheDocument();
   });
 });
