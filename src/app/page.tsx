@@ -39,14 +39,25 @@ export default function LandingAuthPage() {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      await authClient.signIn.social({
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+      const res = await authClient.signIn.social({
         provider: 'google',
-        callbackURL: '/dashboard',
+        callbackURL: `${origin}/dashboard`,
       });
+
+      if (res?.error) {
+        toast.error(res.error.message || 'Error al conectar con Google OAuth');
+        setLoading(false);
+        return;
+      }
+
+      const targetUrl = res?.data?.url || (res as unknown as { url?: string })?.url;
+      if (targetUrl) {
+        window.location.href = targetUrl;
+      }
     } catch (err) {
       console.error('Google Sign In Error:', err);
       toast.error('Error al conectar con Google OAuth');
-    } finally {
       setLoading(false);
     }
   };

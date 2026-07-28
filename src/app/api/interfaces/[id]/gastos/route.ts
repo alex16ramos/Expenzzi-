@@ -47,16 +47,25 @@ export async function GET(
     const minImporte = searchParams.get('minImporte');
     const maxImporte = searchParams.get('maxImporte');
     const search = searchParams.get('search');
+    const estadoParam = searchParams.get('estado');
     const page = parseInt(searchParams.get('page') || '1', 10);
     const pageSize = parseInt(searchParams.get('pageSize') || '50', 10);
 
     const whereClause: Record<string, unknown> = {
-      estado: true,
       OR: [
         { categoria: { idinterfazoperacion: interfaceId } },
         { submetodopago: { idinterfazoperacion: interfaceId } },
       ],
     };
+
+    if (estadoParam === 'inactivo' || estadoParam === 'false') {
+      whereClause.estado = false;
+    } else if (estadoParam === 'todos' || estadoParam === 'all') {
+      // Sin filtro por estado
+    } else {
+      // Por defecto solo activos
+      whereClause.estado = true;
+    }
 
     const andConditions: Record<string, unknown>[] = [];
 
@@ -287,7 +296,7 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { idgasto, fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago } = body;
+    const { idgasto, fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, estado } = body;
 
     if (!idgasto) {
       return NextResponse.json({ error: 'idgasto es requerido' }, { status: 400 });
@@ -303,6 +312,7 @@ export async function PUT(
         ...(comentario !== undefined && { comentario: String(comentario).trim() || null }),
         ...(idcategoria !== undefined && { idcategoria: idcategoria ? BigInt(idcategoria) : null }),
         ...(idsubmetodopago !== undefined && { idsubmetodopago: idsubmetodopago ? BigInt(idsubmetodopago) : null }),
+        ...(estado !== undefined && { estado: Boolean(estado) }),
       },
       include: {
         usuarioResponsable: true,

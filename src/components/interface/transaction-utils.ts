@@ -25,6 +25,7 @@ export interface Transaction {
   method: string;
   category?: string;
   type?: 'Gasto' | 'Ingreso' | 'Ahorro' | string;
+  estado?: boolean;
   rawItem?: Record<string, unknown>;
 }
 

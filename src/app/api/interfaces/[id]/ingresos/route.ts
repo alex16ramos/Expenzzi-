@@ -42,13 +42,22 @@ export async function GET(
     const minImporte = searchParams.get('minImporte');
     const maxImporte = searchParams.get('maxImporte');
     const search = searchParams.get('search');
+    const estadoParam = searchParams.get('estado');
     const page = parseInt(searchParams.get('page') || '1', 10);
     const pageSize = parseInt(searchParams.get('pageSize') || '50', 10);
 
     const whereClause: Record<string, unknown> = {
       idinterfazoperacion: interfaceId,
-      estado: true,
     };
+
+    if (estadoParam === 'inactivo' || estadoParam === 'false') {
+      whereClause.estado = false;
+    } else if (estadoParam === 'todos' || estadoParam === 'all') {
+      // Sin filtro por estado
+    } else {
+      // Por defecto solo activos
+      whereClause.estado = true;
+    }
 
     const andConditions: Record<string, unknown>[] = [];
 
@@ -233,7 +242,7 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { idingreso, fecha, responsableingreso, moneda, importe, comentario } = body;
+    const { idingreso, fecha, responsableingreso, moneda, importe, comentario, estado } = body;
 
     if (!idingreso) {
       return NextResponse.json({ error: 'idingreso es requerido' }, { status: 400 });
@@ -247,6 +256,7 @@ export async function PUT(
         ...(moneda && { moneda: moneda as TMoneda }),
         ...(importe !== undefined && { importe: Number(importe) }),
         ...(comentario !== undefined && { comentario: String(comentario).trim() || null }),
+        ...(estado !== undefined && { estado: Boolean(estado) }),
       },
       include: {
         usuarioResponsable: true,

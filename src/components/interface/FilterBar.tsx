@@ -14,6 +14,7 @@ export interface MultiFilterState {
   fechaHasta: string;
   minImporte: string;
   maxImporte: string;
+  estadoFilter?: 'activo' | 'inactivo' | 'todos';
 }
 
 interface FilterBarProps {
@@ -69,6 +70,7 @@ export function FilterBar({
     filters.fechaHasta,
     filters.minImporte,
     filters.maxImporte,
+    filters.estadoFilter && filters.estadoFilter !== 'activo' ? filters.estadoFilter : '',
   ].filter(Boolean).length;
 
   const categorySet = React.useMemo(() => new Set(filters.categoryIds), [filters.categoryIds]);
@@ -116,26 +118,52 @@ export function FilterBar({
           )}
         </div>
 
-        {/* Currency Quick Multi-Select Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto py-1 justify-between">
+        {/* Currency & Estado Quick Multi-Select Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto py-1 justify-between">
           <div className="flex items-center gap-1.5 overflow-x-auto py-1">
-          {(['ARS', 'USD', 'UYU'] as const).map((curr) => {
-            const isSelected = monedaSet.has(curr);
-            return (
-              <button
-                key={curr}
-                type="button"
-                onClick={() => toggleArrayItem('monedas', curr)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-colors border ${
-                  isSelected
-                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-600/20'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                {curr}
-              </button>
-            );
-          })}
+            {(['ARS', 'USD', 'UYU'] as const).map((curr) => {
+              const isSelected = monedaSet.has(curr);
+              return (
+                <button
+                  key={curr}
+                  type="button"
+                  onClick={() => toggleArrayItem('monedas', curr)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-colors border ${
+                    isSelected
+                      ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-600/20'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {curr}
+                </button>
+              );
+            })}
+
+            {/* Separator */}
+            <div className="h-5 w-px bg-slate-200 dark:bg-slate-800 mx-1" />
+
+            {/* Estado Pills */}
+            {(['activo', 'inactivo', 'todos'] as const).map((st) => {
+              const currentEst = filters.estadoFilter || 'activo';
+              const isSelected = currentEst === st;
+              const label = st === 'activo' ? 'Activos' : st === 'inactivo' ? 'Inactivos' : 'Todos';
+              return (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => onFilterChange({ ...filters, estadoFilter: st })}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors border ${
+                    isSelected
+                      ? st === 'inactivo'
+                        ? 'bg-amber-600 text-white border-amber-500 shadow-md shadow-amber-600/20'
+                        : 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-600/20'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         {/* Collapsible & Reset Controls */}
         <div className="flex items-center justify-end gap-2 shrink-0">

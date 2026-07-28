@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, History, Pencil, Trash2, CreditCard, User, MessageSquare, Tag, Calendar } from 'lucide-react';
+import { X, History, Pencil, Trash2, CreditCard, User, MessageSquare, Tag, Calendar, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Transaction } from './TransactionCard';
 
@@ -12,6 +12,7 @@ interface TransactionDetailPanelProps {
   onClose: () => void;
   onEdit?: (tx: Transaction) => void;
   onDelete?: (id: string | number) => void;
+  onRestore?: (id: string | number) => void;
   onViewHistory?: (tx: Transaction) => void;
   isInline?: boolean;
 }
@@ -22,6 +23,7 @@ export function TransactionDetailPanel({
   onClose,
   onEdit,
   onDelete,
+  onRestore,
   onViewHistory,
   isInline = false,
 }: TransactionDetailPanelProps) {
@@ -44,9 +46,16 @@ export function TransactionDetailPanel({
         {/* Header */}
         <div className="flex justify-between items-start">
           <div>
-            <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border ${typeBadgeClass}`}>
-              {tx.type || 'GASTO'}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border ${typeBadgeClass}`}>
+                {tx.type || 'GASTO'}
+              </span>
+              {tx.estado === false && (
+                <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md border bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                  Baja Lógica (Inactivo)
+                </span>
+              )}
+            </div>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white mt-2">
               {title}
             </h3>
@@ -154,7 +163,7 @@ export function TransactionDetailPanel({
           </Button>
         )}
 
-        {onDelete && (
+        {onDelete && tx.estado !== false && (
           <Button
             size="sm"
             variant="destructive"
@@ -163,9 +172,23 @@ export function TransactionDetailPanel({
               onDelete(tx.id);
             }}
             className="h-10 text-xs gap-1.5 rounded-xl px-3"
-            title="Eliminar movimiento"
+            title="Dar de baja movimiento"
           >
             <Trash2 className="w-4 h-4" />
+          </Button>
+        )}
+
+        {onRestore && tx.estado === false && (
+          <Button
+            size="sm"
+            onClick={() => {
+              onClose();
+              onRestore(tx.id);
+            }}
+            className="h-10 text-xs gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-md shadow-emerald-600/20 px-3"
+            title="Reactivar movimiento"
+          >
+            <RotateCcw className="w-4 h-4" /> Reactivar
           </Button>
         )}
       </div>

@@ -61,6 +61,10 @@ export async function getExchangeRatesForDate(targetDate?: Date | string | null)
         uyuusd: 1 / usduyu,
         uyuars: usdars / usduyu,
       };
+      if (dateRatesCache.size >= 100) {
+        const firstKey = dateRatesCache.keys().next().value;
+        if (firstKey) dateRatesCache.delete(firstKey);
+      }
       dateRatesCache.set(dateStr, rates);
       return rates;
     }
@@ -72,6 +76,10 @@ export async function getExchangeRatesForDate(targetDate?: Date | string | null)
     }
 
     // Fallback for past dates without DB records
+    if (dateRatesCache.size >= 100) {
+      const firstKey = dateRatesCache.keys().next().value;
+      if (firstKey) dateRatesCache.delete(firstKey);
+    }
     dateRatesCache.set(dateStr, DEFAULT_RATES);
     return DEFAULT_RATES;
   } catch (err) {

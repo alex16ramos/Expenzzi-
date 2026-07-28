@@ -15,6 +15,7 @@ import {
   PanelRightClose,
   Users,
   User,
+  UserPlus,
   LogOut,
   ChevronRight,
 } from 'lucide-react';
@@ -32,18 +33,14 @@ interface SideMenuProps {
   onOpenCategories?: () => void;
   onOpenSubmethods?: () => void;
   onOpenDelete?: () => void;
+  onOpenInvite?: () => void;
   interfaceName?: string;
 }
 
-const handleSignOut = async () => {
-  try {
-    await authClient.signOut();
-    toast.success('Sesión cerrada');
-  } catch {
-    // Ignore
-  } finally {
-    window.location.href = '/';
-  }
+import { performSignOut } from '@/lib/logout';
+
+const handleSignOut = () => {
+  performSignOut();
 };
 
 export function SideMenu({
@@ -56,6 +53,7 @@ export function SideMenu({
   onOpenCategories,
   onOpenSubmethods,
   onOpenDelete,
+  onOpenInvite,
   interfaceName,
 }: SideMenuProps) {
   const pathname = usePathname();
@@ -98,6 +96,19 @@ export function SideMenu({
           onClick: () => (window.location.href = '/dashboard'),
           variant: 'default' as const,
         },
+        ...(onOpenInvite
+          ? [
+              {
+                label: 'Invitar Amigos',
+                icon: UserPlus,
+                onClick: () => {
+                  if (onOpenInvite) onOpenInvite();
+                  onClose();
+                },
+                variant: 'default' as const,
+              },
+            ]
+          : []),
         {
           label: 'Gestión de Categorías',
           icon: Tag,

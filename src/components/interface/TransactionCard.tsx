@@ -19,19 +19,28 @@ export function TransactionCard({ transaction: tx, onSelect }: TransactionCardPr
   const title = tx.comment || tx.category || `Movimiento #${tx.id}`;
   const subtitle = `${tx.date} • ${tx.category || tx.method || 'General'}`;
 
+  const isInactive = tx.estado === false;
+
   return (
     <button
       type="button"
       onClick={() => onSelect(tx)}
-      className="w-full text-left p-3.5 flex items-center justify-between hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
+      className={`w-full text-left p-3.5 flex items-center justify-between hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group ${
+        isInactive ? 'opacity-60 bg-amber-500/5' : ''
+      }`}
     >
       <div className="flex items-center gap-3">
         <div className={`w-10 h-10 rounded-full ${bg} border flex items-center justify-center shrink-0 shadow-sm`}>
           <Icon className="w-5 h-5" />
         </div>
         <div>
-          <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
+          <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors flex items-center gap-1.5">
             {title}
+            {isInactive && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-bold">
+                Inactivo
+              </span>
+            )}
           </h4>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
             {subtitle}

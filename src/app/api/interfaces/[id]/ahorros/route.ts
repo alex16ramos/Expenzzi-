@@ -50,13 +50,22 @@ export async function GET(
     const moneda = searchParams.get('moneda');
     const periodo = searchParams.get('periodoaporte');
     const search = searchParams.get('search');
+    const estadoParam = searchParams.get('estado');
     const page = parseInt(searchParams.get('page') || '1', 10);
     const pageSize = parseInt(searchParams.get('pageSize') || '50', 10);
 
     const whereClause: Record<string, unknown> = {
       idinterfazoperacion: interfaceId,
-      estado: true,
     };
+
+    if (estadoParam === 'inactivo' || estadoParam === 'false') {
+      whereClause.estado = false;
+    } else if (estadoParam === 'todos' || estadoParam === 'all') {
+      // Sin filtro por estado
+    } else {
+      // Por defecto solo activos
+      whereClause.estado = true;
+    }
 
     const andConditions: Record<string, unknown>[] = [];
 
@@ -234,7 +243,7 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { idahorro, fechadesde, fechahasta, moneda, importe, comentario, periodoaporte } = body;
+    const { idahorro, fechadesde, fechahasta, moneda, importe, comentario, periodoaporte, estado } = body;
 
     if (!idahorro) {
       return NextResponse.json({ error: 'idahorro es requerido' }, { status: 400 });
@@ -253,6 +262,7 @@ export async function PUT(
         ...(importe !== undefined && { importe: Number(importe) }),
         ...(comentario !== undefined && { comentario: String(comentario).trim() || null }),
         ...(periodoaporte && { periodoaporte: periodoaporte as TPeriodo }),
+        ...(estado !== undefined && { estado: Boolean(estado) }),
       },
     });
 

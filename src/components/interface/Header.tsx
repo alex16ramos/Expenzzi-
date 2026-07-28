@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Menu, ArrowLeft, Users, Shield } from 'lucide-react';
+import { Menu, ArrowLeft, Users, Shield, UserPlus } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ExchangeRateDropdown } from './ExchangeRateDropdown';
 import { ThemeToggle } from '../ThemeToggle';
@@ -25,6 +25,7 @@ interface HeaderProps {
   onMenuClick?: () => void;
   onBackClick?: () => void;
   onNotificationHandled?: () => void;
+  onOpenInvite?: () => void;
   interfaceId?: string | number | null;
   members?: HeaderMember[];
   userAvatar?: string | null;
@@ -37,6 +38,7 @@ export function Header({
   onMenuClick,
   onBackClick,
   onNotificationHandled,
+  onOpenInvite,
   interfaceId,
   members = [],
   userAvatar,
@@ -213,6 +215,18 @@ export function Header({
                       <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                         <Users className="w-4 h-4 text-indigo-500" /> Integrantes ({displayMembers.length})
                       </span>
+                      {onOpenInvite && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMembersDropdown(false);
+                            onOpenInvite();
+                          }}
+                          className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" /> Invitar
+                        </button>
+                      )}
                     </div>
 
                     <div className="max-h-60 overflow-y-auto px-2 space-y-1">
