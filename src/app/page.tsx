@@ -143,11 +143,10 @@ export default function LandingAuthPage() {
                   type="button"
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-t-2xl text-xs font-bold transition-colors duration-200 border-t border-x translate-y-1 ${
-                    isActive
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-t-2xl text-xs font-bold transition-colors duration-200 border-t border-x translate-y-1 ${isActive
                       ? 'bg-slate-900 text-white border-slate-800 z-30'
                       : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border-slate-800/30'
-                  }`}
+                    }`}
                 >
                   {tab.icon}
                   <span className="truncate">{tab.label}</span>
@@ -197,20 +196,20 @@ export default function LandingAuthPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {activeTab === 'register' && (
                 <div className="space-y-1.5">
-                <label htmlFor="auth-name" className="text-xs font-bold text-slate-300 block">Nombre Completo</label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <Input
-                    id="auth-name"
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Juan Pérez"
-                    className="pl-10 text-xs bg-slate-950/80 border-slate-800 rounded-xl h-11 text-white placeholder:text-slate-500"
-                  />
+                  <label htmlFor="auth-name" className="text-xs font-bold text-slate-300 block">Nombre Completo</label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <Input
+                      id="auth-name"
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Juan Pérez"
+                      className="pl-10 text-xs bg-slate-950/80 border-slate-800 rounded-xl h-11 text-white placeholder:text-slate-500"
+                    />
+                  </div>
                 </div>
-              </div>
               )}
 
               <div className="space-y-1.5">

@@ -182,24 +182,54 @@ export async function POST(req: Request) {
       );
     }
 
-    // Verify destination user exists
-    const destUser = await prisma.usuario.findUnique({
+    // 1. Ensure sender user exists in public.usuario table (Foreign Key constraint)
+    const senderEmail = (userObj?.email as string) || `${userId}@expenzzi.local`;
+    const senderName = (userObj?.name as string) || senderEmail.split('@')[0] || 'Usuario';
+    const emisor = await prisma.usuario.upsert({
+      where: { idusuario: userId },
+      update: {},
+      create: {
+        idusuario: userId,
+        nombreusuario: senderName,
+        email: senderEmail,
+        fotoperfil: (userObj?.image as string) || null,
+      },
+    });
+
+    // 2. Verify destination user exists in public.usuario
+    let destUser = await prisma.usuario.findUnique({
       where: { idusuario: destinatarioId },
     });
 
     if (!destUser) {
+      // Try finding by email
+      destUser = await prisma.usuario.findFirst({
+        where: { email: destinatarioId },
+      });
+    }
+
+    if (!destUser) {
       return NextResponse.json(
-        { error: 'El usuario de destino no existe' },
+        { error: 'El usuario de destino no existe en el sistema' },
         { status: 404 }
       );
     }
 
-    // Check if friendship relationship already exists
+    const realDestId = destUser.idusuario;
+
+    if (userId === realDestId) {
+      return NextResponse.json(
+        { error: 'No puedes enviarte una solicitud de amistad a ti mismo' },
+        { status: 400 }
+      );
+    }
+
+    // 3. Check if friendship relationship already exists
     const existing = await prisma.amistad.findFirst({
       where: {
         OR: [
-          { idremitente: userId, iddestinatario: destinatarioId },
-          { idremitente: destinatarioId, iddestinatario: userId },
+          { idremitente: userId, iddestinatario: realDestId },
+          { idremitente: realDestId, iddestinatario: userId },
         ],
       },
     });
@@ -226,7 +256,7 @@ export async function POST(req: Request) {
           });
           return NextResponse.json({
             success: true,
-            message: 'Solicitud aceptada automáticamente por coincidencia mutua',
+            message: '¡Solicitud de amistad aceptada!',
             data: { idamistad: String(updated.idamistad), estado: updated.estado },
           });
         }
@@ -238,72 +268,52 @@ export async function POST(req: Request) {
           where: { idamistad: existing.idamistad },
           data: {
             idremitente: userId,
-            iddestinatario: destinatarioId,
+            iddestinatario: realDestId,
             estado: 'Pendiente',
             fechacreacion: new Date(),
           },
         });
 
-        const userEmail = (userObj?.email) as string | undefined;
-        let emisor = await prisma.usuario.findUnique({
-          where: { idusuario: userId },
-        });
-        if (!emisor && userEmail) {
-          emisor = await prisma.usuario.findUnique({
-            where: { email: userEmail },
-          });
-        }
-        const emisorNombre = emisor?.nombreusuario || 'Un usuario';
-
         await prisma.notificacion.create({
           data: {
-            idreceptor: destinatarioId,
+            idreceptor: realDestId,
             idemisor: userId,
             tipo: 'SOLICITUD_AMISTAD',
             titulo: 'Solicitud de Amistad',
-            mensaje: `${emisorNombre} te ha enviado una solicitud de amistad.`,
+            mensaje: `${emisor.nombreusuario} te ha enviado una solicitud de amistad.`,
             estado: 'Pendiente',
             leido: false,
+            rolPropuesto: null,
           },
         });
 
         return NextResponse.json({
           success: true,
-          message: 'Solicitud de amistad enviada',
+          message: 'Solicitud de amistad enviada exitosamente',
           data: { idamistad: String(updated.idamistad), estado: updated.estado },
         });
       }
     }
 
-    // Create new friend request
+    // 4. Create new friend request
     const newAmistad = await prisma.amistad.create({
       data: {
         idremitente: userId,
-        iddestinatario: destinatarioId,
+        iddestinatario: realDestId,
         estado: 'Pendiente',
       },
     });
 
-    const userEmail = (userObj?.email) as string | undefined;
-    let emisor = await prisma.usuario.findUnique({
-      where: { idusuario: userId },
-    });
-    if (!emisor && userEmail) {
-      emisor = await prisma.usuario.findUnique({
-        where: { email: userEmail },
-      });
-    }
-    const emisorNombre = emisor?.nombreusuario || 'Un usuario';
-
     await prisma.notificacion.create({
       data: {
-        idreceptor: destinatarioId,
+        idreceptor: realDestId,
         idemisor: userId,
         tipo: 'SOLICITUD_AMISTAD',
         titulo: 'Solicitud de Amistad',
-        mensaje: `${emisorNombre} te ha enviado una solicitud de amistad.`,
+        mensaje: `${emisor.nombreusuario} te ha enviado una solicitud de amistad.`,
         estado: 'Pendiente',
         leido: false,
+        rolPropuesto: null,
       },
     });
 
@@ -317,7 +327,7 @@ export async function POST(req: Request) {
     });
   } catch (err: unknown) {
     console.error('[API /api/amigos POST Error]:', err);
-    const errorMsg = (err as { message?: string })?.message || 'Error del servidor';
+    const errorMsg = (err as { message?: string })?.message || 'Error del servidor al enviar la solicitud';
     return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
 }
@@ -350,6 +360,20 @@ export async function PUT(req: Request) {
       );
     }
 
+    // Ensure recipient exists in public.usuario
+    const userEmail = (userObj?.email as string) || `${userId}@expenzzi.local`;
+    const userName = (userObj?.name as string) || userEmail.split('@')[0] || 'Usuario';
+    const currentUser = await prisma.usuario.upsert({
+      where: { idusuario: userId },
+      update: {},
+      create: {
+        idusuario: userId,
+        nombreusuario: userName,
+        email: userEmail,
+        fotoperfil: (userObj?.image as string) || null,
+      },
+    });
+
     const friendship = await prisma.amistad.findUnique({
       where: { idamistad: BigInt(idamistad) },
     });
@@ -374,6 +398,32 @@ export async function PUT(req: Request) {
       data: { estado },
     });
 
+    // Update notification status for current user
+    await prisma.notificacion.updateMany({
+      where: {
+        idreceptor: userId,
+        idemisor: friendship.idremitente,
+        tipo: 'SOLICITUD_AMISTAD',
+      },
+      data: { estado, leido: true },
+    });
+
+    // If accepted, notify the sender
+    if (estado === 'Aceptado') {
+      await prisma.notificacion.create({
+        data: {
+          idreceptor: friendship.idremitente,
+          idemisor: userId,
+          tipo: 'SOLICITUD_AMISTAD_ACEPTADA',
+          titulo: 'Solicitud de Amistad Aceptada',
+          mensaje: `${currentUser.nombreusuario} ha aceptado tu solicitud de amistad.`,
+          estado: 'Aceptado',
+          leido: false,
+          rolPropuesto: null,
+        },
+      });
+    }
+
     return NextResponse.json({
       success: true,
       message: estado === 'Aceptado' ? 'Solicitud aceptada' : 'Solicitud rechazada',
@@ -384,7 +434,7 @@ export async function PUT(req: Request) {
     });
   } catch (err: unknown) {
     console.error('[API /api/amigos PUT Error]:', err);
-    const errorMsg = (err as { message?: string })?.message || 'Error del servidor';
+    const errorMsg = (err as { message?: string })?.message || 'Error del servidor al responder a la solicitud';
     return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
 }

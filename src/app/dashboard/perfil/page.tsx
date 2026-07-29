@@ -88,7 +88,7 @@ export default function ProfilePage() {
   const [isSideMenuCollapsed, setIsSideMenuCollapsed] = useState(false);
 
   // Avatar custom upload states
-  const [avatarTab, setAvatarTab] = useState<'upload' | 'presets' | 'url'>('upload');
+  const [avatarTab, setAvatarTab] = useState<'upload' | 'presets' | 'url'>('presets');
   const [customUrlInput, setCustomUrlInput] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [pendingAdjustImage, setPendingAdjustImage] = useState<string | null>(null);
@@ -276,10 +276,10 @@ export default function ProfilePage() {
         isCollapsed={isSideMenuCollapsed}
         onToggleCollapse={() => setIsSideMenuCollapsed(!isSideMenuCollapsed)}
         role="Usuario"
-        onOpenAudit={() => {}}
-        onOpenCategories={() => {}}
-        onOpenSubmethods={() => {}}
-        onOpenDelete={() => {}}
+        onOpenAudit={() => { }}
+        onOpenCategories={() => { }}
+        onOpenSubmethods={() => { }}
+        onOpenDelete={() => { }}
         interfaceName="Mi Perfil"
       />
 
@@ -495,44 +495,87 @@ function ProfileAvatarSelectorModal({
   onApplyCustomUrl: (e: React.FormEvent) => void;
 }) {
   return (
-    <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4 shadow-xl animate-in fade-in duration-200">
-      <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <Camera className="w-4 h-4 text-indigo-500" /> Seleccionar Avatar
+    <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4 shadow-2xl animate-in fade-in duration-200">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2 tracking-tight">
+          <Camera className="w-4 h-4 text-cyan-500" /> Seleccionar avatar
         </h3>
-        <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl text-xs font-semibold">
-          <button
-            type="button"
-            onClick={() => setAvatarTab('upload')}
-            className={`px-3 py-1 rounded-lg transition-colors ${avatarTab === 'upload' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}
-          >
-            Subir Imagen
-          </button>
+        <div className="flex bg-slate-100 dark:bg-slate-950/80 p-1 rounded-2xl border border-slate-200 dark:border-slate-800/80 text-xs font-bold self-stretch sm:self-auto justify-between sm:justify-start">
           <button
             type="button"
             onClick={() => setAvatarTab('presets')}
-            className={`px-3 py-1 rounded-lg transition-colors ${avatarTab === 'presets' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}
+            className={`px-3 py-1.5 rounded-xl transition-all ${avatarTab === 'presets'
+                ? 'bg-[#2DD4BF] text-slate-950 font-extrabold shadow-md'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
           >
             Personajes
           </button>
           <button
             type="button"
-            onClick={() => setAvatarTab('url')}
-            className={`px-3 py-1 rounded-lg transition-colors ${avatarTab === 'url' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}
+            onClick={() => setAvatarTab('upload')}
+            className={`px-3 py-1.5 rounded-xl transition-all ${avatarTab === 'upload'
+                ? 'bg-[#2DD4BF] text-slate-950 font-extrabold shadow-md'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
           >
-            URL Externa
+            Subir imagen
+          </button>
+          <button
+            type="button"
+            onClick={() => setAvatarTab('url')}
+            className={`px-3 py-1.5 rounded-xl transition-all ${avatarTab === 'url'
+                ? 'bg-[#2DD4BF] text-slate-950 font-extrabold shadow-md'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+          >
+            URL externa
           </button>
         </div>
       </div>
 
+      {avatarTab === 'presets' && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 pt-1 max-h-[360px] overflow-y-auto pr-1">
+          {SIMPSONS_PRESETS.map((preset) => {
+            const isSelected = fotoperfil === preset.url;
+            return (
+              <button
+                key={preset.name}
+                type="button"
+                onClick={() => onSelectPreset(preset.url)}
+                className={`p-3 rounded-2xl border transition-all flex flex-col items-center justify-center gap-2.5 group cursor-pointer ${isSelected
+                    ? 'border-[#2DD4BF] bg-[#2DD4BF]/10 shadow-lg shadow-[#2DD4BF]/10 scale-105'
+                    : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 hover:border-[#2DD4BF]/60 hover:bg-slate-100 dark:hover:bg-slate-800/80'
+                  }`}
+              >
+                <div className={`w-14 h-14 rounded-full ${preset.bg} p-0.5 overflow-hidden flex items-center justify-center border-2 border-white/20 group-hover:scale-105 transition-transform shadow-md`}>
+                  <Image
+                    src={preset.url}
+                    alt={preset.name}
+                    width={56}
+                    height={56}
+                    unoptimized
+                    className={preset.imgClass}
+                  />
+                </div>
+                <span className={`text-xs font-semibold truncate w-full text-center ${isSelected ? 'text-[#2DD4BF] font-bold' : 'text-slate-700 dark:text-slate-300 group-hover:text-white'
+                  }`}>
+                  {preset.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {avatarTab === 'upload' && (
-        <div className="p-6 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl text-center space-y-3">
-          <Upload className="w-8 h-8 text-indigo-500 mx-auto" />
+        <div className="p-8 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-3xl text-center space-y-3 bg-slate-50 dark:bg-slate-950/40">
+          <Upload className="w-9 h-9 text-cyan-500 mx-auto" />
           <div>
             <p className="text-xs font-bold text-slate-900 dark:text-white">Sube una foto desde tu dispositivo</p>
             <p className="text-[11px] text-slate-500">Formatos JPG, PNG o WebP de hasta 5MB</p>
           </div>
-          <label className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors">
+          <label className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#2DD4BF] hover:bg-teal-400 text-slate-950 rounded-2xl text-xs font-extrabold cursor-pointer transition-colors shadow-md">
             {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
             Seleccionar Archivo
             <input type="file" accept="image/*" onChange={onFileUpload} className="hidden" />
@@ -540,42 +583,18 @@ function ProfileAvatarSelectorModal({
         </div>
       )}
 
-      {avatarTab === 'presets' && (
-        <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 pt-1">
-          {SIMPSONS_PRESETS.map((preset) => (
-            <button
-              key={preset.name}
-              type="button"
-              onClick={() => onSelectPreset(preset.url)}
-              className={`p-1.5 rounded-2xl border-2 transition-colors flex flex-col items-center gap-1 group ${
-                fotoperfil === preset.url
-                  ? 'border-indigo-500 bg-indigo-500/10 scale-105'
-                  : 'border-slate-200 dark:border-slate-800 hover:border-indigo-400'
-              }`}
-            >
-              <div className={`w-12 h-12 rounded-xl ${preset.bg} overflow-hidden flex items-center justify-center`}>
-                <Image src={preset.url} alt={preset.name} width={48} height={48} unoptimized className={preset.imgClass} />
-              </div>
-              <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 truncate w-full text-center">
-                {preset.name}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-
       {avatarTab === 'url' && (
-        <form onSubmit={onApplyCustomUrl} className="flex gap-2">
+        <form onSubmit={onApplyCustomUrl} className="flex gap-2 p-2 bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-200 dark:border-slate-800">
           <Input
             id="avatar-url"
             type="url"
             placeholder="https://ejemplo.com/mi-avatar.jpg"
             value={customUrlInput}
             onChange={(e) => setCustomUrlInput(e.target.value)}
-            className="text-xs"
+            className="text-xs border-0 bg-transparent focus-visible:ring-0"
             aria-label="URL de avatar personalizado"
           />
-          <Button type="submit" className="bg-indigo-600 text-white text-xs gap-1">
+          <Button type="submit" className="bg-[#2DD4BF] hover:bg-teal-400 text-slate-950 font-extrabold text-xs px-4 rounded-xl gap-1 shrink-0">
             <Link2 className="w-4 h-4" /> Aplicar
           </Button>
         </form>

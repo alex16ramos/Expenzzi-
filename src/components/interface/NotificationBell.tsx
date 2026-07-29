@@ -485,7 +485,7 @@ function NotificationCardItem({
 
             <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">{displayMensaje}</p>
 
-            {n.rolPropuesto && (
+            {n.rolPropuesto && n.tipo === 'INVITACION_INTERFAZ' && (
               <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800/50">
                 <Shield className="w-2.5 h-2.5" />
                 <span>Rol: {n.rolPropuesto}</span>
@@ -531,23 +531,22 @@ function NotificationCardItem({
                   size="sm"
                   disabled={actionLoading === n.idnotificacion}
                   onClick={() => onRespond(n.idnotificacion, true)}
-                  className="h-7 text-[11px] px-3 gap-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg"
+                  className="h-8 text-xs px-3.5 gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl shadow-md"
                 >
                   {actionLoading === n.idnotificacion ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
-                    <Check className="w-3 h-3" />
+                    <Check className="w-3.5 h-3.5 text-white" />
                   )}
                   Aceptar
                 </Button>
                 <Button
                   size="sm"
-                  variant="outline"
                   disabled={actionLoading === n.idnotificacion}
                   onClick={() => onRespond(n.idnotificacion, false)}
-                  className="h-7 text-[11px] px-2.5 gap-1 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg"
+                  className="h-8 text-xs px-3.5 gap-1.5 bg-slate-700 hover:bg-rose-600 text-white font-extrabold rounded-xl shadow-md border border-slate-600"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-3.5 h-3.5 text-white" />
                   Rechazar
                 </Button>
               </div>

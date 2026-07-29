@@ -899,11 +899,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
                   {activeSection === 'Resúmenes' ? (
                     <div className="space-y-4">
-                      <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs">
+                      <div className="flex flex-col sm:flex-row bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs gap-1 overflow-x-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                         <button
                           type="button"
                           onClick={() => setSummarySubTab('comparative')}
-                          className={`flex-1 py-2 rounded-xl font-bold transition-colors ${summarySubTab === 'comparative'
+                          className={`flex-1 py-2 px-3 rounded-xl font-bold transition-colors text-center ${summarySubTab === 'comparative'
                             ? 'bg-indigo-600 text-white shadow-md'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                             }`}
@@ -913,7 +913,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
                         <button
                           type="button"
                           onClick={() => setSummarySubTab('user')}
-                          className={`flex-1 py-2 rounded-xl font-bold transition-colors ${summarySubTab === 'user'
+                          className={`flex-1 py-2 px-3 rounded-xl font-bold transition-colors text-center ${summarySubTab === 'user'
                             ? 'bg-indigo-600 text-white shadow-md'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                             }`}
@@ -923,7 +923,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
                         <button
                           type="button"
                           onClick={() => setSummarySubTab('shared')}
-                          className={`flex-1 py-2 rounded-xl font-bold transition-colors ${summarySubTab === 'shared'
+                          className={`flex-1 py-2 px-3 rounded-xl font-bold transition-colors text-center ${summarySubTab === 'shared'
                             ? 'bg-indigo-600 text-white shadow-md'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                             }`}

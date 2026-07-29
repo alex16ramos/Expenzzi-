@@ -67,40 +67,41 @@ export function UserExpenseChart({ transactions, title = 'Resumen por Usuario' }
   });
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-6 shadow-xl backdrop-blur-md">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+    <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-6 shadow-xl backdrop-blur-md text-slate-900 dark:text-slate-100">
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/20">
+          <div className="p-2 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
             <PieChart className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-white tracking-tight">{title}</h3>
-            <p className="text-xs text-slate-400">Distribución de aportes/movimientos por integrante</p>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">{title}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Distribución de aportes/movimientos por integrante</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-slate-400 bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800">
-          <Users className="w-3.5 h-3.5 text-violet-400" />
+        <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
+          <Users className="w-3.5 h-3.5 text-violet-500 dark:text-violet-400" />
           <span>{userList.length} usuarios</span>
         </div>
       </div>
 
       {userList.length === 0 ? (
-        <div className="text-center py-10 text-xs text-slate-500">
+        <div className="text-center py-10 text-xs text-slate-400 dark:text-slate-500">
           No hay datos para generar el gráfico.
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
           {/* Donut Chart SVG */}
           <div className="md:col-span-5 flex flex-col items-center justify-center relative py-2">
-            <div className="relative w-48 h-48 flex items-center justify-center">
-              <svg width={size} height={size} className="transform -rotate-90">
+            <div className="relative w-[200px] h-[200px] flex items-center justify-center">
+              <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="w-full h-full transform -rotate-90">
                 <circle
                   cx={center}
                   cy={center}
                   r={radius}
                   fill="transparent"
-                  stroke="#1e293b"
+                  stroke="currentColor"
                   strokeWidth={strokeWidth}
+                  className="text-slate-200 dark:text-slate-800"
                 />
                 {segments.map((seg) => {
                   const isHovered = activeUser === seg.user;
@@ -123,12 +124,12 @@ export function UserExpenseChart({ transactions, title = 'Resumen por Usuario' }
                 })}
               </svg>
               {/* Inner Donut Text */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-                <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Total Est.</span>
-                <span className="text-lg font-extrabold text-white tracking-tight">
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none p-4">
+                <span className="text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Total Est.</span>
+                <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight truncate max-w-full">
                   ${grandTotal.toLocaleString('es-AR')}
                 </span>
-                <span className="text-[10px] text-slate-400">ARS Equivalente</span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">ARS Equivalente</span>
               </div>
             </div>
           </div>
@@ -144,23 +145,23 @@ export function UserExpenseChart({ transactions, title = 'Resumen por Usuario' }
                   onMouseLeave={() => setActiveUser(null)}
                   className={`p-3 rounded-xl border transition-colors cursor-pointer flex items-center justify-between ${
                     isHovered
-                      ? `${seg.color.border} bg-slate-800/80 shadow-md`
-                      : 'border-slate-800/60 bg-slate-950/40 hover:bg-slate-800/40'
+                      ? `${seg.color.border} bg-slate-100 dark:bg-slate-800/80 shadow-md`
+                      : 'border-slate-200 dark:border-slate-800/60 bg-slate-50 dark:bg-slate-950/40 hover:bg-slate-100 dark:hover:bg-slate-800/40'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-3 h-3 rounded-full ${seg.color.bg} shrink-0`} />
-                    <div className="w-8 h-8 rounded-full bg-slate-800 text-slate-200 text-xs font-bold flex items-center justify-center border border-slate-700">
+                    <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center border border-slate-300 dark:border-slate-700">
                       {seg.initials}
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-white">{seg.user}</p>
-                      <p className="text-[10px] text-slate-400">{seg.count} movimientos</p>
+                      <p className="text-xs font-semibold text-slate-900 dark:text-white">{seg.user}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">{seg.count} movimientos</p>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <p className="text-xs font-bold text-slate-100">
+                    <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
                       $ {seg.totalArs.toLocaleString('es-AR')}
                     </p>
                     <span className={`text-[10px] font-semibold ${seg.color.text}`}>

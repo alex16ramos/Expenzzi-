@@ -180,19 +180,19 @@ export function GastosCompartidosSection({
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Header & Currency Controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/80 p-4 rounded-2xl border border-slate-800 backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900/80 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 backdrop-blur-md text-slate-900 dark:text-slate-100">
         <div>
-          <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
-            <Users className="w-5 h-5 text-indigo-400" />
+          <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            <Users className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
             Gastos Compartidos y Balances de Deudas
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Cálculo equitativo entre {members.length} integrante(s) y confirmación mutua de pagos recibidos/enviados.
           </p>
         </div>
 
         {/* Currency Switcher */}
-        <div className="flex items-center gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0">
+        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
           {(['ARS', 'USD', 'UYU'] as const).map((curr) => (
             <button
               key={curr}
@@ -201,7 +201,7 @@ export function GastosCompartidosSection({
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 monedaFilter === curr
                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-900'
               }`}
             >
               {curr}
@@ -211,7 +211,7 @@ export function GastosCompartidosSection({
             type="button"
             onClick={fetchSharedData}
             title="Actualizar saldos"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-900 transition-colors"
+            className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-900 transition-colors"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
@@ -221,19 +221,19 @@ export function GastosCompartidosSection({
       {/* Main Grid: Pending Balances */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Mis Deudas (Tengo que pagar) */}
-        <div className="bg-slate-900/90 rounded-2xl p-4 border border-rose-500/20 space-y-3 shadow-xl">
-          <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-            <h3 className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Send className="w-4 h-4 text-rose-400" />
+        <div className="bg-white dark:bg-slate-900/90 rounded-2xl p-4 border border-rose-500/30 dark:border-rose-500/20 space-y-3 shadow-xl text-slate-900 dark:text-slate-100">
+          <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800">
+            <h3 className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Send className="w-4 h-4 text-rose-600 dark:text-rose-400" />
               Tus Deudas Pendientes (Debes Pagar)
             </h3>
-            <span className="text-[10px] font-bold bg-rose-500/10 text-rose-300 px-2 py-0.5 rounded border border-rose-500/20">
+            <span className="text-[10px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-300 px-2 py-0.5 rounded border border-rose-500/20">
               {myDebtsToPay.length} pendiente(s)
             </span>
           </div>
 
           {myDebtsToPay.length === 0 ? (
-            <div className="py-6 text-center text-xs text-slate-500 bg-slate-950/40 rounded-xl border border-slate-800/40">
+            <div className="py-6 text-center text-xs text-slate-500 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-slate-200 dark:border-slate-800/40">
               No tienes deudas pendientes en {monedaFilter} 🎉
             </div>
           ) : (
@@ -246,40 +246,40 @@ export function GastosCompartidosSection({
                 return (
                   <div
                     key={`${item.iddeudor}-${item.idacreedor}-${item.moneda}`}
-                    className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex flex-col gap-2 hover:border-slate-700 transition-all"
+                    className="p-3 bg-slate-50 dark:bg-slate-950/80 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col gap-2 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
                   >
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-300 text-xs font-bold flex items-center justify-center border border-rose-500/30">
+                        <div className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-600 dark:text-rose-300 text-xs font-bold flex items-center justify-center border border-rose-500/30">
                           {item.acreedorNombre.slice(0, 2).toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-slate-100">
-                            Le debes a <span className="text-rose-300">{item.acreedorNombre}</span>
+                          <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                            Le debes a <span className="text-rose-600 dark:text-rose-300">{item.acreedorNombre}</span>
                           </p>
-                          <p className="text-[10px] text-slate-400">
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400">
                             Monto exacto: ${item.montoNeto.toLocaleString('es-AR')} {item.moneda}
                           </p>
                         </div>
                       </div>
 
-                      <span className="text-sm font-extrabold text-rose-400">
+                      <span className="text-sm font-extrabold text-rose-600 dark:text-rose-400">
                         ${item.montoNeto.toLocaleString('es-AR')} {item.moneda}
                       </span>
                     </div>
 
                     {/* Multi-step Mutual Confirmation Status */}
-                    <div className="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400">
-                        <span className={`px-2 py-0.5 rounded flex items-center gap-1 font-semibold ${deudorConf ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'}`}>
-                          {deudorConf ? <Check className="w-3 h-3 text-emerald-400" /> : <Clock className="w-3 h-3 text-amber-400" />}
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                        <span className={`px-2 py-0.5 rounded flex items-center gap-1 font-semibold ${deudorConf ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20'}`}>
+                          {deudorConf ? <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" /> : <Clock className="w-3 h-3 text-amber-500 dark:text-amber-400" />}
                           Tú: {deudorConf ? 'Enviado ✓' : 'Sin confirmar'}
                         </span>
 
-                        <ArrowRight className="w-3 h-3 text-slate-600" />
+                        <ArrowRight className="w-3 h-3 text-slate-400 dark:text-slate-600" />
 
-                        <span className={`px-2 py-0.5 rounded flex items-center gap-1 font-semibold ${acreedorConf ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-slate-800 text-slate-400'}`}>
-                          {acreedorConf ? <Check className="w-3 h-3 text-emerald-400" /> : <Clock className="w-3 h-3 text-slate-500" />}
+                        <span className={`px-2 py-0.5 rounded flex items-center gap-1 font-semibold ${acreedorConf ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}>
+                          {acreedorConf ? <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" /> : <Clock className="w-3 h-3 text-slate-400 dark:text-slate-500" />}
                           {item.acreedorNombre}: {acreedorConf ? 'Recibido ✓' : 'Pendiente'}
                         </span>
                       </div>
@@ -301,7 +301,7 @@ export function GastosCompartidosSection({
                           variant="outline"
                           onClick={() => handleSaldarAction(item, 'unconfirm_deudor')}
                           disabled={isActionLoading === `${item.iddeudor}-${item.idacreedor}-unconfirm_deudor`}
-                          className="text-[10px] h-7 px-2 border-slate-700 text-slate-400 hover:text-rose-300 hover:bg-slate-800 shrink-0"
+                          className="text-[10px] h-7 px-2 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-300 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
                         >
                           Desmarcar envío
                         </Button>
@@ -315,19 +315,19 @@ export function GastosCompartidosSection({
         </div>
 
         {/* Me Deben (Tienen que pagarme) */}
-        <div className="bg-slate-900/90 rounded-2xl p-4 border border-emerald-500/20 space-y-3 shadow-xl">
-          <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-            <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-              <DollarSign className="w-4 h-4 text-emerald-400" />
+        <div className="bg-white dark:bg-slate-900/90 rounded-2xl p-4 border border-emerald-500/30 dark:border-emerald-500/20 space-y-3 shadow-xl text-slate-900 dark:text-slate-100">
+          <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800">
+            <h3 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+              <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               Te Deben a Ti (Debes Cobrar)
             </h3>
-            <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/20">
+            <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/20">
               {myDebtsToCollect.length} por cobrar
             </span>
           </div>
 
           {myDebtsToCollect.length === 0 ? (
-            <div className="py-6 text-center text-xs text-slate-500 bg-slate-950/40 rounded-xl border border-slate-800/40">
+            <div className="py-6 text-center text-xs text-slate-500 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-slate-200 dark:border-slate-800/40">
               Nadie te debe en {monedaFilter} por el momento 👍
             </div>
           ) : (
@@ -340,40 +340,40 @@ export function GastosCompartidosSection({
                 return (
                   <div
                     key={`${item.iddeudor}-${item.idacreedor}-${item.moneda}`}
-                    className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex flex-col gap-2 hover:border-slate-700 transition-all"
+                    className="p-3 bg-slate-50 dark:bg-slate-950/80 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col gap-2 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
                   >
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold flex items-center justify-center border border-emerald-500/30">
+                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center justify-center border border-emerald-500/30">
                           {item.deudorNombre.slice(0, 2).toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-slate-100">
-                            <span className="text-emerald-300">{item.deudorNombre}</span> te debe
+                          <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                            <span className="text-emerald-600 dark:text-emerald-300">{item.deudorNombre}</span> te debe
                           </p>
-                          <p className="text-[10px] text-slate-400">
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400">
                             Monto exacto: ${item.montoNeto.toLocaleString('es-AR')} {item.moneda}
                           </p>
                         </div>
                       </div>
 
-                      <span className="text-sm font-extrabold text-emerald-400">
+                      <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">
                         ${item.montoNeto.toLocaleString('es-AR')} {item.moneda}
                       </span>
                     </div>
 
                     {/* Multi-step Mutual Confirmation Status */}
-                    <div className="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400">
-                        <span className={`px-2 py-0.5 rounded flex items-center gap-1 font-semibold ${deudorConf ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'}`}>
-                          {deudorConf ? <Check className="w-3 h-3 text-emerald-400" /> : <Clock className="w-3 h-3 text-amber-400" />}
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                        <span className={`px-2 py-0.5 rounded flex items-center gap-1 font-semibold ${deudorConf ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20'}`}>
+                          {deudorConf ? <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" /> : <Clock className="w-3 h-3 text-amber-500 dark:text-amber-400" />}
                           {item.deudorNombre}: {deudorConf ? 'Enviado ✓' : 'Pendiente'}
                         </span>
 
-                        <ArrowRight className="w-3 h-3 text-slate-600" />
+                        <ArrowRight className="w-3 h-3 text-slate-400 dark:text-slate-600" />
 
-                        <span className={`px-2 py-0.5 rounded flex items-center gap-1 font-semibold ${acreedorConf ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-slate-800 text-slate-400'}`}>
-                          {acreedorConf ? <Check className="w-3 h-3 text-emerald-400" /> : <Clock className="w-3 h-3 text-slate-500" />}
+                        <span className={`px-2 py-0.5 rounded flex items-center gap-1 font-semibold ${acreedorConf ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}>
+                          {acreedorConf ? <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" /> : <Clock className="w-3 h-3 text-slate-400 dark:text-slate-500" />}
                           Tú: {acreedorConf ? 'Recibido ✓' : 'Sin confirmar'}
                         </span>
                       </div>
@@ -395,7 +395,7 @@ export function GastosCompartidosSection({
                           variant="outline"
                           onClick={() => handleSaldarAction(item, 'unconfirm_acreedor')}
                           disabled={isActionLoading === `${item.iddeudor}-${item.idacreedor}-unconfirm_acreedor`}
-                          className="text-[10px] h-7 px-2 border-slate-700 text-slate-400 hover:text-rose-300 hover:bg-slate-800 shrink-0"
+                          className="text-[10px] h-7 px-2 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-300 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
                         >
                           Desmarcar recepción
                         </Button>
@@ -411,23 +411,23 @@ export function GastosCompartidosSection({
 
       {/* Otras deudas en la interfaz (entre otros usuarios) */}
       {otherBalances.length > 0 && (
-        <div className="bg-slate-900/60 rounded-2xl p-4 border border-slate-800 space-y-3">
-          <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-            <Users className="w-4 h-4 text-indigo-400" />
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 space-y-3">
+          <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+            <Users className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
             Saldos Cruzados entre Otros Miembros ({otherBalances.length})
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {otherBalances.map((item) => (
               <div
                 key={`${item.iddeudor}-${item.idacreedor}-${item.moneda}`}
-                className="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/80 flex items-center justify-between text-xs"
+                className="p-2.5 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800/80 flex items-center justify-between text-xs"
               >
                 <div className="truncate pr-2">
-                  <span className="font-semibold text-slate-200">{item.deudorNombre}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{item.deudorNombre}</span>
                   <span className="text-slate-500"> le debe a </span>
-                  <span className="font-semibold text-slate-200">{item.acreedorNombre}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{item.acreedorNombre}</span>
                 </div>
-                <span className="font-bold text-indigo-300 shrink-0">
+                <span className="font-bold text-indigo-600 dark:text-indigo-300 shrink-0">
                   ${item.montoNeto.toLocaleString('es-AR')} {item.moneda}
                 </span>
               </div>
@@ -437,13 +437,13 @@ export function GastosCompartidosSection({
       )}
 
       {/* Section: Shared Expenses Detail List */}
-      <div className="bg-slate-900/80 rounded-2xl p-4 border border-slate-800 space-y-4 shadow-xl">
-        <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <Receipt className="w-4 h-4 text-violet-400" />
+      <div className="bg-white dark:bg-slate-900/80 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 space-y-4 shadow-xl text-slate-900 dark:text-slate-100">
+        <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800">
+          <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+            <Receipt className="w-4 h-4 text-violet-500 dark:text-violet-400" />
             Detalle de Gastos Compartidos Registrados ({filteredExpenses.length})
           </h3>
-          <span className="text-[10px] text-slate-400 font-medium">
+          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
             Moneda: <strong>{monedaFilter}</strong>
           </span>
         </div>
@@ -457,39 +457,39 @@ export function GastosCompartidosSection({
             {filteredExpenses.map((exp) => (
               <div
                 key={exp.idgasto}
-                className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800/90 hover:border-slate-700 transition-all space-y-2"
+                className="p-3.5 bg-slate-50 dark:bg-slate-950/80 rounded-xl border border-slate-200 dark:border-slate-800/90 hover:border-slate-300 dark:hover:border-slate-700 transition-all space-y-2"
               >
                 <div className="flex justify-between items-start">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-white">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">
                         {exp.comentario || 'Gasto Compartido sin comentario'}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-medium px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                      <span className="text-[10px] text-slate-600 dark:text-slate-400 font-medium px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-800">
                         {exp.fecha}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Pagado por: <strong className="text-slate-200">{exp.responsableNombre}</strong>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      Pagado por: <strong className="text-slate-800 dark:text-slate-200">{exp.responsableNombre}</strong>
                     </p>
                   </div>
 
                   <div className="text-right">
-                    <span className="text-sm font-extrabold text-violet-300">
+                    <span className="text-sm font-extrabold text-violet-600 dark:text-violet-300">
                       ${exp.importeTotal.toLocaleString('es-AR')} {exp.moneda}
                     </span>
-                    <p className="text-[10px] font-bold text-emerald-400">
+                    <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
                       ${exp.cuotaPorPersona.toLocaleString('es-AR')} / persona
                     </p>
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-900 flex flex-wrap items-center gap-1.5">
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-900 flex flex-wrap items-center gap-1.5">
                   <span className="text-[10px] font-semibold text-slate-500 mr-1">Participantes:</span>
                   {exp.participantes.map((p) => (
                     <span
                       key={p.idusuario}
-                      className="text-[10px] px-2 py-0.5 rounded-full bg-violet-950/60 text-violet-300 border border-violet-800/40 font-medium"
+                      className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800/40 font-medium"
                     >
                       {p.nombreusuario}
                     </span>
@@ -503,9 +503,9 @@ export function GastosCompartidosSection({
 
       {/* Historial de Liquidaciones Mutuas (Saldadas) */}
       {filteredSettlements.length > 0 && (
-        <div className="bg-slate-900/60 rounded-2xl p-4 border border-slate-800 space-y-3">
-          <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 space-y-3">
+          <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
             Historial de Liquidaciones de Deudas ({filteredSettlements.length})
           </h3>
           <div className="space-y-2">
@@ -514,8 +514,8 @@ export function GastosCompartidosSection({
                 key={s.iddeuda}
                 className={`p-2.5 rounded-xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs ${
                   s.fullySettled
-                    ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-200'
-                    : 'bg-amber-950/20 border-amber-800/40 text-amber-200'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-200'
+                    : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-200'
                 }`}
               >
                 <div>
@@ -531,8 +531,8 @@ export function GastosCompartidosSection({
                   <span
                     className={`px-2 py-0.5 rounded font-bold ${
                       s.fullySettled
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                        : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                        : 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30'
                     }`}
                   >
                     {s.fullySettled ? 'Saldada Mutuamente ✓' : 'Pendiente Confirmación Mutua'}

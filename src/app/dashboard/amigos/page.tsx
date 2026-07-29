@@ -177,16 +177,11 @@ export default function AmigosPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ destinatarioId }),
       });
-      if (!res.ok) {
-        toast.error('No se pudo enviar la solicitud');
-        return;
-      }
       const data = await res.json();
 
-      if (data.success) {
+      if (res.ok && data.success) {
         toast.success(data.message || 'Solicitud de amistad enviada');
-        refreshAmigos();
-        setSearchResults((prev) => prev.filter((u) => u.idusuario !== destinatarioId));
+        await refreshAmigos();
       } else {
         toast.error(data.error || 'No se pudo enviar la solicitud');
       }
@@ -370,6 +365,9 @@ export default function AmigosPage() {
                 searchResults={searchResults}
                 searching={searching}
                 actionLoading={actionLoading}
+                amigos={amigos}
+                solicitudesEnviadas={solicitudesEnviadas}
+                solicitudesRecibidas={solicitudesRecibidas}
                 onSearch={handleSearchUsers}
                 onSendRequest={handleSendRequest}
               />
@@ -518,7 +516,6 @@ function SolicitudesTab({
                       <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
                         {remitente.nombreusuario || 'Usuario desconocido'}
                       </h4>
-                      <p className="text-[11px] text-slate-500 truncate">{remitente.email}</p>
                     </div>
                   </div>
 
@@ -527,18 +524,17 @@ function SolicitudesTab({
                       size="sm"
                       disabled={actionLoading === sol.idamistad}
                       onClick={() => onRespond(sol.idamistad, true)}
-                      className="h-8 px-3 text-xs bg-emerald-600 hover:bg-emerald-500 text-white gap-1 rounded-xl"
+                      className="h-8 px-3 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold gap-1 rounded-xl shadow-md"
                     >
-                      <Check className="w-3.5 h-3.5" /> Aceptar
+                      <Check className="w-3.5 h-3.5 text-white" /> Aceptar
                     </Button>
                     <Button
                       size="sm"
-                      variant="outline"
                       disabled={actionLoading === sol.idamistad}
                       onClick={() => onRespond(sol.idamistad, false)}
-                      className="h-8 px-2.5 text-xs text-rose-600 border-rose-500/30 hover:bg-rose-50 rounded-xl"
+                      className="h-8 px-3 text-xs bg-slate-700 hover:bg-rose-600 text-white font-extrabold gap-1 rounded-xl shadow-md border border-slate-600"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-3.5 h-3.5 text-white" /> Rechazar
                     </Button>
                   </div>
                 </div>
@@ -614,6 +610,9 @@ function BuscarUsuariosTab({
   searchResults,
   searching,
   actionLoading,
+  amigos,
+  solicitudesEnviadas,
+  solicitudesRecibidas,
   onSearch,
   onSendRequest,
 }: {
@@ -622,6 +621,9 @@ function BuscarUsuariosTab({
   searchResults: SearchedUser[];
   searching: boolean;
   actionLoading: string | null;
+  amigos: FriendItem[];
+  solicitudesEnviadas: RequestSentItem[];
+  solicitudesRecibidas: RequestReceivedItem[];
   onSearch: (e: React.FormEvent) => void;
   onSendRequest: (id: string) => void;
 }) {
@@ -653,42 +655,62 @@ function BuscarUsuariosTab({
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
             Resultados encontrados ({searchResults.length})
           </h3>
-          {searchResults.map((user) => (
-            <div
-              key={user.idusuario}
-              className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between gap-3 shadow-sm"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className={`w-10 h-10 rounded-full ${getAvatarBg(user.fotoperfil)} border flex items-center justify-center overflow-hidden shrink-0`}
-                >
-                  {user.fotoperfil ? (
-                    <Image src={user.fotoperfil} alt={user.nombreusuario} width={40} height={40} unoptimized className={getAvatarClass(user.fotoperfil)} />
-                  ) : (
-                    <User className="w-5 h-5 text-indigo-400" />
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">{user.nombreusuario}</h4>
-                  <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
-                </div>
-              </div>
+          {searchResults.map((user) => {
+            const isFriend = amigos.some((a) => a.idusuario === user.idusuario);
+            const isPendingSent = solicitudesEnviadas.some((s) => s.destinatario?.idusuario === user.idusuario);
+            const isPendingReceived = solicitudesRecibidas.some((s) => s.remitente?.idusuario === user.idusuario);
 
-              <Button
-                size="sm"
-                disabled={actionLoading === user.idusuario}
-                onClick={() => onSendRequest(user.idusuario)}
-                className="h-8 text-xs bg-indigo-600 hover:bg-indigo-500 text-white gap-1 rounded-xl font-semibold"
+            return (
+              <div
+                key={user.idusuario}
+                className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between gap-3 shadow-sm"
               >
-                {actionLoading === user.idusuario ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className={`w-10 h-10 rounded-full ${getAvatarBg(user.fotoperfil)} border flex items-center justify-center overflow-hidden shrink-0`}
+                  >
+                    {user.fotoperfil ? (
+                      <Image src={user.fotoperfil} alt={user.nombreusuario} width={40} height={40} unoptimized className={getAvatarClass(user.fotoperfil)} />
+                    ) : (
+                      <User className="w-5 h-5 text-indigo-400" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">{user.nombreusuario}</h4>
+                    <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
+                  </div>
+                </div>
+
+                {isFriend ? (
+                  <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold text-xs flex items-center gap-1.5 border border-emerald-500/20 shrink-0">
+                    <Check className="w-3.5 h-3.5" /> Ya es tu amigo
+                  </span>
+                ) : isPendingSent ? (
+                  <span className="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 font-extrabold text-xs flex items-center gap-1.5 border border-amber-500/20 shrink-0">
+                    <Send className="w-3.5 h-3.5" /> Solicitud enviada
+                  </span>
+                ) : isPendingReceived ? (
+                  <span className="px-3 py-1.5 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-extrabold text-xs flex items-center gap-1.5 border border-indigo-500/20 shrink-0">
+                    <UserPlus className="w-3.5 h-3.5" /> Te envió solicitud
+                  </span>
                 ) : (
-                  <UserPlus className="w-3.5 h-3.5" />
+                  <Button
+                    size="sm"
+                    disabled={actionLoading === user.idusuario}
+                    onClick={() => onSendRequest(user.idusuario)}
+                    className="h-8 text-xs bg-indigo-600 hover:bg-indigo-500 text-white gap-1 rounded-xl font-semibold shrink-0"
+                  >
+                    {actionLoading === user.idusuario ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <UserPlus className="w-3.5 h-3.5" />
+                    )}
+                    Agregar
+                  </Button>
                 )}
-                Agregar
-              </Button>
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
