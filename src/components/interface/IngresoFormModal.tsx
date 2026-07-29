@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save, AlertCircle } from 'lucide-react';
+import { X, Save, AlertCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -27,7 +27,14 @@ export function IngresoFormModal({
   initialData,
   members = [],
 }: IngresoFormModalProps) {
-  const [fecha, setFecha] = useState(initialData?.fecha || new Date().toISOString().split('T')[0]);
+  const [fecha, setFecha] = useState(initialData?.fecha ? initialData.fecha.split('T')[0] : new Date().toISOString().split('T')[0]);
+  const [hora, setHora] = useState(() => {
+    if (initialData?.fecha && initialData.fecha.includes('T')) {
+      return initialData.fecha.split('T')[1].slice(0, 5);
+    }
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  });
   const [moneda, setMoneda] = useState(initialData?.moneda || 'ARS');
   const [importe, setImporte] = useState(
     initialData?.importe !== undefined ? String(initialData.importe) : ''
@@ -53,7 +60,7 @@ export function IngresoFormModal({
     try {
       await onSave({
         idingreso: initialData?.idingreso,
-        fecha,
+        fecha: `${fecha}T${hora}:00`,
         moneda,
         importe: val,
         comentario,
@@ -93,17 +100,32 @@ export function IngresoFormModal({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          {/* Fecha */}
-          <div className="space-y-1">
-            <label htmlFor="ingreso-fecha" className="text-xs font-medium text-slate-700 dark:text-slate-300">Fecha</label>
-            <Input
-              id="ingreso-fecha"
-              type="date"
-              required
-              value={fecha}
-              onChange={(e) => setFecha(e.target.value)}
-              className="bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs"
-            />
+          {/* Fecha y Hora */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <label htmlFor="ingreso-fecha" className="text-xs font-medium text-slate-700 dark:text-slate-300">Fecha</label>
+              <Input
+                id="ingreso-fecha"
+                type="date"
+                required
+                value={fecha}
+                onChange={(e) => setFecha(e.target.value)}
+                className="bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="ingreso-hora" className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-emerald-500" /> Hora
+              </label>
+              <Input
+                id="ingreso-hora"
+                type="time"
+                required
+                value={hora}
+                onChange={(e) => setHora(e.target.value)}
+                className="bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs"
+              />
+            </div>
           </div>
 
           {/* Importe y Moneda */}

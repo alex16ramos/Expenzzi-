@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { enqueueOfflineMutation } from '@/lib/offline-sync';
 import { itemsNav } from '@/lib/nav-items';
+import { extractTimeFromItem } from '@/lib/time-utils';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -257,13 +258,12 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
           const isIngreso = activeSection === 'Ingresos';
 
           const rawIso = String(item.fechaiso || item.fecha || item.fechadesde || '');
-          let timeFormatted = '12:00';
-          if (rawIso) {
-            const d = new Date(rawIso);
-            if (!isNaN(d.getTime())) {
-              timeFormatted = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-            }
-          }
+          const { cleanComment, time } = extractTimeFromItem(
+            String(item.id),
+            String(item.comentario || ''),
+            rawIso
+          );
+          const timeFormatted = item.time ? String(item.time) : time;
 
           return {
             id: String(item.id),
@@ -277,7 +277,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
             ars: curr === 'ARS' ? amt.toLocaleString('es-AR') : (amt * 1100).toLocaleString('es-AR'),
             usd: curr === 'USD' ? String(amt) : (amt / 1100).toFixed(1),
             uyu: (amt * 0.04).toFixed(0),
-            comment: String(item.comentario || ''),
+            comment: cleanComment,
             method: item.submetodoNombre ? `${item.metodoBase || ''} - ${item.submetodoNombre}` : String(item.categoriaNombre || item.periodoaporte || 'General'),
             category: catName,
             type: isGasto ? 'Gasto' : isIngreso ? 'Ingreso' : 'Ahorro',

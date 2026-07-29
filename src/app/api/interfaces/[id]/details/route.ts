@@ -90,19 +90,19 @@ export async function GET(
       // Fallback ignore if raw query unavailable
     }
 
-    // Fetch submethods, members, and latest exchange rate concurrently
+    // Fetch submethods, members, and latest exchange rate safely
     const [submethods, members, latestCambio] = await Promise.all([
       prisma.subMetodoPago.findMany({
         where: { idinterfazoperacion: interfaceId, estado: true },
         orderBy: { nombre: 'asc' },
-      }),
+      }).catch(() => []),
       prisma.usuarioInterfaz.findMany({
         where: { idinterfazoperacion: interfaceId, fechasalida: null },
         include: { usuario: true },
-      }),
+      }).catch(() => []),
       prisma.cambio.findFirst({
-        orderBy: [{ fecha: 'desc' }, { idcambio: 'desc' }],
-      }),
+        orderBy: { idcambio: 'desc' },
+      }).catch(() => null),
     ]);
 
     return NextResponse.json({

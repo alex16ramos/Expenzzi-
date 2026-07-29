@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { TMoneda } from '@prisma/client';
 import { emitRealtimeEvent } from '@/lib/events';
 import { getExchangeRatesForDate } from '@/lib/exchange-rate';
+import { extractTimeFromItem, formatCommentWithTime, safeToISOString } from '@/lib/time-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +55,20 @@ export async function GET(
       OR: [
         { categoria: { idinterfazoperacion: interfaceId } },
         { submetodopago: { idinterfazoperacion: interfaceId } },
+        {
+          usuarioResponsable: {
+            usuarioInterfaces: {
+              some: { idinterfazoperacion: interfaceId, fechasalida: null },
+            },
+          },
+        },
+        {
+          usuarioIngresador: {
+            usuarioInterfaces: {
+              some: { idinterfazoperacion: interfaceId, fechasalida: null },
+            },
+          },
+        },
       ],
     };
 
@@ -141,25 +156,30 @@ export async function GET(
     });
 
     return NextResponse.json({
-      data: gastos.map((g) => ({
-        id: String(g.idgasto),
-        fecha: g.fecha.toISOString().split('T')[0],
-        fechaiso: g.fecha.toISOString(),
-        responsablegasto: g.responsablegasto,
-        responsableNombre: g.usuarioResponsable?.nombreusuario || 'Usuario',
-        responsableFotoPerfil: g.usuarioResponsable?.fotoperfil || null,
-        moneda: g.moneda,
-        importe: Number(g.importe),
-        comentario: g.comentario || '',
-        idcategoria: g.idcategoria ? String(g.idcategoria) : null,
-        categoriaNombre: g.categoria?.nombre || 'Sin categoría',
-        idsubmetodopago: g.idsubmetodopago ? String(g.idsubmetodopago) : null,
-        submetodoNombre: g.submetodopago?.nombre || 'Sin método',
-        metodoBase: g.submetodopago?.metodo || 'Efectivo',
-        estado: g.estado,
-        escompartido: g.participantes.length > 0,
-        participantes: g.participantes.map((p) => p.idusuario),
-      })),
+      data: gastos.map((g) => {
+        const iso = safeToISOString(g.fecha);
+        const { cleanComment, time } = extractTimeFromItem(g.idgasto, g.comentario, iso);
+        return {
+          id: String(g.idgasto),
+          fecha: iso.split('T')[0],
+          fechaiso: iso,
+          time,
+          responsablegasto: g.responsablegasto,
+          responsableNombre: g.usuarioResponsable?.nombreusuario || 'Usuario',
+          responsableFotoPerfil: g.usuarioResponsable?.fotoperfil || null,
+          moneda: g.moneda,
+          importe: Number(g.importe),
+          comentario: cleanComment,
+          idcategoria: g.idcategoria ? String(g.idcategoria) : null,
+          categoriaNombre: g.categoria?.nombre || 'Sin categoría',
+          idsubmetodopago: g.idsubmetodopago ? String(g.idsubmetodopago) : null,
+          submetodoNombre: g.submetodopago?.nombre || 'Sin método',
+          metodoBase: g.submetodopago?.metodo || 'Efectivo',
+          estado: g.estado,
+          escompartido: g.participantes.length > 0,
+          participantes: g.participantes.map((p) => p.idusuario),
+        };
+      }),
       pagination: {
         page,
         pageSize,
@@ -230,7 +250,7 @@ export async function POST(
         moneda: moneda as TMoneda,
         importe: Number(importe),
         tasacambio: rates.usdars,
-        comentario: comentario ? String(comentario).trim() : null,
+        comentario: formatCommentWithTime(comentario, fecha),
         idcategoria: idcategoria ? BigInt(idcategoria) : null,
         idsubmetodopago: idsubmetodopago ? BigInt(idsubmetodopago) : null,
         estado: true,
@@ -417,7 +437,7 @@ export async function PUT(
         ...(responsablegasto && { responsablegasto }),
         ...(moneda && { moneda: moneda as TMoneda }),
         ...(importe !== undefined && { importe: Number(importe) }),
-        ...(comentario !== undefined && { comentario: String(comentario).trim() || null }),
+        ...(comentario !== undefined && { comentario: formatCommentWithTime(comentario, fecha) }),
         ...(idcategoria !== undefined && { idcategoria: idcategoria ? BigInt(idcategoria) : null }),
         ...(idsubmetodopago !== undefined && { idsubmetodopago: idsubmetodopago ? BigInt(idsubmetodopago) : null }),
         ...(estado !== undefined && { estado: Boolean(estado) }),

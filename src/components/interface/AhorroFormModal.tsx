@@ -55,11 +55,6 @@ export function AhorroFormModal({
     e.preventDefault();
     setErrorMsg('');
 
-    if (!isAdmin) {
-      setErrorMsg('Formulario exclusivo para Administradores de la interfaz (RF15)');
-      return;
-    }
-
     const val = parseFloat(importe);
     if (isNaN(val) || val <= 0) {
       setErrorMsg('Por favor ingrese un importe de ahorro válido mayor a 0');

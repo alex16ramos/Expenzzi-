@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { TMoneda, TPeriodo } from '@prisma/client';
 import { notifyInterfaceMembers } from '@/lib/notify-members';
+import { extractTimeFromItem, formatCommentWithTime, safeToISOString } from '@/lib/time-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,19 +101,25 @@ export async function GET(
     });
 
     return NextResponse.json({
-      data: ahorros.map((a) => ({
-        id: String(a.idahorro),
-        fechadesde: a.fechadesde.toISOString().split('T')[0],
-        fechaiso: a.fechadesde.toISOString(),
-        fechahasta: a.fechahasta.toISOString().split('T')[0],
-        responsableNombre: 'Ahorro',
-        responsableFotoPerfil: null,
-        moneda: a.moneda,
-        importe: Number(a.importe),
-        comentario: a.comentario || '',
-        periodoaporte: a.periodoaporte || 'Mensual',
-        estado: a.estado,
-      })),
+      data: ahorros.map((a) => {
+        const isoDesde = safeToISOString(a.fechadesde);
+        const isoHasta = safeToISOString(a.fechahasta);
+        const { cleanComment, time } = extractTimeFromItem(a.idahorro, a.comentario, isoDesde);
+        return {
+          id: String(a.idahorro),
+          fechadesde: isoDesde.split('T')[0],
+          fechaiso: isoDesde,
+          time,
+          fechahasta: isoHasta.split('T')[0],
+          responsableNombre: 'Ahorro',
+          responsableFotoPerfil: null,
+          moneda: a.moneda,
+          importe: Number(a.importe),
+          comentario: cleanComment,
+          periodoaporte: a.periodoaporte || 'Mensual',
+          estado: a.estado,
+        };
+      }),
       pagination: {
         page,
         pageSize,
@@ -144,10 +151,16 @@ export async function POST(
     const resolvedParams = await params;
     const interfaceId = BigInt(resolvedParams.id);
 
-    const isAdmin = await checkAdminRole(interfaceId, userId);
-    if (!isAdmin) {
+    const member = await prisma.usuarioInterfaz.findFirst({
+      where: {
+        idinterfazoperacion: interfaceId,
+        idusuario: userId,
+        fechasalida: null,
+      },
+    });
+    if (!member) {
       return NextResponse.json(
-        { error: 'Solo los usuarios con rol Administrador pueden registrar ahorros' },
+        { error: 'Debes pertenecer a esta interfaz para registrar ahorros' },
         { status: 403 }
       );
     }
@@ -175,7 +188,7 @@ export async function POST(
         fechahasta: fechahasta ? new Date(fechahasta) : new Date(),
         moneda: moneda as TMoneda,
         importe: Number(importe),
-        comentario: comentario ? String(comentario).trim() : null,
+        comentario: formatCommentWithTime(comentario, fechadesde),
         periodoaporte: periodoaporte as TPeriodo,
         idinterfazoperacion: interfaceId,
         estado: true,
