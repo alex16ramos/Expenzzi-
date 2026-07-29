@@ -79,3 +79,22 @@ export function getCategoryIconAndStyle(categoryName?: string | null, type?: str
     sign: '-',
   };
 }
+
+export function getTransactionTitle(tx: Partial<Transaction>): string {
+  if (tx.comment && tx.comment.trim()) {
+    return tx.comment.trim();
+  }
+  if (tx.category && tx.category.trim()) {
+    return tx.category.trim();
+  }
+  if (tx.type === 'Ahorro') {
+    return `Ahorro #${tx.id}`;
+  }
+  if (tx.type === 'Gasto') {
+    return `Gasto #${tx.id}`;
+  }
+  if (tx.type === 'Ingreso') {
+    return `Ingreso #${tx.id}`;
+  }
+  return `Movimiento #${tx.id}`;
+}

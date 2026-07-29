@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Transaction, getCategoryIconAndStyle } from './transaction-utils';
+import { Transaction, getCategoryIconAndStyle, getTransactionTitle } from './transaction-utils';
 
 export type { Transaction };
 
@@ -16,7 +16,7 @@ export function TransactionCard({ transaction: tx, onSelect }: TransactionCardPr
     tx.type
   );
 
-  const title = tx.comment || tx.category || `Movimiento #${tx.id}`;
+  const title = getTransactionTitle(tx);
   const subtitle = `${tx.date} • ${tx.category || tx.method || 'General'}`;
 
   const isInactive = tx.estado === false;

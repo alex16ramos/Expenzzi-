@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, History, Pencil, Trash2, CreditCard, User, MessageSquare, Tag, Calendar, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Transaction } from './TransactionCard';
+import { getTransactionTitle } from './transaction-utils';
 
 interface TransactionDetailPanelProps {
   transaction: Transaction | null;
@@ -38,7 +39,7 @@ export function TransactionDetailPanel({
     ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20'
     : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20';
 
-  const title = tx.comment || tx.category || `Movimiento #${tx.id}`;
+  const title = getTransactionTitle(tx);
 
   const detailBody = (
     <>

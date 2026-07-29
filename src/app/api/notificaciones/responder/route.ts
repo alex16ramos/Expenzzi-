@@ -75,6 +75,7 @@ export async function POST(req: Request) {
           update: {
             rol: notif.rolPropuesto || 'Invitado',
             fechaunion: new Date(),
+            fechasalida: null,
           },
         });
       }

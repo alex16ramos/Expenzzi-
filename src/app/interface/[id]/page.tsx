@@ -160,6 +160,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
   // 1. Fetch Interface Details
   const loadInterfaceDetails = useCallback(async () => {
+    if (!interfaceId || !/^\d+$/.test(interfaceId)) {
+      toast.error('No tienes acceso a esta interfaz o fue eliminada.');
+      window.location.href = '/dashboard';
+      return;
+    }
     try {
       const res = await fetch(`/api/interfaces/${interfaceId}/details`);
       if (!res.ok) {

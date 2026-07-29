@@ -32,7 +32,16 @@ export async function GET(
     }
 
     const resolvedParams = await params;
-    const interfaceId = BigInt(resolvedParams.id);
+    if (!resolvedParams.id || !/^\d+$/.test(resolvedParams.id)) {
+      return NextResponse.json({ error: 'ID de interfaz inválido' }, { status: 404 });
+    }
+
+    let interfaceId: bigint;
+    try {
+      interfaceId = BigInt(resolvedParams.id);
+    } catch {
+      return NextResponse.json({ error: 'ID de interfaz inválido' }, { status: 404 });
+    }
 
     // Check user association and role in interface
     const userInterfaz = await prisma.usuarioInterfaz.findFirst({
@@ -46,7 +55,7 @@ export async function GET(
       },
     });
 
-    if (!userInterfaz || !userInterfaz.interfazoperacion) {
+    if (!userInterfaz || !userInterfaz.interfazoperacion || userInterfaz.interfazoperacion.estado === false) {
       return NextResponse.json(
         { error: 'No tiene acceso a esta interfaz u operacion no encontrada' },
         { status: 403 }

@@ -307,9 +307,9 @@ export default function ProfilePage() {
                 </div>
               </div>
             ) : (
-              <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-900/90 via-purple-900/90 to-slate-900 text-white border border-purple-500/30 shadow-2xl relative overflow-hidden flex flex-col sm:flex-row items-center sm:items-start gap-5">
+              <div className="p-6 rounded-3xl bg-slate-200/60 dark:bg-gradient-to-br dark:from-indigo-900/90 dark:via-purple-900/90 dark:to-slate-900 text-slate-900 dark:text-white border border-slate-300/70 dark:border-purple-500/30 shadow-md dark:shadow-2xl relative overflow-hidden flex flex-col sm:flex-row items-center sm:items-start gap-5 transition-colors">
                 <div className="relative group shrink-0">
-                  <div className={`w-24 h-24 rounded-full ${getAvatarBg(fotoperfil)} border-4 border-indigo-400 p-0.5 overflow-hidden flex items-center justify-center shadow-xl`}>
+                  <div className={`w-24 h-24 rounded-full ${getAvatarBg(fotoperfil)} border-4 border-indigo-500 dark:border-indigo-400 p-0.5 overflow-hidden flex items-center justify-center shadow-xl`}>
                     {fotoperfil ? (
                       <Image
                         src={fotoperfil}
@@ -320,13 +320,13 @@ export default function ProfilePage() {
                         className={getAvatarClass(fotoperfil)}
                       />
                     ) : (
-                      <User className="w-10 h-10 text-indigo-300" />
+                      <User className="w-10 h-10 text-indigo-600 dark:text-indigo-300" />
                     )}
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowAvatarSelector(!showAvatarSelector)}
-                    className="absolute bottom-0 right-0 p-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-500 border-2 border-slate-900 shadow-md transition-transform hover:scale-110"
+                    className="absolute bottom-0 right-0 p-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-500 border-2 border-white dark:border-slate-900 shadow-md transition-transform hover:scale-110"
                     title="Cambiar Foto de Perfil"
                   >
                     <Camera className="w-4 h-4" />
@@ -334,17 +334,17 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="space-y-1 text-center sm:text-left flex-1 min-w-0">
-                  <span className="text-[10px] uppercase tracking-wider text-purple-200 font-extrabold flex items-center justify-center sm:justify-start gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" /> Usuario Verificado
+                  <span className="text-[10px] uppercase tracking-wider text-slate-700 dark:text-purple-200 font-extrabold flex items-center justify-center sm:justify-start gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Usuario Verificado
                   </span>
-                  <h2 className="text-2xl font-extrabold text-white truncate">
+                  <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white truncate">
                     {profile?.nombreusuario || userSession?.name || 'Usuario Expenzzi'}
                   </h2>
-                  <p className="text-xs text-slate-300 flex items-center justify-center sm:justify-start gap-1">
-                    <AtSign className="w-3.5 h-3.5 text-indigo-300" /> {profile?.email || userSession?.email}
+                  <p className="text-xs text-slate-600 dark:text-slate-300 flex items-center justify-center sm:justify-start gap-1 font-medium">
+                    <AtSign className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-300" /> {profile?.email || userSession?.email}
                   </p>
                   {profile?.biografia && (
-                    <p className="text-xs text-slate-300/90 italic pt-1 max-w-lg">
+                    <p className="text-xs text-slate-600 dark:text-slate-300/90 italic pt-1 max-w-lg">
                       &quot;{profile.biografia}&quot;
                     </p>
                   )}
@@ -354,9 +354,9 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => (window.location.href = '/dashboard/amigos')}
-                  className="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold flex items-center gap-2 transition-colors shrink-0 self-stretch sm:self-auto justify-center"
+                  className="px-4 py-2.5 rounded-2xl bg-slate-300/70 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 border border-slate-400/40 dark:border-white/20 text-slate-800 dark:text-white text-xs font-bold flex items-center gap-2 transition-colors shrink-0 self-stretch sm:self-auto justify-center"
                 >
-                  <Users className="w-4 h-4 text-emerald-400" /> Mis Amigos <ArrowRight className="w-4 h-4" />
+                  <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Mis Amigos <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             )}

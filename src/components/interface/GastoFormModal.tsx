@@ -151,18 +151,18 @@ export function GastoFormModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-slate-900 rounded-2xl p-5 space-y-4 shadow-2xl border border-slate-800 text-white relative max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-slate-950/60 dark:bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl p-5 space-y-4 shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white relative max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex justify-between items-center pb-3 border-b border-slate-800 shrink-0">
-          <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+        <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
+          <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             {initialData?.idgasto ? 'Editar Gasto (CU12)' : 'Nuevo Gasto (CU12)'}
           </h3>
           <button
             type="button"
             onClick={onClose}
             aria-label="Cerrar modal de gasto"
-            className="p-1 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            className="p-1 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -195,20 +195,20 @@ export function GastoFormModal({
           <form onSubmit={handleSubmit} className="space-y-3">
             {/* Fecha */}
             <div className="space-y-1">
-              <label htmlFor="gasto-fecha" className="text-xs font-medium text-slate-300">Fecha</label>
+              <label htmlFor="gasto-fecha" className="text-xs font-medium text-slate-700 dark:text-slate-300">Fecha</label>
               <Input
                 id="gasto-fecha"
                 type="date"
                 required
                 value={fecha}
                 onChange={(e) => setFecha(e.target.value)}
-                className="bg-slate-950 text-xs"
+                className="bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs"
               />
             </div>
 
             {/* Importe y Moneda */}
             <div className="space-y-1">
-              <label htmlFor="gasto-importe" className="text-xs font-medium text-slate-300">Importe y Moneda *</label>
+              <label htmlFor="gasto-importe" className="text-xs font-medium text-slate-700 dark:text-slate-300">Importe y Moneda *</label>
               <div className="flex gap-2">
                 <Input
                   id="gasto-importe"
@@ -218,13 +218,13 @@ export function GastoFormModal({
                   placeholder="0.00"
                   value={importe}
                   onChange={(e) => setImporte(e.target.value)}
-                  className="flex-1 bg-slate-950 font-semibold"
+                  className="flex-1 bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-semibold"
                 />
                 <select
                   value={moneda}
                   onChange={(e) => setMoneda(e.target.value)}
                   aria-label="Moneda del gasto"
-                  className="h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-xs font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
                 >
                   <option value="ARS">ARS ($)</option>
                   <option value="USD">USD (US$)</option>
@@ -236,10 +236,10 @@ export function GastoFormModal({
             {/* Categoría */}
             <div className="space-y-1">
               <div className="flex justify-between items-center">
-                <label htmlFor="gasto-categoria" className="text-xs font-medium text-slate-300">Categoría</label>
+                <label htmlFor="gasto-categoria" className="text-xs font-medium text-slate-700 dark:text-slate-300">Categoría</label>
                 <div className="flex items-center gap-2">
                   {selectedCategory?.estadolimite && (
-                    <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                    <span className="text-[10px] font-semibold text-amber-500 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
                       Límite {limitPeriod}: ${limitAmount.toLocaleString('es-AR')} {limitCurrency}
                     </span>
                   )}
@@ -247,7 +247,7 @@ export function GastoFormModal({
                     <button
                       type="button"
                       onClick={onOpenCategoryManager}
-                      className="text-[11px] font-semibold text-violet-400 hover:text-violet-300 transition-colors flex items-center gap-1 bg-violet-500/10 hover:bg-violet-500/20 px-2 py-0.5 rounded-lg border border-violet-500/20"
+                      className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors flex items-center gap-1 bg-violet-500/10 hover:bg-violet-500/20 px-2 py-0.5 rounded-lg border border-violet-500/20"
                     >
                       <Plus className="w-3 h-3" /> Crear categoría
                     </button>
@@ -264,7 +264,7 @@ export function GastoFormModal({
                     setIdcategoria(e.target.value);
                   }
                 }}
-                className="w-full h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-xs font-medium text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
               >
                 <option value="">Sin categoría asignada</option>
                 {categories.map((c) => (
@@ -309,12 +309,12 @@ export function GastoFormModal({
             {/* Submétodo de Pago */}
             <div className="space-y-1">
               <div className="flex justify-between items-center">
-                <label htmlFor="gasto-submetodo" className="text-xs font-medium text-slate-300">Submétodo de Pago</label>
+                <label htmlFor="gasto-submetodo" className="text-xs font-medium text-slate-700 dark:text-slate-300">Submétodo de Pago</label>
                 {onOpenSubmethodManager && (
                   <button
                     type="button"
                     onClick={onOpenSubmethodManager}
-                    className="text-[11px] font-semibold text-violet-400 hover:text-violet-300 transition-colors flex items-center gap-1 bg-violet-500/10 hover:bg-violet-500/20 px-2 py-0.5 rounded-lg border border-violet-500/20"
+                    className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors flex items-center gap-1 bg-violet-500/10 hover:bg-violet-500/20 px-2 py-0.5 rounded-lg border border-violet-500/20"
                   >
                     <Plus className="w-3 h-3" /> Crear método
                   </button>
@@ -330,7 +330,7 @@ export function GastoFormModal({
                     setIdsubmetodopago(e.target.value);
                   }
                 }}
-                className="w-full h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-xs font-medium text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
               >
                 <option value="">Sin método específico</option>
                 {submethods.map((s) => (
@@ -349,12 +349,12 @@ export function GastoFormModal({
             {/* Responsable (Optional) */}
             {members.length > 0 && (
               <div className="space-y-1">
-                <label htmlFor="gasto-responsable" className="text-xs font-medium text-slate-300">Responsable del Gasto</label>
+                <label htmlFor="gasto-responsable" className="text-xs font-medium text-slate-700 dark:text-slate-300">Responsable del Gasto</label>
                 <select
                   id="gasto-responsable"
                   value={responsablegasto}
                   onChange={(e) => setResponsablegasto(e.target.value)}
-                  className="w-full h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-xs font-medium text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
                 >
                   <option value="">Usuario actual (predeterminado)</option>
                   {members.map((m) => (
@@ -432,24 +432,24 @@ export function GastoFormModal({
 
             {/* Comentario */}
             <div className="space-y-1">
-              <label htmlFor="gasto-comentario" className="text-xs font-medium text-slate-300">Comentario</label>
+              <label htmlFor="gasto-comentario" className="text-xs font-medium text-slate-700 dark:text-slate-300">Comentario</label>
               <Input
                 id="gasto-comentario"
                 type="text"
                 placeholder="Ej: Supermercado, Combustible, Cena..."
                 value={comentario}
                 onChange={(e) => setComentario(e.target.value)}
-                className="bg-slate-950 text-xs"
+                className="bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs"
               />
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2 pt-3 border-t border-slate-800">
+            <div className="flex gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
-                className="flex-1"
+                className="flex-1 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                 disabled={isSubmitting}
               >
                 Cancelar
