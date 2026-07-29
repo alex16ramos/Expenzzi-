@@ -53,7 +53,7 @@ export function TransactionCard({ transaction: tx, onSelect }: TransactionCardPr
           {sign}$ {tx.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
         </span>
         <span className="block text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase">
-          {tx.currency}
+          {tx.time ? `${tx.time} ` : ''}{tx.currency}
         </span>
       </div>
     </button>

@@ -135,7 +135,7 @@ export async function GET(
         submetodopago: true,
         participantes: true,
       },
-      orderBy: { fecha: 'desc' },
+      orderBy: [{ fecha: 'desc' }, { idgasto: 'desc' }],
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
@@ -144,6 +144,7 @@ export async function GET(
       data: gastos.map((g) => ({
         id: String(g.idgasto),
         fecha: g.fecha.toISOString().split('T')[0],
+        fechaiso: g.fecha.toISOString(),
         responsablegasto: g.responsablegasto,
         responsableNombre: g.usuarioResponsable?.nombreusuario || 'Usuario',
         responsableFotoPerfil: g.usuarioResponsable?.fotoperfil || null,

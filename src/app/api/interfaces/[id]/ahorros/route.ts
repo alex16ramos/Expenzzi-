@@ -94,7 +94,7 @@ export async function GET(
 
     const ahorros = await prisma.ahorro.findMany({
       where: whereClause,
-      orderBy: { fechadesde: 'desc' },
+      orderBy: [{ fechadesde: 'desc' }, { idahorro: 'desc' }],
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
@@ -103,6 +103,7 @@ export async function GET(
       data: ahorros.map((a) => ({
         id: String(a.idahorro),
         fechadesde: a.fechadesde.toISOString().split('T')[0],
+        fechaiso: a.fechadesde.toISOString(),
         fechahasta: a.fechahasta.toISOString().split('T')[0],
         responsableNombre: 'Ahorro',
         responsableFotoPerfil: null,

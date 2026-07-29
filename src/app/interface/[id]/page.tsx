@@ -84,7 +84,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
   const [filters, setFilters] = useState<MultiFilterState>(DEFAULT_MULTI_FILTERS);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize] = useState(4);
   const [isLoading, setIsLoading] = useState(true);
   const [isBalancesLoading, setIsBalancesLoading] = useState(true);
 
@@ -256,9 +256,19 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
           const isGasto = activeSection === 'Gastos';
           const isIngreso = activeSection === 'Ingresos';
 
+          const rawIso = String(item.fechaiso || item.fecha || item.fechadesde || '');
+          let timeFormatted = '12:00';
+          if (rawIso) {
+            const d = new Date(rawIso);
+            if (!isNaN(d.getTime())) {
+              timeFormatted = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            }
+          }
+
           return {
             id: String(item.id),
             date: item.fecha ? String(item.fecha).split('T')[0] : (item.fechadesde ? String(item.fechadesde).split('T')[0] : 'Hoy'),
+            time: timeFormatted,
             user: String(item.responsableNombre || 'Usuario'),
             avatar: item.responsableFotoPerfil ? String(item.responsableFotoPerfil) : null,
             initials: String(item.responsableNombre || 'U').slice(0, 2).toUpperCase(),
@@ -753,7 +763,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     [interfaceId, loadInterfaceDetails]
   );
 
-  // Sorted Transactions
+  // Sorted Transactions (Most recent first by date, time and ID)
   const sortedTransactions = useMemo(() => {
     return [...transactions].sort((a, b) => {
       if (sortBy === 'amount') {
@@ -762,7 +772,13 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       if (sortBy === 'user') {
         return sortOrder === 'desc' ? b.user.localeCompare(a.user) : a.user.localeCompare(b.user);
       }
-      return sortOrder === 'desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
+      const rawA = String(a.rawItem?.fechaiso || a.rawItem?.fecha || a.date || '');
+      const rawB = String(b.rawItem?.fechaiso || b.rawItem?.fecha || b.date || '');
+      const cmpDate = rawB.localeCompare(rawA);
+      if (cmpDate !== 0) return sortOrder === 'desc' ? cmpDate : -cmpDate;
+      const numA = Number(a.id) || 0;
+      const numB = Number(b.id) || 0;
+      return sortOrder === 'desc' ? numB - numA : numA - numB;
     });
   }, [transactions, sortBy, sortOrder]);
 

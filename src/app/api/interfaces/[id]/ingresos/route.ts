@@ -102,7 +102,7 @@ export async function GET(
       include: {
         usuarioResponsable: true,
       },
-      orderBy: { fecha: 'desc' },
+      orderBy: [{ fecha: 'desc' }, { idingreso: 'desc' }],
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
@@ -111,6 +111,7 @@ export async function GET(
       data: ingresos.map((i) => ({
         id: String(i.idingreso),
         fecha: i.fecha.toISOString().split('T')[0],
+        fechaiso: i.fecha.toISOString(),
         responsableingreso: i.responsableingreso,
         responsableNombre: i.usuarioResponsable?.nombreusuario || 'Usuario',
         responsableFotoPerfil: i.usuarioResponsable?.fotoperfil || null,

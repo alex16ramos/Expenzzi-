@@ -13,6 +13,7 @@ import {
 export interface Transaction {
   id: string | number;
   date: string;
+  time?: string;
   user: string;
   avatar?: string | null;
   initials: string;
