@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, UserPlus, Search, Check, Shield, Loader2, Sparkles } from 'lucide-react';
+import { X, UserPlus, Search, Check, Shield, Loader2, Sparkles, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FriendItem, UserListItemButton } from './UserListItemButton';
@@ -11,6 +11,8 @@ interface InviteModalProps {
   onClose: () => void;
   interfaceId: string | number;
   interfaceName?: string;
+  linkinvitado?: string;
+  linkvisualizador?: string;
   onInviteSent?: (recipientName: string) => void;
 }
 
@@ -19,6 +21,8 @@ export function InviteModal({
   onClose,
   interfaceId,
   interfaceName = 'Interfaz de Operación',
+  linkinvitado,
+  linkvisualizador,
   onInviteSent,
 }: InviteModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,6 +35,8 @@ export function InviteModal({
   const [searching, setSearching] = useState(false);
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
+  const [fetchedCodes, setFetchedCodes] = useState<{ linkinvitado?: string; linkvisualizador?: string }>({});
 
   // Load quick friends list
   const fetchFriends = useCallback(async () => {
@@ -67,6 +73,7 @@ export function InviteModal({
     if (isOpen) {
       clearCloseTimer();
       const timer = setTimeout(() => {
+        setIsCopied(false);
         fetchFriends();
         setSearchQuery('');
         setSearchResults([]);
@@ -76,6 +83,23 @@ export function InviteModal({
       return () => clearTimeout(timer);
     }
   }, [isOpen, fetchFriends]);
+
+  // Fetch interface codes if not provided as props
+  useEffect(() => {
+    if (isOpen && interfaceId && !linkinvitado && !linkvisualizador) {
+      fetch(`/api/interfaces/${interfaceId}/details`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.interface) {
+            setFetchedCodes({
+              linkinvitado: data.interface.linkinvitado,
+              linkvisualizador: data.interface.linkvisualizador,
+            });
+          }
+        })
+        .catch((err) => console.error('Error fetching interface code:', err));
+    }
+  }, [isOpen, interfaceId, linkinvitado, linkvisualizador]);
 
   // Search users by name/email
   useEffect(() => {
@@ -110,6 +134,25 @@ export function InviteModal({
       clearCloseTimer();
     };
   }, []);
+
+  const handleCopyCode = async () => {
+    const activeInvitado = linkinvitado || fetchedCodes.linkinvitado;
+    const activeVisualizador = linkvisualizador || fetchedCodes.linkvisualizador;
+    const targetCode = selectedRole === 'Visualizador' ? (activeVisualizador || activeInvitado) : (activeInvitado || activeVisualizador);
+
+    if (!targetCode) return;
+
+    try {
+      await navigator.clipboard.writeText(targetCode);
+      setIsCopied(true);
+      setFeedback({ type: 'success', message: '¡Código de invitación copiado al portapapeles!' });
+      setTimeout(() => {
+        setIsCopied(false);
+      }, 3000);
+    } catch {
+      setFeedback({ type: 'error', message: 'No se pudo copiar el código al portapapeles' });
+    }
+  };
 
   const handleSendInvite = async () => {
     if (!selectedUser) return;
@@ -155,9 +198,13 @@ export function InviteModal({
 
   if (!isOpen) return null;
 
+  const activeInvitadoCode = linkinvitado || fetchedCodes.linkinvitado;
+  const activeVisualizadorCode = linkvisualizador || fetchedCodes.linkvisualizador;
+  const currentCode = selectedRole === 'Visualizador' ? (activeVisualizadorCode || activeInvitadoCode) : (activeInvitadoCode || activeVisualizadorCode);
+
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-6 relative overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5 relative overflow-hidden">
         {/* Modal Header */}
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
@@ -181,10 +228,54 @@ export function InviteModal({
           </button>
         </div>
 
+        {/* Direct Invitation Code Copy Box */}
+        <div className="p-3.5 bg-indigo-50/70 dark:bg-slate-950/80 border border-indigo-200 dark:border-slate-800 rounded-2xl space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
+              <Copy className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              Código de Invitación Directo
+            </span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+              (Ingresar en &quot;Unirse a Interfaz&quot;)
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-600 dark:text-slate-400">
+            Comparte este código directamente para que cualquier miembro se una con rol de <strong>{selectedRole}</strong>.
+          </p>
+
+          <div className="flex items-center gap-2 pt-0.5">
+            <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-slate-800 dark:text-slate-200 truncate select-all shadow-inner">
+              {currentCode || 'Cargando código de invitación...'}
+            </div>
+            <Button
+              type="button"
+              onClick={handleCopyCode}
+              disabled={!currentCode}
+              className={`h-8 px-3 text-xs font-bold gap-1.5 transition-colors shrink-0 rounded-xl ${
+                isCopied
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                  : 'bg-indigo-600 text-white hover:bg-indigo-500'
+              }`}
+            >
+              {isCopied ? (
+                <>
+                  <Check className="w-3.5 h-3.5" />
+                  ¡Copiado!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  Copiar Código
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
         {/* Feedback Message */}
         {feedback && (
           <div
-            className={`p-3.5 rounded-2xl border text-xs font-semibold flex items-center gap-2 ${
+            className={`p-3 rounded-2xl border text-xs font-semibold flex items-center gap-2 animate-in fade-in duration-150 ${
               feedback.type === 'success'
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
                 : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-400'
@@ -196,9 +287,9 @@ export function InviteModal({
         )}
 
         {/* Search Input */}
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <label htmlFor="invite-search" className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-            Buscar usuario por Nombre o Email
+            Buscar usuario por Nombre o Email para enviar notificación
           </label>
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -208,7 +299,7 @@ export function InviteModal({
               placeholder="Ej. maria@ejemplo.com o Maria Perez..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="pl-9 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-800"
             />
             {searching && (
               <Loader2 className="w-4 h-4 text-violet-500 animate-spin absolute right-3 top-3" />
@@ -259,20 +350,20 @@ export function InviteModal({
                 Aún no tienes amigos agregados en tu perfil. Utiliza el buscador para ingresar su email o nombre.
               </div>
             ) : (
-              <div className="max-h-40 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-950/50">
-              {friends.map((friend) => (
-                <UserListItemButton
-                  key={friend.idusuario}
-                  user={friend}
-                  isSelected={selectedUser?.idusuario === friend.idusuario}
-                  onSelect={() => setSelectedUser(friend)}
-                  showQuickIcon
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+              <div className="max-h-36 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-950/50">
+                {friends.map((friend) => (
+                  <UserListItemButton
+                    key={friend.idusuario}
+                    user={friend}
+                    isSelected={selectedUser?.idusuario === friend.idusuario}
+                    onSelect={() => setSelectedUser(friend)}
+                    showQuickIcon
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Selected User & Role Selection */}
         {selectedUser && (

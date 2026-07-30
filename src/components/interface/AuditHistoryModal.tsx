@@ -90,19 +90,19 @@ export function AuditHistoryModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 z-50 animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl bg-slate-900 rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-800 text-white max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-slate-950/60 dark:bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 z-50 animate-in fade-in duration-200">
+      <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white max-h-[90vh] flex flex-col">
         {/* Modal Header */}
-        <div className="flex justify-between items-center pb-3 border-b border-slate-800 shrink-0">
+        <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+            <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">
               <History className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
                 Historial y Auditoría de Cambios
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {titleFilter
                   ? `Registros de auditoría para "${titleFilter}"`
                   : 'Modificaciones registradas en las tablas de auditoría (RF6)'}
@@ -112,7 +112,7 @@ export function AuditHistoryModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -120,7 +120,7 @@ export function AuditHistoryModal({
 
         {/* Tab Filters (only when not filtered to a single entity) */}
         {!entityIdFilter && (
-          <div className="flex flex-wrap gap-1.5 p-1 bg-slate-950/80 rounded-xl border border-slate-800 text-xs shrink-0">
+          <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 dark:bg-slate-950/80 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shrink-0">
             {(['todos', 'gasto', 'ingreso', 'ahorro', 'limite'] as const).map((tab) => (
               <button
                 type="button"
@@ -132,7 +132,7 @@ export function AuditHistoryModal({
                 className={`px-3 py-1.5 rounded-lg font-semibold capitalize transition-colors ${
                   activeTab === tab
                     ? 'bg-violet-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
               >
                 {tab === 'todos' ? 'Todos' : tab === 'limite' ? 'Límites' : `${tab}s`}
@@ -143,7 +143,7 @@ export function AuditHistoryModal({
 
         {/* Error message */}
         {errorMsg && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-300 flex items-center gap-2 shrink-0">
+          <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-600 dark:text-rose-300 flex items-center gap-2 shrink-0">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
@@ -152,14 +152,14 @@ export function AuditHistoryModal({
         {/* Scrollable Audit Logs Visualizer */}
         <div className="flex-1 overflow-y-auto space-y-3.5 pr-1">
           {isLoading ? (
-            <div className="text-center py-16 text-xs text-slate-400 flex items-center justify-center gap-2">
-              <RefreshCw className="w-5 h-5 animate-spin text-amber-400" />
+            <div className="text-center py-16 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2">
+              <RefreshCw className="w-5 h-5 animate-spin text-amber-500" />
               Cargando historial de auditoría...
             </div>
           ) : logs.length === 0 ? (
-            <div className="text-center py-16 px-4 bg-slate-950/50 rounded-2xl border border-slate-800/60 text-slate-400 space-y-2">
-              <History className="w-8 h-8 text-slate-600 mx-auto" />
-              <p className="text-sm font-semibold text-slate-300">No hay modificaciones registradas</p>
+            <div className="text-center py-16 px-4 bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-slate-800/60 text-slate-500 dark:text-slate-400 space-y-2">
+              <History className="w-8 h-8 text-slate-400 dark:text-slate-600 mx-auto" />
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-300">No hay modificaciones registradas</p>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
                 Las modificaciones previas de importes, monedas o comentarios se auditarán automáticamente cuando se actualicen los registros.
               </p>
@@ -176,10 +176,10 @@ export function AuditHistoryModal({
               return (
                 <div
                   key={`${record.tipo}-${record.id}`}
-                  className="bg-slate-950/80 rounded-2xl border border-slate-800/90 p-4 space-y-3 shadow-md hover:border-slate-700 transition-colors"
+                  className="bg-slate-100/80 dark:bg-slate-950/80 rounded-2xl border border-slate-200 dark:border-slate-800/90 p-4 space-y-3 shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
                 >
                   {/* Log Card Header */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-900 pb-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-900 pb-2.5">
                     <div className="flex items-center gap-2">
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${typeInfo.badge}`}
@@ -187,19 +187,19 @@ export function AuditHistoryModal({
                         <IconComp className="w-3 h-3" />
                         {typeInfo.label} #{record.entityId}
                       </span>
-                      <span className="text-xs font-semibold text-slate-200">
+                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
                         {record.nombreItem || record.tipo}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                    <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400">
                       <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-slate-500" />
+                        <Calendar className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                         {record.fechacambio}
                       </span>
                       {record.responsableNombre && (
-                        <span className="flex items-center gap-1 font-medium text-slate-300 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
-                          <User className="w-3 h-3 text-violet-400" />
+                        <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-800">
+                          <User className="w-3 h-3 text-violet-600 dark:text-violet-400" />
                           {record.responsableNombre}
                         </span>
                       )}
@@ -210,7 +210,7 @@ export function AuditHistoryModal({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     {/* VALOR ANTERIOR (OLD - RED HIGHLIGHT) */}
                     <div className="bg-rose-500/10 border border-rose-500/25 rounded-xl p-3 space-y-1.5 relative overflow-hidden">
-                      <div className="flex justify-between items-center text-[11px] font-bold text-rose-400 uppercase tracking-wider">
+                      <div className="flex justify-between items-center text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
                         <span className="flex items-center gap-1">
                           <MinusCircle className="w-3.5 h-3.5" /> Valor Anterior (ant)
                         </span>
@@ -220,18 +220,18 @@ export function AuditHistoryModal({
                       </div>
 
                       <div className="flex items-baseline gap-1.5">
-                        <span className="text-lg font-extrabold text-rose-200 tracking-tight line-through opacity-90">
+                        <span className="text-lg font-extrabold text-rose-700 dark:text-rose-200 tracking-tight line-through opacity-90">
                           {record.antImporte !== null
                             ? record.antImporte.toLocaleString('es-AR', { minimumFractionDigits: 2 })
                             : '-'}
                         </span>
-                        <span className="text-xs font-semibold text-rose-300">
+                        <span className="text-xs font-semibold text-rose-600 dark:text-rose-300">
                           {record.antMoneda || ''}
                         </span>
                       </div>
 
                       {record.antComentario && (
-                        <p className="text-xs text-rose-300/80 italic border-t border-rose-500/20 pt-1.5 mt-1 truncate">
+                        <p className="text-xs text-rose-700/80 dark:text-rose-300/80 italic border-t border-rose-500/20 pt-1.5 mt-1 truncate">
                           &quot;{record.antComentario}&quot;
                         </p>
                       )}
@@ -239,7 +239,7 @@ export function AuditHistoryModal({
 
                     {/* VALOR NUEVO (NEW - GREEN HIGHLIGHT) */}
                     <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-xl p-3 space-y-1.5 relative overflow-hidden">
-                      <div className="flex justify-between items-center text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
+                      <div className="flex justify-between items-center text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
                         <span className="flex items-center gap-1">
                           <PlusCircle className="w-3.5 h-3.5" /> Valor Nuevo
                         </span>
@@ -249,18 +249,18 @@ export function AuditHistoryModal({
                       </div>
 
                       <div className="flex items-baseline gap-1.5">
-                        <span className="text-lg font-extrabold text-emerald-200 tracking-tight">
+                        <span className="text-lg font-extrabold text-emerald-800 dark:text-emerald-200 tracking-tight">
                           {record.nuevoImporte !== null
                             ? record.nuevoImporte.toLocaleString('es-AR', { minimumFractionDigits: 2 })
                             : '-'}
                         </span>
-                        <span className="text-xs font-semibold text-emerald-300">
+                        <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                           {record.nuevoMoneda || ''}
                         </span>
                       </div>
 
                       {record.nuevoComentario && (
-                        <p className="text-xs text-emerald-300/80 italic border-t border-emerald-500/20 pt-1.5 mt-1 truncate">
+                        <p className="text-xs text-emerald-800/80 dark:text-emerald-300/80 italic border-t border-emerald-500/20 pt-1.5 mt-1 truncate">
                           &quot;{record.nuevoComentario}&quot;
                         </p>
                       )}
@@ -268,20 +268,20 @@ export function AuditHistoryModal({
                   </div>
 
                   {/* Summary of specific changes made */}
-                  <div className="flex flex-wrap items-center gap-2 text-[11px] bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-800 text-slate-400">
-                    <span className="font-semibold text-slate-300">Cambios detectados:</span>
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] bg-white/80 dark:bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">
+                    <span className="font-semibold text-slate-800 dark:text-slate-300">Cambios detectados:</span>
                     {isAmountChanged && (
-                      <span className="bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded flex items-center gap-1">
+                      <span className="bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded flex items-center gap-1">
                         Importe: {record.antImporte?.toLocaleString()} <ArrowRight className="w-3 h-3" /> {record.nuevoImporte?.toLocaleString()}
                       </span>
                     )}
                     {isCurrencyChanged && (
-                      <span className="bg-blue-500/10 text-blue-300 border border-blue-500/20 px-2 py-0.5 rounded flex items-center gap-1">
+                      <span className="bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 px-2 py-0.5 rounded flex items-center gap-1">
                         Moneda: {record.antMoneda} <ArrowRight className="w-3 h-3" /> {record.nuevoMoneda}
                       </span>
                     )}
                     {isCommentChanged && (
-                      <span className="bg-purple-500/10 text-purple-300 border border-purple-500/20 px-2 py-0.5 rounded">
+                      <span className="bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 px-2 py-0.5 rounded">
                         Comentario actualizado
                       </span>
                     )}
@@ -296,12 +296,12 @@ export function AuditHistoryModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="pt-2 border-t border-slate-800 flex justify-between items-center shrink-0 text-xs text-slate-400">
+        <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0 text-xs text-slate-500 dark:text-slate-400">
           <span>Total de registros auditados: {logs.length}</span>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl transition-colors"
+            className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold rounded-xl transition-colors border border-slate-200 dark:border-transparent"
           >
             Cerrar
           </button>

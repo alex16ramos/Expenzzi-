@@ -53,7 +53,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
   // Interface state
   const [detailsState, setDetailsState] = useState({
-    interfaceData: null as { nombre: string; descripcion?: string } | null,
+    interfaceData: null as { nombre: string; descripcion?: string; linkinvitado?: string; linkvisualizador?: string } | null,
     userRole: 'Visualizador',
     categories: [] as CategoriaItem[],
     submethods: [] as SubmetodoItem[],
@@ -67,7 +67,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
   const { interfaceData, userRole, categories, submethods, members, balances } = detailsState;
 
-  const setInterfaceData = (val: { nombre: string; descripcion?: string } | null) =>
+  const setInterfaceData = (val: { nombre: string; descripcion?: string; linkinvitado?: string; linkvisualizador?: string } | null) =>
     setDetailsState((prev) => ({ ...prev, interfaceData: val }));
   const setUserRole = (val: string) => setDetailsState((prev) => ({ ...prev, userRole: val }));
   const setCategories = (val: CategoriaItem[]) => setDetailsState((prev) => ({ ...prev, categories: val }));
@@ -1156,7 +1156,7 @@ function InterfaceModalsContainer({
 }: {
   interfaceId: string;
   userRole: string;
-  interfaceData: { nombre: string; descripcion?: string } | null;
+  interfaceData: { nombre: string; descripcion?: string; linkinvitado?: string; linkvisualizador?: string } | null;
   categories: CategoriaItem[];
   submethods: SubmetodoItem[];
   members: { idusuario: string; nombreusuario: string }[];
@@ -1279,6 +1279,8 @@ function InterfaceModalsContainer({
         onClose={() => setIsInviteModalOpen(false)}
         interfaceId={interfaceId}
         interfaceName={interfaceData?.nombre}
+        linkinvitado={interfaceData?.linkinvitado}
+        linkvisualizador={interfaceData?.linkvisualizador}
         onInviteSent={onInviteSent}
       />
 

@@ -281,26 +281,26 @@ export default function AmigosPage() {
 
           <main className="p-4 sm:p-6 lg:p-8 space-y-6">
             {/* Top Title Banner */}
-            <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-900/90 via-purple-900/90 to-slate-900 text-white border border-purple-500/30 shadow-2xl relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="p-6 rounded-3xl bg-slate-100 dark:bg-gradient-to-br dark:from-indigo-900/90 dark:via-purple-900/90 dark:to-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-purple-500/30 shadow-lg dark:shadow-2xl relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div className="space-y-1">
-                <span className="text-xs uppercase tracking-wider text-purple-200 font-bold flex items-center gap-2">
-                  <Users className="w-4 h-4 text-indigo-300" /> Red Social de Gastos
+                <span className="text-xs uppercase tracking-wider text-indigo-600 dark:text-purple-200 font-bold flex items-center gap-2">
+                  <Users className="w-4 h-4 text-indigo-500 dark:text-indigo-300" /> Red Social de Gastos
                 </span>
-                <h2 className="text-2xl font-extrabold text-white">Mis Amigos & Contactos</h2>
-                <p className="text-xs text-slate-300">
+                <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">Mis Amigos & Contactos</h2>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
                   Agrega amigos para incluirlos como responsables en tus interfaces de operaciones.
                 </p>
               </div>
 
               {/* Navigation Tabs */}
-              <div className="flex bg-slate-950/80 p-1.5 rounded-2xl border border-slate-800/90 shadow-inner self-stretch sm:self-auto text-xs">
+              <div className="flex bg-slate-200/80 dark:bg-slate-950/80 p-1.5 rounded-2xl border border-slate-300/80 dark:border-slate-800/90 shadow-inner self-stretch sm:self-auto text-xs">
                 <button
                   type="button"
                   onClick={() => setActiveTab('mis-amigos')}
                   className={`px-3 py-1.5 rounded-xl font-bold transition-colors ${
                     activeTab === 'mis-amigos'
                       ? 'bg-indigo-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   Amigos ({amigos.length})
@@ -311,7 +311,7 @@ export default function AmigosPage() {
                   className={`px-3 py-1.5 rounded-xl font-bold transition-colors relative ${
                     activeTab === 'solicitudes'
                       ? 'bg-indigo-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   Solicitudes
@@ -327,7 +327,7 @@ export default function AmigosPage() {
                   className={`px-3 py-1.5 rounded-xl font-bold transition-colors ${
                     activeTab === 'buscar'
                       ? 'bg-indigo-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   Buscar
