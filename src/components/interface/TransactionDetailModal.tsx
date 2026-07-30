@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { X, History, Pencil, Trash2, CreditCard, User, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Transaction } from './TransactionCard';
+import { getTransactionTitle } from './transaction-utils';
 import { getAvatarBg, getAvatarClass } from '@/lib/avatar-utils';
 
 interface TransactionDetailModalProps {
@@ -35,7 +36,7 @@ export function TransactionDetailModal({
     ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
     : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
 
-  const title = tx.comment || tx.category || `Movimiento #${tx.id}`;
+  const title = getTransactionTitle(tx);
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end justify-center p-0 md:p-4 transition-colors animate-in fade-in duration-200">

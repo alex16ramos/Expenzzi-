@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Transaction, getCategoryIconAndStyle } from './transaction-utils';
+import { Transaction, getCategoryIconAndStyle, getTransactionTitle } from './transaction-utils';
 
 export type { Transaction };
 
@@ -16,7 +16,7 @@ export function TransactionCard({ transaction: tx, onSelect }: TransactionCardPr
     tx.type
   );
 
-  const title = tx.comment || tx.category || `Movimiento #${tx.id}`;
+  const title = getTransactionTitle(tx);
   const subtitle = `${tx.date} • ${tx.category || tx.method || 'General'}`;
 
   const isInactive = tx.estado === false;
@@ -53,7 +53,7 @@ export function TransactionCard({ transaction: tx, onSelect }: TransactionCardPr
           {sign}$ {tx.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
         </span>
         <span className="block text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase">
-          {tx.currency}
+          {tx.time ? `${tx.time} ` : ''}{tx.currency}
         </span>
       </div>
     </button>

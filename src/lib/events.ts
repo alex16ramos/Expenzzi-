@@ -15,7 +15,7 @@ realtimeEmitter.setMaxListeners(100);
 
 export interface RealtimeEventPayload {
   type: 'MUTATION' | 'NOTIFICATION';
-  entity?: 'gasto' | 'ingreso' | 'ahorro' | 'categoria' | 'submetodo';
+  entity?: 'gasto' | 'ingreso' | 'ahorro' | 'categoria' | 'submetodo' | 'deudasaldada';
   action?: 'create' | 'update' | 'delete';
   interfaceId?: string | number;
   timestamp: string;

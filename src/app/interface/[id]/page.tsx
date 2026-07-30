@@ -17,6 +17,7 @@ import { IngresoFormModal, IngresoFormData } from '@/components/interface/Ingres
 import { AhorroFormModal, AhorroFormData } from '@/components/interface/AhorroFormModal';
 import { ComparativeReportsDashboard } from '@/components/interface/ComparativeReportsDashboard';
 import { UserExpenseChart } from '@/components/interface/UserExpenseChart';
+import { GastosCompartidosSection } from '@/components/interface/GastosCompartidosSection';
 import { CategoriaManagerModal, CategoriaItem } from '@/components/interface/CategoriaManagerModal';
 import { SubmetodoManagerModal, SubmetodoItem } from '@/components/interface/SubmetodoManagerModal';
 import { AuditHistoryModal } from '@/components/interface/AuditHistoryModal';
@@ -26,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { enqueueOfflineMutation } from '@/lib/offline-sync';
 import { itemsNav } from '@/lib/nav-items';
+import { extractTimeFromItem } from '@/lib/time-utils';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -51,7 +53,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
   // Interface state
   const [detailsState, setDetailsState] = useState({
-    interfaceData: null as { nombre: string; descripcion?: string } | null,
+    interfaceData: null as { nombre: string; descripcion?: string; linkinvitado?: string; linkvisualizador?: string } | null,
     userRole: 'Visualizador',
     categories: [] as CategoriaItem[],
     submethods: [] as SubmetodoItem[],
@@ -65,7 +67,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
   const { interfaceData, userRole, categories, submethods, members, balances } = detailsState;
 
-  const setInterfaceData = (val: { nombre: string; descripcion?: string } | null) =>
+  const setInterfaceData = (val: { nombre: string; descripcion?: string; linkinvitado?: string; linkvisualizador?: string } | null) =>
     setDetailsState((prev) => ({ ...prev, interfaceData: val }));
   const setUserRole = (val: string) => setDetailsState((prev) => ({ ...prev, userRole: val }));
   const setCategories = (val: CategoriaItem[]) => setDetailsState((prev) => ({ ...prev, categories: val }));
@@ -79,11 +81,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
   // Navigation & View state
   const [activeSection, setActiveSection] = useState<'Gastos' | 'Ingresos' | 'Ahorros' | 'Resúmenes'>('Gastos');
-  const [summarySubTab, setSummarySubTab] = useState<'comparative' | 'user'>('comparative');
+  const [summarySubTab, setSummarySubTab] = useState<'comparative' | 'user' | 'shared'>('comparative');
   const [filters, setFilters] = useState<MultiFilterState>(DEFAULT_MULTI_FILTERS);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize] = useState(4);
   const [isLoading, setIsLoading] = useState(true);
   const [isBalancesLoading, setIsBalancesLoading] = useState(true);
 
@@ -159,6 +161,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
   // 1. Fetch Interface Details
   const loadInterfaceDetails = useCallback(async () => {
+    if (!interfaceId || !/^\d+$/.test(interfaceId)) {
+      toast.error('No tienes acceso a esta interfaz o fue eliminada.');
+      window.location.href = '/dashboard';
+      return;
+    }
     try {
       const res = await fetch(`/api/interfaces/${interfaceId}/details`);
       if (!res.ok) {
@@ -250,9 +257,18 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
           const isGasto = activeSection === 'Gastos';
           const isIngreso = activeSection === 'Ingresos';
 
+          const rawIso = String(item.fechaiso || item.fecha || item.fechadesde || '');
+          const { cleanComment, time } = extractTimeFromItem(
+            String(item.id),
+            String(item.comentario || ''),
+            rawIso
+          );
+          const timeFormatted = item.time ? String(item.time) : time;
+
           return {
             id: String(item.id),
             date: item.fecha ? String(item.fecha).split('T')[0] : (item.fechadesde ? String(item.fechadesde).split('T')[0] : 'Hoy'),
+            time: timeFormatted,
             user: String(item.responsableNombre || 'Usuario'),
             avatar: item.responsableFotoPerfil ? String(item.responsableFotoPerfil) : null,
             initials: String(item.responsableNombre || 'U').slice(0, 2).toUpperCase(),
@@ -261,7 +277,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
             ars: curr === 'ARS' ? amt.toLocaleString('es-AR') : (amt * 1100).toLocaleString('es-AR'),
             usd: curr === 'USD' ? String(amt) : (amt / 1100).toFixed(1),
             uyu: (amt * 0.04).toFixed(0),
-            comment: String(item.comentario || ''),
+            comment: cleanComment,
             method: item.submetodoNombre ? `${item.metodoBase || ''} - ${item.submetodoNombre}` : String(item.categoriaNombre || item.periodoaporte || 'General'),
             category: catName,
             type: isGasto ? 'Gasto' : isIngreso ? 'Ingreso' : 'Ahorro',
@@ -474,6 +490,8 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         idcategoria: raw?.idcategoria ? String(raw.idcategoria) : undefined,
         idsubmetodopago: raw?.idsubmetodopago ? String(raw.idsubmetodopago) : undefined,
         responsablegasto: raw?.responsablegasto ? String(raw.responsablegasto) : undefined,
+        escompartido: Boolean(raw?.escompartido),
+        participantes: Array.isArray(raw?.participantes) ? raw.participantes : [],
       });
       setIsGastoModalOpen(true);
     } else if (activeSection === 'Ingresos') {
@@ -745,7 +763,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     [interfaceId, loadInterfaceDetails]
   );
 
-  // Sorted Transactions
+  // Sorted Transactions (Most recent first by date, time and ID)
   const sortedTransactions = useMemo(() => {
     return [...transactions].sort((a, b) => {
       if (sortBy === 'amount') {
@@ -754,7 +772,13 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       if (sortBy === 'user') {
         return sortOrder === 'desc' ? b.user.localeCompare(a.user) : a.user.localeCompare(b.user);
       }
-      return sortOrder === 'desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
+      const rawA = String(a.rawItem?.fechaiso || a.rawItem?.fecha || a.date || '');
+      const rawB = String(b.rawItem?.fechaiso || b.rawItem?.fecha || b.date || '');
+      const cmpDate = rawB.localeCompare(rawA);
+      if (cmpDate !== 0) return sortOrder === 'desc' ? cmpDate : -cmpDate;
+      const numA = Number(a.id) || 0;
+      const numB = Number(b.id) || 0;
+      return sortOrder === 'desc' ? numB - numA : numA - numB;
     });
   }, [transactions, sortBy, sortOrder]);
 
@@ -896,11 +920,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
                   {activeSection === 'Resúmenes' ? (
                     <div className="space-y-4">
-                      <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs">
+                      <div className="flex flex-col sm:flex-row bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs gap-1 overflow-x-auto no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                         <button
                           type="button"
                           onClick={() => setSummarySubTab('comparative')}
-                          className={`flex-1 py-2 rounded-xl font-bold transition-colors ${summarySubTab === 'comparative'
+                          className={`flex-1 py-2 px-3 rounded-xl font-bold transition-colors text-center ${summarySubTab === 'comparative'
                             ? 'bg-indigo-600 text-white shadow-md'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                             }`}
@@ -910,19 +934,31 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
                         <button
                           type="button"
                           onClick={() => setSummarySubTab('user')}
-                          className={`flex-1 py-2 rounded-xl font-bold transition-colors ${summarySubTab === 'user'
+                          className={`flex-1 py-2 px-3 rounded-xl font-bold transition-colors text-center ${summarySubTab === 'user'
                             ? 'bg-indigo-600 text-white shadow-md'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                             }`}
                         >
                           Distribución por Integrante
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setSummarySubTab('shared')}
+                          className={`flex-1 py-2 px-3 rounded-xl font-bold transition-colors text-center ${summarySubTab === 'shared'
+                            ? 'bg-indigo-600 text-white shadow-md'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                        >
+                          Gastos Compartidos & Deudas
+                        </button>
                       </div>
 
                       {summarySubTab === 'comparative' ? (
                         <ComparativeReportsDashboard interfaceId={interfaceId} categories={categories} />
-                      ) : (
+                      ) : summarySubTab === 'user' ? (
                         <UserExpenseChart transactions={transactions} title="Distribución de Movimientos" />
+                      ) : (
+                        <GastosCompartidosSection interfaceId={interfaceId} members={members} />
                       )}
                     </div>
                   ) : (
@@ -1120,7 +1156,7 @@ function InterfaceModalsContainer({
 }: {
   interfaceId: string;
   userRole: string;
-  interfaceData: { nombre: string; descripcion?: string } | null;
+  interfaceData: { nombre: string; descripcion?: string; linkinvitado?: string; linkvisualizador?: string } | null;
   categories: CategoriaItem[];
   submethods: SubmetodoItem[];
   members: { idusuario: string; nombreusuario: string }[];
@@ -1186,6 +1222,8 @@ function InterfaceModalsContainer({
         categories={categories}
         submethods={submethods}
         members={members}
+        onOpenCategoryManager={() => setIsCategoryModalOpen(true)}
+        onOpenSubmethodManager={() => setIsSubmethodModalOpen(true)}
       />
 
       <IngresoFormModal
@@ -1241,6 +1279,8 @@ function InterfaceModalsContainer({
         onClose={() => setIsInviteModalOpen(false)}
         interfaceId={interfaceId}
         interfaceName={interfaceData?.nombre}
+        linkinvitado={interfaceData?.linkinvitado}
+        linkvisualizador={interfaceData?.linkvisualizador}
         onInviteSent={onInviteSent}
       />
 

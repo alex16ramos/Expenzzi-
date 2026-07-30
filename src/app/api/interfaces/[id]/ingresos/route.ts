@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { TMoneda } from '@prisma/client';
 import { notifyInterfaceMembers } from '@/lib/notify-members';
+import { extractTimeFromItem, formatCommentWithTime, safeToISOString } from '@/lib/time-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,23 +103,29 @@ export async function GET(
       include: {
         usuarioResponsable: true,
       },
-      orderBy: { fecha: 'desc' },
+      orderBy: [{ fecha: 'desc' }, { idingreso: 'desc' }],
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
 
     return NextResponse.json({
-      data: ingresos.map((i) => ({
-        id: String(i.idingreso),
-        fecha: i.fecha.toISOString().split('T')[0],
-        responsableingreso: i.responsableingreso,
-        responsableNombre: i.usuarioResponsable?.nombreusuario || 'Usuario',
-        responsableFotoPerfil: i.usuarioResponsable?.fotoperfil || null,
-        moneda: i.moneda,
-        importe: Number(i.importe),
-        comentario: i.comentario || '',
-        estado: i.estado,
-      })),
+      data: ingresos.map((i) => {
+        const iso = safeToISOString(i.fecha);
+        const { cleanComment, time } = extractTimeFromItem(i.idingreso, i.comentario, iso);
+        return {
+          id: String(i.idingreso),
+          fecha: iso.split('T')[0],
+          fechaiso: iso,
+          time,
+          responsableingreso: i.responsableingreso,
+          responsableNombre: i.usuarioResponsable?.nombreusuario || 'Usuario',
+          responsableFotoPerfil: i.usuarioResponsable?.fotoperfil || null,
+          moneda: i.moneda,
+          importe: Number(i.importe),
+          comentario: cleanComment,
+          estado: i.estado,
+        };
+      }),
       pagination: {
         page,
         pageSize,
@@ -183,7 +190,7 @@ export async function POST(
         responsableingresaringreso: userId,
         moneda: moneda as TMoneda,
         importe: Number(importe),
-        comentario: comentario ? String(comentario).trim() : null,
+        comentario: formatCommentWithTime(comentario, fecha),
         idinterfazoperacion: interfaceId,
         estado: true,
       },

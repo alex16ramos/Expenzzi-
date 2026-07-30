@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save, AlertCircle, AlertTriangle } from 'lucide-react';
+import { X, Save, AlertCircle, AlertTriangle, Plus, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -22,6 +22,8 @@ export interface GastoFormData {
   comentario: string;
   idcategoria?: string;
   idsubmetodopago?: string;
+  escompartido?: boolean;
+  participantes?: string[];
 }
 
 interface GastoFormModalProps {
@@ -32,6 +34,8 @@ interface GastoFormModalProps {
   categories: CategoryOption[];
   submethods: { id: string; nombre: string; metodo: string }[];
   members: { idusuario: string; nombreusuario: string }[];
+  onOpenCategoryManager?: () => void;
+  onOpenSubmethodManager?: () => void;
 }
 
 function convertCurrency(val: number, from: string, to: string): number {
@@ -53,8 +57,17 @@ export function GastoFormModal({
   categories = [],
   submethods = [],
   members = [],
+  onOpenCategoryManager,
+  onOpenSubmethodManager,
 }: GastoFormModalProps) {
-  const [fecha, setFecha] = useState(initialData?.fecha || new Date().toISOString().split('T')[0]);
+  const [fecha, setFecha] = useState(initialData?.fecha ? initialData.fecha.split('T')[0] : new Date().toISOString().split('T')[0]);
+  const [hora, setHora] = useState(() => {
+    if (initialData?.fecha && initialData.fecha.includes('T')) {
+      return initialData.fecha.split('T')[1].slice(0, 5);
+    }
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  });
   const [moneda, setMoneda] = useState(initialData?.moneda || 'ARS');
   const [importe, setImporte] = useState(
     initialData?.importe !== undefined ? String(initialData.importe) : ''
@@ -63,6 +76,12 @@ export function GastoFormModal({
   const [idcategoria, setIdcategoria] = useState(initialData?.idcategoria || '');
   const [idsubmetodopago, setIdsubmetodopago] = useState(initialData?.idsubmetodopago || '');
   const [responsablegasto, setResponsablegasto] = useState(initialData?.responsablegasto || '');
+  const [escompartido, setEscompartido] = useState<boolean>(initialData?.escompartido ?? false);
+  const [selectedParticipants, setSelectedParticipants] = useState<string[]>(
+    initialData?.participantes && initialData.participantes.length > 0
+      ? initialData.participantes
+      : members.map((m) => m.idusuario)
+  );
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -94,6 +113,12 @@ export function GastoFormModal({
     }
   }
 
+  const handleToggleParticipant = (userId: string) => {
+    setSelectedParticipants((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -104,17 +129,24 @@ export function GastoFormModal({
       return;
     }
 
+    if (escompartido && selectedParticipants.length === 0) {
+      setErrorMsg('Debe seleccionar al menos un participante para dividir el gasto');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await onSave({
         idgasto: initialData?.idgasto,
-        fecha,
+        fecha: `${fecha}T${hora}:00`,
         moneda,
         importe: val,
         comentario,
         idcategoria: idcategoria || undefined,
         idsubmetodopago: idsubmetodopago || undefined,
         responsablegasto: responsablegasto || undefined,
+        escompartido,
+        participantes: escompartido ? selectedParticipants : [],
       });
       onClose();
     } catch (err: unknown) {
@@ -126,18 +158,18 @@ export function GastoFormModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-slate-900 rounded-2xl p-5 space-y-4 shadow-2xl border border-slate-800 text-white relative max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-slate-950/60 dark:bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl p-5 space-y-4 shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white relative max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex justify-between items-center pb-3 border-b border-slate-800 shrink-0">
-          <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+        <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
+          <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             {initialData?.idgasto ? 'Editar Gasto (CU12)' : 'Nuevo Gasto (CU12)'}
           </h3>
           <button
             type="button"
             onClick={onClose}
             aria-label="Cerrar modal de gasto"
-            className="p-1 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            className="p-1 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -168,22 +200,37 @@ export function GastoFormModal({
           )}
 
           <form onSubmit={handleSubmit} className="space-y-3">
-            {/* Fecha */}
-            <div className="space-y-1">
-              <label htmlFor="gasto-fecha" className="text-xs font-medium text-slate-300">Fecha</label>
-              <Input
-                id="gasto-fecha"
-                type="date"
-                required
-                value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-                className="bg-slate-950 text-xs"
-              />
+            {/* Fecha y Hora */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label htmlFor="gasto-fecha" className="text-xs font-medium text-slate-700 dark:text-slate-300">Fecha</label>
+                <Input
+                  id="gasto-fecha"
+                  type="date"
+                  required
+                  value={fecha}
+                  onChange={(e) => setFecha(e.target.value)}
+                  className="bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="gasto-hora" className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-indigo-500" /> Hora
+                </label>
+                <Input
+                  id="gasto-hora"
+                  type="time"
+                  required
+                  value={hora}
+                  onChange={(e) => setHora(e.target.value)}
+                  className="bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs"
+                />
+              </div>
             </div>
 
             {/* Importe y Moneda */}
             <div className="space-y-1">
-              <label htmlFor="gasto-importe" className="text-xs font-medium text-slate-300">Importe y Moneda *</label>
+              <label htmlFor="gasto-importe" className="text-xs font-medium text-slate-700 dark:text-slate-300">Importe y Moneda *</label>
               <div className="flex gap-2">
                 <Input
                   id="gasto-importe"
@@ -193,13 +240,13 @@ export function GastoFormModal({
                   placeholder="0.00"
                   value={importe}
                   onChange={(e) => setImporte(e.target.value)}
-                  className="flex-1 bg-slate-950 font-semibold"
+                  className="flex-1 bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-semibold"
                 />
                 <select
                   value={moneda}
                   onChange={(e) => setMoneda(e.target.value)}
                   aria-label="Moneda del gasto"
-                  className="h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-xs font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
                 >
                   <option value="ARS">ARS ($)</option>
                   <option value="USD">USD (US$)</option>
@@ -211,18 +258,35 @@ export function GastoFormModal({
             {/* Categoría */}
             <div className="space-y-1">
               <div className="flex justify-between items-center">
-                <label htmlFor="gasto-categoria" className="text-xs font-medium text-slate-300">Categoría</label>
-                {selectedCategory?.estadolimite && (
-                  <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                    Límite {limitPeriod}: ${limitAmount.toLocaleString('es-AR')} {limitCurrency}
-                  </span>
-                )}
+                <label htmlFor="gasto-categoria" className="text-xs font-medium text-slate-700 dark:text-slate-300">Categoría</label>
+                <div className="flex items-center gap-2">
+                  {selectedCategory?.estadolimite && (
+                    <span className="text-[10px] font-semibold text-amber-500 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                      Límite {limitPeriod}: ${limitAmount.toLocaleString('es-AR')} {limitCurrency}
+                    </span>
+                  )}
+                  {onOpenCategoryManager && (
+                    <button
+                      type="button"
+                      onClick={onOpenCategoryManager}
+                      className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors flex items-center gap-1 bg-violet-500/10 hover:bg-violet-500/20 px-2 py-0.5 rounded-lg border border-violet-500/20"
+                    >
+                      <Plus className="w-3 h-3" /> Crear categoría
+                    </button>
+                  )}
+                </div>
               </div>
               <select
                 id="gasto-categoria"
                 value={idcategoria}
-                onChange={(e) => setIdcategoria(e.target.value)}
-                className="w-full h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-xs font-medium text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                onChange={(e) => {
+                  if (e.target.value === '__CREATE_NEW_CATEGORY__') {
+                    onOpenCategoryManager?.();
+                  } else {
+                    setIdcategoria(e.target.value);
+                  }
+                }}
+                className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
               >
                 <option value="">Sin categoría asignada</option>
                 {categories.map((c) => (
@@ -230,6 +294,11 @@ export function GastoFormModal({
                     {c.nombre} {c.estadolimite && c.importe ? `(Límite: ${c.moneda || 'ARS'} $${c.importe})` : ''}
                   </option>
                 ))}
+                {onOpenCategoryManager && (
+                  <option value="__CREATE_NEW_CATEGORY__" className="font-bold text-violet-400">
+                    + Crear nueva categoría...
+                  </option>
+                )}
               </select>
 
               {/* Status Indicator for Selected Category Limit */}
@@ -261,12 +330,29 @@ export function GastoFormModal({
 
             {/* Submétodo de Pago */}
             <div className="space-y-1">
-              <label htmlFor="gasto-submetodo" className="text-xs font-medium text-slate-300">Submétodo de Pago</label>
+              <div className="flex justify-between items-center">
+                <label htmlFor="gasto-submetodo" className="text-xs font-medium text-slate-700 dark:text-slate-300">Submétodo de Pago</label>
+                {onOpenSubmethodManager && (
+                  <button
+                    type="button"
+                    onClick={onOpenSubmethodManager}
+                    className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors flex items-center gap-1 bg-violet-500/10 hover:bg-violet-500/20 px-2 py-0.5 rounded-lg border border-violet-500/20"
+                  >
+                    <Plus className="w-3 h-3" /> Crear método
+                  </button>
+                )}
+              </div>
               <select
                 id="gasto-submetodo"
                 value={idsubmetodopago}
-                onChange={(e) => setIdsubmetodopago(e.target.value)}
-                className="w-full h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-xs font-medium text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                onChange={(e) => {
+                  if (e.target.value === '__CREATE_NEW_SUBMETHOD__') {
+                    onOpenSubmethodManager?.();
+                  } else {
+                    setIdsubmetodopago(e.target.value);
+                  }
+                }}
+                className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
               >
                 <option value="">Sin método específico</option>
                 {submethods.map((s) => (
@@ -274,18 +360,23 @@ export function GastoFormModal({
                     {s.nombre} ({s.metodo})
                   </option>
                 ))}
+                {onOpenSubmethodManager && (
+                  <option value="__CREATE_NEW_SUBMETHOD__" className="font-bold text-violet-400">
+                    + Crear nuevo método de pago...
+                  </option>
+                )}
               </select>
             </div>
 
             {/* Responsable (Optional) */}
             {members.length > 0 && (
               <div className="space-y-1">
-                <label htmlFor="gasto-responsable" className="text-xs font-medium text-slate-300">Responsable del Gasto</label>
+                <label htmlFor="gasto-responsable" className="text-xs font-medium text-slate-700 dark:text-slate-300">Responsable del Gasto</label>
                 <select
                   id="gasto-responsable"
                   value={responsablegasto}
                   onChange={(e) => setResponsablegasto(e.target.value)}
-                  className="w-full h-9 px-3 rounded-xl border border-slate-800 bg-slate-950 text-xs font-medium text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
                 >
                   <option value="">Usuario actual (predeterminado)</option>
                   {members.map((m) => (
@@ -297,26 +388,90 @@ export function GastoFormModal({
               </div>
             )}
 
+            {/* Gasto Compartido (Habilitado para 2 o más miembros) */}
+            {members.length >= 2 && (
+              <div className="p-3 bg-slate-950/90 rounded-xl border border-slate-800/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="gasto-escompartido" className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-200">
+                    <input
+                      id="gasto-escompartido"
+                      type="checkbox"
+                      checked={escompartido}
+                      onChange={(e) => {
+                        setEscompartido(e.target.checked);
+                        if (e.target.checked && selectedParticipants.length === 0) {
+                          setSelectedParticipants(members.map((m) => m.idusuario));
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500 accent-violet-600"
+                    />
+                    <span>División de gastos (Gasto Compartido)</span>
+                  </label>
+                  {escompartido && (
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                      Equitativo
+                    </span>
+                  )}
+                </div>
+
+                {escompartido && (
+                  <div className="space-y-2 pt-2 border-t border-slate-800/60 animate-in fade-in duration-200">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-[11px] font-medium text-slate-400">Participantes del Gasto:</span>
+                      <span className="text-[10px] font-semibold text-violet-400">
+                        {numericVal > 0 && selectedParticipants.length > 0
+                          ? `$${(numericVal / selectedParticipants.length).toLocaleString('es-AR', { maximumFractionDigits: 2 })} ${moneda} / persona`
+                          : `${selectedParticipants.length} miembro(s)`}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                      {members.map((m) => {
+                        const isSelected = selectedParticipants.includes(m.idusuario);
+                        return (
+                          <button
+                            key={m.idusuario}
+                            type="button"
+                            onClick={() => handleToggleParticipant(m.idusuario)}
+                            className={`flex items-center justify-between p-2 rounded-lg text-xs transition-colors border text-left ${
+                              isSelected
+                                ? 'bg-violet-950/40 border-violet-700/50 text-white font-semibold'
+                                : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:bg-slate-800/40'
+                            }`}
+                          >
+                            <span className="truncate">{m.nombreusuario}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isSelected ? 'bg-violet-500/20 text-violet-300' : 'bg-slate-800 text-slate-500'}`}>
+                              {isSelected ? '✓' : '+'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Comentario */}
             <div className="space-y-1">
-              <label htmlFor="gasto-comentario" className="text-xs font-medium text-slate-300">Comentario</label>
+              <label htmlFor="gasto-comentario" className="text-xs font-medium text-slate-700 dark:text-slate-300">Comentario</label>
               <Input
                 id="gasto-comentario"
                 type="text"
                 placeholder="Ej: Supermercado, Combustible, Cena..."
                 value={comentario}
                 onChange={(e) => setComentario(e.target.value)}
-                className="bg-slate-950 text-xs"
+                className="bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs"
               />
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2 pt-3 border-t border-slate-800">
+            <div className="flex gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
-                className="flex-1"
+                className="flex-1 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                 disabled={isSubmitting}
               >
                 Cancelar

@@ -61,6 +61,20 @@ export async function GET(
           OR: [
             { categoria: { idinterfazoperacion: interfaceId } },
             { submetodopago: { idinterfazoperacion: interfaceId } },
+            {
+              usuarioResponsable: {
+                usuarioInterfaces: {
+                  some: { idinterfazoperacion: interfaceId, fechasalida: null },
+                },
+              },
+            },
+            {
+              usuarioIngresador: {
+                usuarioInterfaces: {
+                  some: { idinterfazoperacion: interfaceId, fechasalida: null },
+                },
+              },
+            },
           ],
         },
         select: { fecha: true, moneda: true, importe: true, tasacambio: true },

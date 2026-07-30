@@ -30,7 +30,10 @@ const dateRatesCache = new Map<string, ExchangeRates>();
  */
 export async function getExchangeRatesForDate(targetDate?: Date | string | null): Promise<ExchangeRates> {
   try {
-    const d = targetDate ? new Date(targetDate) : new Date();
+    let d = targetDate ? new Date(targetDate) : new Date();
+    if (isNaN(d.getTime())) {
+      d = new Date();
+    }
     d.setHours(0, 0, 0, 0);
     const dateStr = d.toISOString().split('T')[0];
 

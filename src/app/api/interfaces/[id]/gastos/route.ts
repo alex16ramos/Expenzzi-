@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { TMoneda } from '@prisma/client';
-import { notifyInterfaceMembers } from '@/lib/notify-members';
 import { emitRealtimeEvent } from '@/lib/events';
 import { getExchangeRatesForDate } from '@/lib/exchange-rate';
+import { extractTimeFromItem, formatCommentWithTime, safeToISOString } from '@/lib/time-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +55,20 @@ export async function GET(
       OR: [
         { categoria: { idinterfazoperacion: interfaceId } },
         { submetodopago: { idinterfazoperacion: interfaceId } },
+        {
+          usuarioResponsable: {
+            usuarioInterfaces: {
+              some: { idinterfazoperacion: interfaceId, fechasalida: null },
+            },
+          },
+        },
+        {
+          usuarioIngresador: {
+            usuarioInterfaces: {
+              some: { idinterfazoperacion: interfaceId, fechasalida: null },
+            },
+          },
+        },
       ],
     };
 
@@ -134,29 +148,38 @@ export async function GET(
         usuarioResponsable: true,
         categoria: true,
         submetodopago: true,
+        participantes: true,
       },
-      orderBy: { fecha: 'desc' },
+      orderBy: [{ fecha: 'desc' }, { idgasto: 'desc' }],
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
 
     return NextResponse.json({
-      data: gastos.map((g) => ({
-        id: String(g.idgasto),
-        fecha: g.fecha.toISOString().split('T')[0],
-        responsablegasto: g.responsablegasto,
-        responsableNombre: g.usuarioResponsable?.nombreusuario || 'Usuario',
-        responsableFotoPerfil: g.usuarioResponsable?.fotoperfil || null,
-        moneda: g.moneda,
-        importe: Number(g.importe),
-        comentario: g.comentario || '',
-        idcategoria: g.idcategoria ? String(g.idcategoria) : null,
-        categoriaNombre: g.categoria?.nombre || 'Sin categoría',
-        idsubmetodopago: g.idsubmetodopago ? String(g.idsubmetodopago) : null,
-        submetodoNombre: g.submetodopago?.nombre || 'Sin método',
-        metodoBase: g.submetodopago?.metodo || 'Efectivo',
-        estado: g.estado,
-      })),
+      data: gastos.map((g) => {
+        const iso = safeToISOString(g.fecha);
+        const { cleanComment, time } = extractTimeFromItem(g.idgasto, g.comentario, iso);
+        return {
+          id: String(g.idgasto),
+          fecha: iso.split('T')[0],
+          fechaiso: iso,
+          time,
+          responsablegasto: g.responsablegasto,
+          responsableNombre: g.usuarioResponsable?.nombreusuario || 'Usuario',
+          responsableFotoPerfil: g.usuarioResponsable?.fotoperfil || null,
+          moneda: g.moneda,
+          importe: Number(g.importe),
+          comentario: cleanComment,
+          idcategoria: g.idcategoria ? String(g.idcategoria) : null,
+          categoriaNombre: g.categoria?.nombre || 'Sin categoría',
+          idsubmetodopago: g.idsubmetodopago ? String(g.idsubmetodopago) : null,
+          submetodoNombre: g.submetodopago?.nombre || 'Sin método',
+          metodoBase: g.submetodopago?.metodo || 'Efectivo',
+          estado: g.estado,
+          escompartido: g.participantes.length > 0,
+          participantes: g.participantes.map((p) => p.idusuario),
+        };
+      }),
       pagination: {
         page,
         pageSize,
@@ -190,7 +213,7 @@ export async function POST(
 
     const body = await req.json();
 
-    const { fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago } = body;
+    const { fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, escompartido, participantes } = body;
 
     if (!moneda || !importe || isNaN(Number(importe))) {
       return NextResponse.json(
@@ -227,7 +250,7 @@ export async function POST(
         moneda: moneda as TMoneda,
         importe: Number(importe),
         tasacambio: rates.usdars,
-        comentario: comentario ? String(comentario).trim() : null,
+        comentario: formatCommentWithTime(comentario, fecha),
         idcategoria: idcategoria ? BigInt(idcategoria) : null,
         idsubmetodopago: idsubmetodopago ? BigInt(idsubmetodopago) : null,
         estado: true,
@@ -239,6 +262,36 @@ export async function POST(
       },
     });
 
+    let recordedParticipants: string[] = [];
+
+    if (escompartido) {
+      let pList: string[] = Array.isArray(participantes) && participantes.length > 0 ? participantes : [];
+      if (pList.length === 0) {
+        const members = await prisma.usuarioInterfaz.findMany({
+          where: { idinterfazoperacion: interfaceId, fechasalida: null },
+          select: { idusuario: true },
+        });
+        pList = members.map((m) => m.idusuario);
+      }
+      if (pList.length > 0) {
+        for (const pId of pList) {
+          await prisma.usuario.upsert({
+            where: { idusuario: pId },
+            update: {},
+            create: { idusuario: pId, nombreusuario: 'Usuario', email: `${pId}@expenzzi.local` },
+          });
+        }
+        await prisma.gastoParticipante.createMany({
+          data: pList.map((pId) => ({
+            idgasto: newGasto.idgasto,
+            idusuario: pId,
+          })),
+          skipDuplicates: true,
+        });
+        recordedParticipants = pList;
+      }
+    }
+
     const [emisor, interfaz] = await Promise.all([
       prisma.usuario.findUnique({ where: { idusuario: userId } }),
       prisma.interfazOperacion.findUnique({ where: { idinterfazoperacion: interfaceId } }),
@@ -247,13 +300,82 @@ export async function POST(
     const interfazNombre = interfaz?.nombre || 'la interfaz';
     const formattedAmount = `${Number(importe).toLocaleString('es-AR')} ${moneda}`;
 
-    notifyInterfaceMembers({
-      idinterfazoperacion: interfaceId,
-      idemisor: userId,
-      tipo: 'NUEVO_GASTO',
-      titulo: 'Nuevo Gasto Registrado',
-      mensaje: `${emisorNombre} registró un gasto de ${formattedAmount}${comentario ? ` ("${comentario}")` : ''} en "${interfazNombre}".`,
+    const allMembers = await prisma.usuarioInterfaz.findMany({
+      where: {
+        idinterfazoperacion: interfaceId,
+        idusuario: { not: userId },
+      },
+      select: { idusuario: true },
     });
+
+    const notifiedUserIds = new Set<string>();
+    const notificationsToCreate: {
+      idreceptor: string;
+      idemisor: string;
+      tipo: string;
+      titulo: string;
+      mensaje: string;
+      idinterfazoperacion: bigint;
+      estado: string;
+      leido: boolean;
+    }[] = [];
+
+    // 1. Target notification for assigned user
+    if (respUser && respUser !== userId) {
+      notificationsToCreate.push({
+        idreceptor: respUser,
+        idemisor: userId,
+        tipo: 'GASTO_ASIGNADO',
+        titulo: 'Gasto Asignado',
+        mensaje: `${emisorNombre} te asignó un gasto de ${formattedAmount}${comentario ? ` ("${comentario}")` : ''} en "${interfazNombre}".`,
+        idinterfazoperacion: interfaceId,
+        estado: 'Informativa',
+        leido: false,
+      });
+      notifiedUserIds.add(respUser);
+    }
+
+    // 2. Target notification for shared participants
+    if (escompartido && recordedParticipants.length > 0) {
+      for (const pId of recordedParticipants) {
+        if (pId !== userId && !notifiedUserIds.has(pId)) {
+          notificationsToCreate.push({
+            idreceptor: pId,
+            idemisor: userId,
+            tipo: 'GASTO_COMPARTIDO',
+            titulo: 'Gasto Compartido',
+            mensaje: `${emisorNombre} incluyó tu participación en un gasto compartido de ${formattedAmount}${comentario ? ` ("${comentario}")` : ''} en "${interfazNombre}".`,
+            idinterfazoperacion: interfaceId,
+            estado: 'Informativa',
+            leido: false,
+          });
+          notifiedUserIds.add(pId);
+        }
+      }
+    }
+
+    // 3. General notification for remaining members
+    for (const m of allMembers) {
+      if (!notifiedUserIds.has(m.idusuario)) {
+        notificationsToCreate.push({
+          idreceptor: m.idusuario,
+          idemisor: userId,
+          tipo: 'NUEVO_GASTO',
+          titulo: 'Nuevo Gasto Registrado',
+          mensaje: `${emisorNombre} registró un gasto de ${formattedAmount}${comentario ? ` ("${comentario}")` : ''} en "${interfazNombre}".`,
+          idinterfazoperacion: interfaceId,
+          estado: 'Informativa',
+          leido: false,
+        });
+        notifiedUserIds.add(m.idusuario);
+      }
+    }
+
+    if (notificationsToCreate.length > 0) {
+      await prisma.notificacion.createMany({
+        data: notificationsToCreate,
+      });
+    }
 
     emitRealtimeEvent(String(interfaceId), { type: 'MUTATION', entity: 'gasto', action: 'create' });
 
@@ -273,6 +395,8 @@ export async function POST(
         submetodoNombre: newGasto.submetodopago?.nombre || 'Sin método',
         metodoBase: newGasto.submetodopago?.metodo || 'Efectivo',
         estado: newGasto.estado,
+        escompartido: recordedParticipants.length > 0,
+        participantes: recordedParticipants,
       },
     });
   } catch (err: unknown) {
@@ -287,7 +411,8 @@ export async function POST(
  * Update an existing Gasto
  */
 export async function PUT(
-  req: Request
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromSession();
@@ -295,8 +420,11 @@ export async function PUT(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
+    const resolvedParams = await params;
+    const interfaceId = BigInt(resolvedParams.id);
+
     const body = await req.json();
-    const { idgasto, fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, estado } = body;
+    const { idgasto, fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, estado, escompartido, participantes } = body;
 
     if (!idgasto) {
       return NextResponse.json({ error: 'idgasto es requerido' }, { status: 400 });
@@ -309,7 +437,7 @@ export async function PUT(
         ...(responsablegasto && { responsablegasto }),
         ...(moneda && { moneda: moneda as TMoneda }),
         ...(importe !== undefined && { importe: Number(importe) }),
-        ...(comentario !== undefined && { comentario: String(comentario).trim() || null }),
+        ...(comentario !== undefined && { comentario: formatCommentWithTime(comentario, fecha) }),
         ...(idcategoria !== undefined && { idcategoria: idcategoria ? BigInt(idcategoria) : null }),
         ...(idsubmetodopago !== undefined && { idsubmetodopago: idsubmetodopago ? BigInt(idsubmetodopago) : null }),
         ...(estado !== undefined && { estado: Boolean(estado) }),
@@ -320,6 +448,44 @@ export async function PUT(
         submetodopago: true,
       },
     });
+
+    let currentParticipants: string[] = [];
+
+    if (escompartido !== undefined) {
+      await prisma.gastoParticipante.deleteMany({ where: { idgasto: BigInt(idgasto) } });
+      if (escompartido) {
+        let pList: string[] = Array.isArray(participantes) && participantes.length > 0 ? participantes : [];
+        if (pList.length === 0) {
+          const members = await prisma.usuarioInterfaz.findMany({
+            where: { idinterfazoperacion: interfaceId, fechasalida: null },
+            select: { idusuario: true },
+          });
+          pList = members.map((m) => m.idusuario);
+        }
+        if (pList.length > 0) {
+          for (const pId of pList) {
+            await prisma.usuario.upsert({
+              where: { idusuario: pId },
+              update: {},
+              create: { idusuario: pId, nombreusuario: 'Usuario', email: `${pId}@expenzzi.local` },
+            });
+          }
+          await prisma.gastoParticipante.createMany({
+            data: pList.map((pId) => ({
+              idgasto: BigInt(idgasto),
+              idusuario: pId,
+            })),
+            skipDuplicates: true,
+          });
+          currentParticipants = pList;
+        }
+      }
+    } else {
+      const existing = await prisma.gastoParticipante.findMany({
+        where: { idgasto: BigInt(idgasto) },
+      });
+      currentParticipants = existing.map((p) => p.idusuario);
+    }
 
     return NextResponse.json({
       success: true,
@@ -337,6 +503,8 @@ export async function PUT(
         submetodoNombre: updated.submetodopago?.nombre || 'Sin método',
         metodoBase: updated.submetodopago?.metodo || 'Efectivo',
         estado: updated.estado,
+        escompartido: currentParticipants.length > 0,
+        participantes: currentParticipants,
       },
     });
   } catch (err: unknown) {

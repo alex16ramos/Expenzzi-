@@ -314,24 +314,21 @@ export default function DashboardPage() {
       const res = await fetch('/api/interfaces/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: joinCode.trim() }),
+        body: JSON.stringify({ codigo: joinCode.trim() }),
       });
-      if (!res.ok) {
-        toast.error('No se pudo unirse a la interfaz');
-        return;
-      }
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok && data.success) {
         toast.success(data.message || 'Te has unido a la interfaz');
         setIsJoinDialogOpen(false);
         setJoinCode('');
         fetchInterfaces();
-        if (data.interfaceId) {
-          window.location.href = `/interface/${data.interfaceId}`;
+        const targetId = data.interfaceId || data.data?.idinterfazoperacion;
+        if (targetId) {
+          window.location.href = `/interface/${targetId}`;
         }
       } else {
-        toast.error(data.error || 'Código de invitación inválido o expirado');
+        toast.error(data.error || 'Código de invitación inválido o la interfaz se encuentra inactiva');
       }
     } catch (err) {
       console.error('Error joining interface:', err);
@@ -574,24 +571,28 @@ export default function DashboardPage() {
         </div>
 
         {/* HERO BANNER: BALANCE CONSOLIDADO */}
-        <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-indigo-900/90 via-purple-900/90 to-slate-900 text-white border border-purple-500/30 shadow-2xl relative overflow-hidden space-y-4">
-          <div className="absolute -right-8 -bottom-8 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="p-6 sm:p-8 rounded-3xl bg-slate-200/60 dark:bg-gradient-to-br dark:from-indigo-900/90 dark:via-purple-900/90 dark:to-slate-900 text-slate-900 dark:text-white border border-slate-300/70 dark:border-purple-500/30 shadow-md dark:shadow-2xl relative overflow-hidden space-y-4 transition-colors">
+          <div className="absolute -right-8 -bottom-8 w-64 h-64 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
 
           <div className="flex flex-wrap justify-between items-center gap-2">
-            <span className="text-xs uppercase tracking-wider text-purple-200 font-bold flex items-center gap-1.5">
-              <Wallet className="w-4 h-4 text-indigo-300" /> Balance Consolidado 
-              <Badge className="text-[10px]">{selectedInterfaces.length} {selectedInterfaces.length === 1 ? 'seleccionada' : 'seleccionadas'}</Badge>
+            <span className="text-xs uppercase tracking-wider text-slate-700 dark:text-purple-200 font-extrabold flex items-center gap-1.5">
+              <Wallet className="w-4 h-4 text-indigo-600 dark:text-indigo-300" /> Balance Consolidado 
+              <Badge className="text-[10px] bg-slate-300/80 dark:bg-indigo-500/20 text-slate-800 dark:text-indigo-200 border border-slate-400/30 dark:border-indigo-500/30 font-bold">
+                {selectedInterfaces.length} {selectedInterfaces.length === 1 ? 'seleccionada' : 'seleccionadas'}
+              </Badge>
             </span>
             <div className="flex items-center gap-2">
               {/* Currency Tabs */}
-              <div className="flex bg-slate-950/80 p-1 rounded-xl border border-slate-800 text-[11px] font-bold">
+              <div className="flex bg-slate-300/80 dark:bg-slate-950/80 p-1 rounded-xl border border-slate-400/40 dark:border-slate-800 text-[11px] font-bold">
                 {(['ARS', 'USD', 'UYU'] as const).map((curr) => (
                   <button
                     type="button"
                     key={curr}
                     onClick={() => setBalanceCurrency(curr)}
                     className={`px-2.5 py-0.5 rounded-lg transition-colors cursor-pointer ${
-                      balanceCurrency === curr ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                      balanceCurrency === curr
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     {curr}
@@ -603,7 +604,7 @@ export default function DashboardPage() {
                 type="button"
                 onClick={() => setIsBalanceVisible(!isBalanceVisible)}
                 aria-label={isBalanceVisible ? 'Ocultar balance' : 'Mostrar balance'}
-                className="text-slate-200 hover:text-white text-xs flex items-center gap-1.5 bg-slate-800/70 px-3 py-1 rounded-xl border border-slate-700/50 transition-colors cursor-pointer"
+                className="text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white text-xs flex items-center gap-1.5 bg-slate-300/70 dark:bg-slate-800/70 px-3 py-1 rounded-xl border border-slate-400/40 dark:border-slate-700/50 transition-colors cursor-pointer"
               >
                 {isBalanceVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
@@ -612,21 +613,21 @@ export default function DashboardPage() {
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight flex items-baseline gap-2">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-baseline gap-2">
                 {isBalanceVisible ? (
                   <>
-                    <span className="text-2xl font-bold text-indigo-300">{currencySymbol}</span>
+                    <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-300">{currencySymbol}</span>
                     {activeConsolidated.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </>
                 ) : (
                   <>
-                    <span className="text-2xl font-bold text-indigo-300">{currencySymbol}</span>
+                    <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-300">{currencySymbol}</span>
                     ••••••••
                   </>
                 )}
               </h2>
-              <span className="text-xs text-slate-300/80 mt-1 flex items-center gap-1.5 mt-5">
-                <Info className="size-4"/> Suma calculada en base a las interfaces marcadas con el checkbox abajo.
+              <span className="text-xs text-slate-600 dark:text-slate-300/80 mt-1 flex items-center gap-1.5 mt-5">
+                <Info className="size-4 text-indigo-600 dark:text-indigo-300"/> Suma calculada en base a las interfaces marcadas con el checkbox abajo.
               </span>
             </div>
           </div>
@@ -721,6 +722,7 @@ export default function DashboardPage() {
                   favorites={favorites}
                   selectedInterfaceIds={selectedInterfaceIds}
                   balanceCurrency={balanceCurrency}
+                  isBalanceVisible={isBalanceVisible}
                   openCardMenuId={openCardMenuId}
                   setOpenCardMenuId={setOpenCardMenuId}
                   toggleFavorite={toggleFavorite}
@@ -768,6 +770,7 @@ function DashboardInterfaceCardItem({
   favorites,
   selectedInterfaceIds,
   balanceCurrency,
+  isBalanceVisible,
   openCardMenuId,
   setOpenCardMenuId,
   toggleFavorite,
@@ -779,6 +782,7 @@ function DashboardInterfaceCardItem({
   favorites: string[];
   selectedInterfaceIds: string[];
   balanceCurrency: 'ARS' | 'USD' | 'UYU';
+  isBalanceVisible: boolean;
   openCardMenuId: string | null;
   setOpenCardMenuId: (id: string | null) => void;
   toggleFavorite: (id: string, e: React.MouseEvent) => void;
@@ -908,7 +912,11 @@ function DashboardInterfaceCardItem({
             Balance Neto ({balanceCurrency})
           </span>
           <span className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400">
-            {currencySymbol} {(currentBalanceVal || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+            {isBalanceVisible ? (
+              `${currencySymbol} ${(currentBalanceVal || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            ) : (
+              `${currencySymbol} ••••••••`
+            )}
           </span>
         </div>
       </div>

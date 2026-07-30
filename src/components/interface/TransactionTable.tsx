@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { Transaction, getCategoryIconAndStyle } from './transaction-utils';
+import { Transaction, getCategoryIconAndStyle, getTransactionTitle } from './transaction-utils';
 
 export type SortField = 'date' | 'amount' | 'user';
 export type SortOrder = 'asc' | 'desc';
@@ -67,7 +67,7 @@ export function TransactionTable({
             tx.type
           );
 
-          const title = tx.comment || tx.category || `Movimiento #${tx.id}`;
+          const title = getTransactionTitle(tx);
           const subtitle = `${tx.date} • ${tx.category || tx.method || 'General'}`;
           const isInactive = tx.estado === false;
 
