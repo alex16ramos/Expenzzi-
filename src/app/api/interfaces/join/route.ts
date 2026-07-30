@@ -11,16 +11,17 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(req: Request) {
   try {
-    const { codigo } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const rawCode = (body?.codigo || body?.code || '') as string;
 
-    if (!codigo || typeof codigo !== 'string' || !codigo.trim()) {
+    if (!rawCode || typeof rawCode !== 'string' || !rawCode.trim()) {
       return NextResponse.json(
         { error: 'El código de invitación es obligatorio' },
         { status: 400 }
       );
     }
 
-    const cleanCode = codigo.trim();
+    const cleanCode = rawCode.trim();
     const session = await auth.getSession();
     const sessObj = session as unknown as Record<string, unknown>;
     const dataObj = sessObj?.data as Record<string, unknown> | undefined;
@@ -85,12 +86,15 @@ export async function POST(req: Request) {
       },
     });
 
+    const targetInterfaceId = String(matchedInterfaz.idinterfazoperacion);
+
     return NextResponse.json({
       success: true,
       message: `¡Te has unido exitosamente a "${matchedInterfaz.nombre}" como ${role}!`,
+      interfaceId: targetInterfaceId,
       data: {
         ...joinData,
-        idinterfazoperacion: String(joinData.idinterfazoperacion),
+        idinterfazoperacion: targetInterfaceId,
       },
     });
   } catch (err: unknown) {

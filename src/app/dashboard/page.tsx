@@ -314,24 +314,21 @@ export default function DashboardPage() {
       const res = await fetch('/api/interfaces/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: joinCode.trim() }),
+        body: JSON.stringify({ codigo: joinCode.trim() }),
       });
-      if (!res.ok) {
-        toast.error('No se pudo unirse a la interfaz');
-        return;
-      }
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok && data.success) {
         toast.success(data.message || 'Te has unido a la interfaz');
         setIsJoinDialogOpen(false);
         setJoinCode('');
         fetchInterfaces();
-        if (data.interfaceId) {
-          window.location.href = `/interface/${data.interfaceId}`;
+        const targetId = data.interfaceId || data.data?.idinterfazoperacion;
+        if (targetId) {
+          window.location.href = `/interface/${targetId}`;
         }
       } else {
-        toast.error(data.error || 'Código de invitación inválido o expirado');
+        toast.error(data.error || 'Código de invitación inválido o la interfaz se encuentra inactiva');
       }
     } catch (err) {
       console.error('Error joining interface:', err);
@@ -725,6 +722,7 @@ export default function DashboardPage() {
                   favorites={favorites}
                   selectedInterfaceIds={selectedInterfaceIds}
                   balanceCurrency={balanceCurrency}
+                  isBalanceVisible={isBalanceVisible}
                   openCardMenuId={openCardMenuId}
                   setOpenCardMenuId={setOpenCardMenuId}
                   toggleFavorite={toggleFavorite}
@@ -772,6 +770,7 @@ function DashboardInterfaceCardItem({
   favorites,
   selectedInterfaceIds,
   balanceCurrency,
+  isBalanceVisible,
   openCardMenuId,
   setOpenCardMenuId,
   toggleFavorite,
@@ -783,6 +782,7 @@ function DashboardInterfaceCardItem({
   favorites: string[];
   selectedInterfaceIds: string[];
   balanceCurrency: 'ARS' | 'USD' | 'UYU';
+  isBalanceVisible: boolean;
   openCardMenuId: string | null;
   setOpenCardMenuId: (id: string | null) => void;
   toggleFavorite: (id: string, e: React.MouseEvent) => void;
@@ -912,7 +912,11 @@ function DashboardInterfaceCardItem({
             Balance Neto ({balanceCurrency})
           </span>
           <span className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400">
-            {currencySymbol} {(currentBalanceVal || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+            {isBalanceVisible ? (
+              `${currencySymbol} ${(currentBalanceVal || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            ) : (
+              `${currencySymbol} ••••••••`
+            )}
           </span>
         </div>
       </div>
