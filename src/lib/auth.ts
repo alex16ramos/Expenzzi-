@@ -7,5 +7,6 @@ export const auth = createNeonAuth({
   logLevel: 'debug',
   cookies: {
     secret: secret || 'a-very-long-secure-fallback-cookie-secret-key-32-chars-long',
+    sameSite: 'lax',
   },
 });
