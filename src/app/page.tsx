@@ -18,6 +18,7 @@ const AUTH_TABS: { id: AuthTab; label: string; icon: React.ReactNode; color: str
 export default function LandingAuthPage() {
   const session = authClient.useSession();
   const user = session?.data?.user;
+  const isPending = session?.isPending;
 
   const [activeTab, setActiveTab] = useState<AuthTab>('login');
 
@@ -30,10 +31,10 @@ export default function LandingAuthPage() {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (user) {
+    if (!isPending && user) {
       window.location.href = '/dashboard';
     }
-  }, [user]);
+  }, [user, isPending]);
 
   // Google OAuth handler
   const handleGoogleSignIn = async () => {

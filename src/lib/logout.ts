@@ -11,22 +11,34 @@ import { toast } from 'sonner';
 export async function performSignOut() {
   try {
     await authClient.signOut().catch(() => {});
-    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+  } catch {
+    // Ignore
+  }
 
-    if (typeof document !== 'undefined') {
+  try {
+    await fetch('/api/auth/logout', { method: 'POST', cache: 'no-store' }).catch(() => {});
+  } catch {
+    // Ignore
+  }
+
+  if (typeof document !== 'undefined') {
+    try {
       document.cookie.split(';').forEach((c) => {
         const eqPos = c.indexOf('=');
         const name = eqPos > -1 ? c.substring(0, eqPos).trim() : c.trim();
         if (name) {
           document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax`;
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Strict`;
         }
       });
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {
+      // Ignore
     }
-
-    toast.success('Sesión cerrada correctamente');
-  } catch {
-    // Ignore
-  } finally {
-    window.location.href = '/';
   }
+
+  toast.success('Sesión cerrada correctamente');
+  window.location.replace('/');
 }

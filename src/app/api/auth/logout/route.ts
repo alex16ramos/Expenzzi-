@@ -12,18 +12,34 @@ export async function POST() {
     const cookieStore = await cookies();
     const allCookies = cookieStore.getAll();
 
-    for (const c of allCookies) {
-      cookieStore.delete(c.name);
-      cookieStore.set(c.name, '', { expires: new Date(0), path: '/' });
-    }
-
     const response = NextResponse.json({
       success: true,
       message: 'Sesión cerrada correctamente',
     });
 
     for (const c of allCookies) {
-      response.cookies.set(c.name, '', { expires: new Date(0), path: '/' });
+      cookieStore.delete(c.name);
+
+      // Set cookie deletion headers with explicit attributes matching SameSite lax and strict
+      response.cookies.set(c.name, '', {
+        expires: new Date(0),
+        maxAge: 0,
+        path: '/',
+        sameSite: 'lax',
+        httpOnly: true,
+      });
+      response.cookies.set(c.name, '', {
+        expires: new Date(0),
+        maxAge: 0,
+        path: '/',
+        sameSite: 'lax',
+        httpOnly: false,
+      });
+      response.cookies.set(c.name, '', {
+        expires: new Date(0),
+        maxAge: 0,
+        path: '/',
+      });
     }
 
     return response;
