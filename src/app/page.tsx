@@ -31,8 +31,12 @@ export default function LandingAuthPage() {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (!isPending && user) {
-      window.location.href = '/dashboard';
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const isLoggedOut = searchParams.get('logged_out') === '1';
+      if (!isPending && user && !isLoggedOut) {
+        window.location.href = '/dashboard';
+      }
     }
   }, [user, isPending]);
 
