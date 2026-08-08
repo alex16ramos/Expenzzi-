@@ -32,7 +32,7 @@ const KNOWN_AUTH_COOKIES = [
 
 /**
  * POST /api/auth/logout
- * Deletes all authentication & session cookies on the server and response.
+ * Deletes all authentication & session cookies on the server and response cleanly.
  */
 export async function POST() {
   try {
@@ -46,7 +46,7 @@ export async function POST() {
 
     const cookieNamesToClear = new Set<string>();
     for (const c of allCookies) {
-      cookieNamesToClear.add(c.name);
+      if (c.name) cookieNamesToClear.add(c.name);
     }
     for (const name of KNOWN_AUTH_COOKIES) {
       cookieNamesToClear.add(name);
@@ -63,38 +63,23 @@ export async function POST() {
 
       try {
         response.cookies.delete(name);
-        response.cookies.set(name, '', {
-          path: '/',
-          expires: new Date(0),
-          maxAge: 0,
-          secure: true,
-          sameSite: 'lax',
-        });
       } catch {
         // Ignore
       }
 
-      // Append multiple Set-Cookie headers directly to headers to avoid map overwriting
-      response.headers.append(
-        'Set-Cookie',
-        `${name}=; Path=/; Expires=${pastDate}; Max-Age=0; HttpOnly; Secure; SameSite=Lax`
-      );
-      response.headers.append(
-        'Set-Cookie',
-        `${name}=; Path=/; Expires=${pastDate}; Max-Age=0; HttpOnly; SameSite=Lax`
-      );
-      response.headers.append(
-        'Set-Cookie',
-        `${name}=; Path=/; Expires=${pastDate}; Max-Age=0; Secure; SameSite=Lax`
-      );
-      response.headers.append(
-        'Set-Cookie',
-        `${name}=; Path=/; Expires=${pastDate}; Max-Age=0; SameSite=Lax`
-      );
-      response.headers.append(
-        'Set-Cookie',
-        `${name}=; Path=/; Expires=${pastDate}; Max-Age=0`
-      );
+      const isSecureCookie = name.startsWith('__Secure-') || name.startsWith('__Host-') || process.env.NODE_ENV === 'production';
+
+      if (isSecureCookie) {
+        response.headers.append(
+          'Set-Cookie',
+          `${name}=; Path=/; Expires=${pastDate}; Max-Age=0; HttpOnly; Secure; SameSite=Lax`
+        );
+      } else {
+        response.headers.append(
+          'Set-Cookie',
+          `${name}=; Path=/; Expires=${pastDate}; Max-Age=0; HttpOnly; SameSite=Lax`
+        );
+      }
     }
 
     return response;

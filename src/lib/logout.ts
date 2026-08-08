@@ -66,5 +66,5 @@ export async function performSignOut() {
   }
 
   toast.success('Sesión cerrada correctamente');
-  window.location.href = '/';
+  window.location.href = '/?logged_out=1';
 }
