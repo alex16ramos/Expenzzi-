@@ -14,8 +14,8 @@ import { getAvatarBg, getAvatarClass } from '@/lib/avatar-utils';
 export interface HeaderMember {
   idusuario: string;
   nombreusuario: string;
-  email: string;
-  fotoperfil: string | null;
+  email?: string;
+  fotoperfil?: string | null;
   rol?: string;
 }
 

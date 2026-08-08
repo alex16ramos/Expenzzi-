@@ -303,14 +303,14 @@ export function GastoFormModal({
 
               {/* Status Indicator for Selected Category Limit */}
               {selectedCategory?.estadolimite && limitAmount > 0 && (
-                <div className="p-2.5 bg-slate-950/80 rounded-xl border border-slate-800 space-y-1 mt-1">
+                <div className="p-2.5 bg-slate-100 dark:bg-slate-950/80 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1 mt-1">
                   <div className="flex justify-between items-center text-[10px]">
-                    <span className="text-slate-400">Consumido este período:</span>
-                    <span className="font-semibold text-slate-200">
+                    <span className="text-slate-600 dark:text-slate-400">Consumido este período:</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
                       ${currentUsed.toLocaleString('es-AR')} / ${limitAmount.toLocaleString('es-AR')} {limitCurrency}
                     </span>
                   </div>
-                  <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-slate-200 dark:bg-slate-900 rounded-full h-1.5 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-colors duration-300 ${
                         isLimitExceeded
@@ -390,9 +390,9 @@ export function GastoFormModal({
 
             {/* Gasto Compartido (Habilitado para 2 o más miembros) */}
             {members.length >= 2 && (
-              <div className="p-3 bg-slate-950/90 rounded-xl border border-slate-800/80 space-y-2">
+              <div className="p-3 bg-slate-100 dark:bg-slate-950/90 rounded-xl border border-slate-200 dark:border-slate-800/80 space-y-2">
                 <div className="flex items-center justify-between">
-                  <label htmlFor="gasto-escompartido" className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-200">
+                  <label htmlFor="gasto-escompartido" className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-900 dark:text-slate-200">
                     <input
                       id="gasto-escompartido"
                       type="checkbox"
@@ -403,22 +403,22 @@ export function GastoFormModal({
                           setSelectedParticipants(members.map((m) => m.idusuario));
                         }
                       }}
-                      className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500 accent-violet-600"
+                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-violet-600 focus:ring-violet-500 accent-violet-600"
                     />
                     <span>División de gastos (Gasto Compartido)</span>
                   </label>
                   {escompartido && (
-                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                       Equitativo
                     </span>
                   )}
                 </div>
 
                 {escompartido && (
-                  <div className="space-y-2 pt-2 border-t border-slate-800/60 animate-in fade-in duration-200">
+                  <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800/60 animate-in fade-in duration-200">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-[11px] font-medium text-slate-400">Participantes del Gasto:</span>
-                      <span className="text-[10px] font-semibold text-violet-400">
+                      <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Participantes del Gasto:</span>
+                      <span className="text-[10px] font-semibold text-violet-600 dark:text-violet-400">
                         {numericVal > 0 && selectedParticipants.length > 0
                           ? `$${(numericVal / selectedParticipants.length).toLocaleString('es-AR', { maximumFractionDigits: 2 })} ${moneda} / persona`
                           : `${selectedParticipants.length} miembro(s)`}
@@ -433,14 +433,14 @@ export function GastoFormModal({
                             key={m.idusuario}
                             type="button"
                             onClick={() => handleToggleParticipant(m.idusuario)}
-                            className={`flex items-center justify-between p-2 rounded-lg text-xs transition-colors border text-left ${
+                            className={`flex items-center justify-between p-2 rounded-lg text-xs transition-colors border text-left cursor-pointer ${
                               isSelected
-                                ? 'bg-violet-950/40 border-violet-700/50 text-white font-semibold'
-                                : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:bg-slate-800/40'
+                                ? 'bg-violet-100 dark:bg-violet-950/40 border-violet-300 dark:border-violet-700/50 text-violet-950 dark:text-white font-semibold'
+                                : 'bg-slate-200/50 dark:bg-slate-900/40 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800/40'
                             }`}
                           >
                             <span className="truncate">{m.nombreusuario}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isSelected ? 'bg-violet-500/20 text-violet-300' : 'bg-slate-800 text-slate-500'}`}>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isSelected ? 'bg-violet-200 dark:bg-violet-500/20 text-violet-800 dark:text-violet-300' : 'bg-slate-300 dark:bg-slate-800 text-slate-600 dark:text-slate-500'}`}>
                               {isSelected ? '✓' : '+'}
                             </span>
                           </button>

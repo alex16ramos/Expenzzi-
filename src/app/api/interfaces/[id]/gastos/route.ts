@@ -5,6 +5,7 @@ import { TMoneda } from '@prisma/client';
 import { emitRealtimeEvent } from '@/lib/events';
 import { getExchangeRatesForDate } from '@/lib/exchange-rate';
 import { extractTimeFromItem, formatCommentWithTime, safeToISOString } from '@/lib/time-utils';
+import { checkUserInterfaceMembership } from '@/lib/membership-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,20 +56,6 @@ export async function GET(
       OR: [
         { categoria: { idinterfazoperacion: interfaceId } },
         { submetodopago: { idinterfazoperacion: interfaceId } },
-        {
-          usuarioResponsable: {
-            usuarioInterfaces: {
-              some: { idinterfazoperacion: interfaceId, fechasalida: null },
-            },
-          },
-        },
-        {
-          usuarioIngresador: {
-            usuarioInterfaces: {
-              some: { idinterfazoperacion: interfaceId, fechasalida: null },
-            },
-          },
-        },
       ],
     };
 
@@ -211,6 +198,17 @@ export async function POST(
     const resolvedParams = await params;
     const interfaceId = BigInt(resolvedParams.id);
 
+    const { hasAccess, role } = await checkUserInterfaceMembership(userId, interfaceId);
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+    }
+    if (role === 'Visualizador') {
+      return NextResponse.json(
+        { error: 'El rol Visualizador no tiene permisos para crear gastos.' },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
 
     const { fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, escompartido, participantes } = body;
@@ -242,6 +240,17 @@ export async function POST(
     const gastoFecha = fecha ? new Date(fecha) : new Date();
     const rates = await getExchangeRatesForDate(gastoFecha);
 
+    let catIdToUse = idcategoria ? BigInt(idcategoria) : null;
+    if (!catIdToUse && !idsubmetodopago) {
+      const defaultCat = await prisma.categoria.findFirst({
+        where: { idinterfazoperacion: interfaceId, estado: true },
+        orderBy: { idcategoria: 'asc' },
+      });
+      if (defaultCat) {
+        catIdToUse = defaultCat.idcategoria;
+      }
+    }
+
     const newGasto = await prisma.gasto.create({
       data: {
         fecha: gastoFecha,
@@ -251,7 +260,7 @@ export async function POST(
         importe: Number(importe),
         tasacambio: rates.usdars,
         comentario: formatCommentWithTime(comentario, fecha),
-        idcategoria: idcategoria ? BigInt(idcategoria) : null,
+        idcategoria: catIdToUse,
         idsubmetodopago: idsubmetodopago ? BigInt(idsubmetodopago) : null,
         estado: true,
       },
@@ -423,6 +432,17 @@ export async function PUT(
     const resolvedParams = await params;
     const interfaceId = BigInt(resolvedParams.id);
 
+    const { hasAccess, role } = await checkUserInterfaceMembership(userId, interfaceId);
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+    }
+    if (role === 'Visualizador') {
+      return NextResponse.json(
+        { error: 'El rol Visualizador no tiene permisos para editar gastos.' },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
     const { idgasto, fecha, responsablegasto, moneda, importe, comentario, idcategoria, idsubmetodopago, estado, escompartido, participantes } = body;
 
@@ -519,12 +539,27 @@ export async function PUT(
  * Soft delete Gasto by setting `estado = false` (RF5, RF6, RF7)
  */
 export async function DELETE(
-  req: Request
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromSession();
     if (!userId) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const resolvedParams = await params;
+    const interfaceId = BigInt(resolvedParams.id);
+
+    const { hasAccess, role } = await checkUserInterfaceMembership(userId, interfaceId);
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+    }
+    if (role === 'Visualizador') {
+      return NextResponse.json(
+        { error: 'El rol Visualizador no tiene permisos para eliminar gastos.' },
+        { status: 403 }
+      );
     }
 
     const { searchParams } = new URL(req.url);

@@ -57,7 +57,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
     userRole: 'Visualizador',
     categories: [] as CategoriaItem[],
     submethods: [] as SubmetodoItem[],
-    members: [] as { idusuario: string; nombreusuario: string }[],
+    members: [] as { idusuario: string; nombreusuario: string; email?: string; fotoperfil?: string | null; rol?: string }[],
     balances: {
       ARS: { ingresos: 0, gastos: 0, ahorros: 0, net: 0 },
       USD: { ingresos: 0, gastos: 0, ahorros: 0, net: 0 },
@@ -72,7 +72,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
   const setUserRole = (val: string) => setDetailsState((prev) => ({ ...prev, userRole: val }));
   const setCategories = (val: CategoriaItem[]) => setDetailsState((prev) => ({ ...prev, categories: val }));
   const setSubmethods = (val: SubmetodoItem[]) => setDetailsState((prev) => ({ ...prev, submethods: val }));
-  const setMembers = (val: { idusuario: string; nombreusuario: string }[]) =>
+  const setMembers = (val: { idusuario: string; nombreusuario: string; email?: string; fotoperfil?: string | null; rol?: string }[]) =>
     setDetailsState((prev) => ({ ...prev, members: val }));
   const setBalances = (val: GeneralBalances) => setDetailsState((prev) => ({ ...prev, balances: val }));
 
@@ -868,6 +868,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
             onMenuClick={() => setIsSideMenuOpen(!isSideMenuOpen)}
             onNotificationHandled={loadInterfaceDetails}
             onOpenInvite={() => setIsInviteModalOpen(true)}
+            members={members}
           />
 
           <main className="py-2 px-4 pb-40 sm:py-4 lg:py-6">
@@ -1049,11 +1050,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       </div >
 
       {/* FLOATING ACTION BUTTON (FAB) */}
-      < FabButton
-        onOpenGastoModal={() => { setEditingGasto(null); setIsGastoModalOpen(true); }
-        }
+      <FabButton
+        onOpenGastoModal={() => { setEditingGasto(null); setIsGastoModalOpen(true); }}
         onOpenIngresoModal={() => { setEditingIngreso(null); setIsIngresoModalOpen(true); }}
         onOpenAhorroModal={() => { setEditingAhorro(null); setIsAhorroModalOpen(true); }}
+        userRole={userRole}
       />
 
       {/* MOBILE BOTTOM SHEET FOR TRANSACTION DETAIL */}
@@ -1076,6 +1077,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
               tx.comment || tx.user
             )
           }
+          userRole={userRole}
         />
       </div>
 
@@ -1159,7 +1161,7 @@ function InterfaceModalsContainer({
   interfaceData: { nombre: string; descripcion?: string; linkinvitado?: string; linkvisualizador?: string } | null;
   categories: CategoriaItem[];
   submethods: SubmetodoItem[];
-  members: { idusuario: string; nombreusuario: string }[];
+  members: { idusuario: string; nombreusuario: string; email?: string; fotoperfil?: string | null; rol?: string }[];
   modalsState: {
     isGastoModalOpen: boolean;
     editingGasto: GastoFormData | null;
@@ -1262,6 +1264,7 @@ function InterfaceModalsContainer({
         onCreate={onCreateSubmethod}
         onUpdate={onUpdateSubmethod}
         onDelete={onDeleteSubmethod}
+        userRole={userRole}
       />
 
       <AuditHistoryModal

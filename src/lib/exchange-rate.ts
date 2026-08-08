@@ -182,20 +182,27 @@ export async function getTodayExchangeRates(): Promise<ExchangeRates> {
     }
 
     // 3. Persist today's rates into PostgreSQL `cambio` table
-    const created = await prisma.cambio.create({
-      data: {
-        fecha: today,
-        cambiousdars: usdars,
-        cambiousduyu: usduyu,
-        cambioarsusd: 1 / usdars,
-        cambiouyuusd: 1 / usduyu,
-        cambioarsuyu: usduyu / usdars,
-        cambiouyuars: usdars / usduyu,
-      },
-    });
+    let finalUsdArs = usdars;
+    let finalUsdUyu = usduyu;
 
-    const finalUsdArs = Number(created.cambiousdars || usdars);
-    const finalUsdUyu = Number(created.cambiousduyu || usduyu);
+    try {
+      const created = await prisma.cambio.create({
+        data: {
+          fecha: today,
+          cambiousdars: usdars,
+          cambiousduyu: usduyu,
+          cambioarsusd: 1 / usdars,
+          cambiouyuusd: 1 / usduyu,
+          cambioarsuyu: usduyu / usdars,
+          cambiouyuars: usdars / usduyu,
+        },
+      });
+      if (created.cambiousdars) finalUsdArs = Number(created.cambiousdars);
+      if (created.cambiousduyu) finalUsdUyu = Number(created.cambiousduyu);
+    } catch (dbErr) {
+      // Ignore DB persistence error (e.g. RLS policy on cambio table) and use fetched rates
+      console.warn('[ExchangeRates] DB insert skipped due to policy or duplicate:', (dbErr as Error)?.message || dbErr);
+    }
 
     const rates: ExchangeRates = {
       usdars: finalUsdArs,

@@ -28,7 +28,7 @@ export function AhorroFormModal({
   initialData,
   userRole,
 }: AhorroFormModalProps) {
-  const isAdmin = userRole === 'Administrador';
+  const isVisualizador = userRole === 'Visualizador';
 
   const [fechadesde, setFechadesde] = useState(
     () => initialData?.fechadesde || new Date().toISOString().split('T')[0]
@@ -108,13 +108,13 @@ export function AhorroFormModal({
           </button>
         </div>
 
-        {!isAdmin && (
+        {isVisualizador && (
           <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-700 dark:text-amber-200 flex items-start gap-2">
             <ShieldAlert className="w-4 h-4 shrink-0 text-amber-500 dark:text-amber-400 mt-0.5" />
             <div>
-              <p className="font-semibold">Acceso Restringido (RF15)</p>
+              <p className="font-semibold">Acceso Restringido</p>
               <p className="text-[11px] text-amber-600 dark:text-amber-300/80 mt-0.5">
-                Su rol actual es <strong className="underline">{userRole}</strong>. Solo los Administradores de esta interfaz pueden crear o editar fondos de ahorro.
+                Su rol actual es <strong className="underline">{userRole}</strong>. Los usuarios con rol de solo lectura no pueden crear o editar fondos de ahorro.
               </p>
             </div>
           </div>
@@ -136,7 +136,7 @@ export function AhorroFormModal({
             <select
               id="ahorro-periodo"
               value={periodoaporte}
-              disabled={!isAdmin}
+              disabled={isVisualizador}
               onChange={(e) =>
                 setPeriodoaporte(e.target.value as 'Semanal' | 'Mensual' | 'Trimestral' | 'Anual')
               }
@@ -158,7 +158,7 @@ export function AhorroFormModal({
                 type="number"
                 step="any"
                 required
-                disabled={!isAdmin}
+                disabled={isVisualizador}
                 placeholder="0.00"
                 value={importe}
                 onChange={(e) => setImporte(e.target.value)}
@@ -166,7 +166,7 @@ export function AhorroFormModal({
               />
               <select
                 value={moneda}
-                disabled={!isAdmin}
+                disabled={isVisualizador}
                 onChange={(e) => setMoneda(e.target.value)}
                 aria-label="Moneda del ahorro"
                 className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50"
@@ -186,7 +186,7 @@ export function AhorroFormModal({
                 id="ahorro-desde"
                 type="date"
                 required
-                disabled={!isAdmin}
+                disabled={isVisualizador}
                 value={fechadesde}
                 onChange={(e) => setFechadesde(e.target.value)}
                 className="bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs disabled:opacity-50"
@@ -198,7 +198,7 @@ export function AhorroFormModal({
                 id="ahorro-hasta"
                 type="date"
                 required
-                disabled={!isAdmin}
+                disabled={isVisualizador}
                 value={fechahasta}
                 onChange={(e) => setFechahasta(e.target.value)}
                 className="bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs disabled:opacity-50"
@@ -212,7 +212,7 @@ export function AhorroFormModal({
             <Input
               id="ahorro-comentario"
               type="text"
-              disabled={!isAdmin}
+              disabled={isVisualizador}
               placeholder="Ej: Fondo de emergencia, Vacaciones, Auto..."
               value={comentario}
               onChange={(e) => setComentario(e.target.value)}
@@ -233,7 +233,7 @@ export function AhorroFormModal({
             </Button>
             <Button
               type="submit"
-              disabled={!isAdmin || isSubmitting}
+              disabled={isVisualizador || isSubmitting}
               className="flex-1 bg-violet-600 hover:bg-violet-700 text-white gap-1.5"
             >
               <Save className="w-4 h-4" />
