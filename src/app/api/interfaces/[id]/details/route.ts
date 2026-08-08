@@ -133,6 +133,7 @@ export async function GET(
         idusuario: m.idusuario,
         nombreusuario: m.usuario?.nombreusuario || 'Usuario',
         email: m.usuario?.email || '',
+        fotoperfil: m.usuario?.fotoperfil || null,
         rol: m.rol,
       })),
       cambio: latestCambio
