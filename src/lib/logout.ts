@@ -27,16 +27,36 @@ export async function performSignOut() {
 
   if (typeof document !== 'undefined') {
     try {
+      const knownNames = [
+        '__Secure-neon-auth.session_token',
+        '__Secure-neon-auth.local.session_data',
+        '__Secure-neon-auth.session_challange',
+        'neon-auth.session_token',
+        'neon-auth.local.session_data',
+        'better-auth.session_token',
+        '__Secure-better-auth.session_token',
+        '__Host-better-auth.session_token',
+        'better-auth.session_data',
+        '__Secure-better-auth.session_data',
+        'neon_auth_session',
+        '__Secure-neon_auth_session',
+      ];
+
       const cookies = document.cookie.split(';');
       for (const c of cookies) {
         const eqPos = c.indexOf('=');
         const name = eqPos > -1 ? c.substring(0, eqPos).trim() : c.trim();
-        if (name) {
-          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax`;
-          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Strict`;
-          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;Secure;SameSite=Lax`;
+        if (name && !knownNames.includes(name)) {
+          knownNames.push(name);
         }
+      }
+
+      for (const name of knownNames) {
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax`;
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Strict`;
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;Secure;SameSite=Lax`;
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;Secure;SameSite=None`;
       }
       localStorage.clear();
       sessionStorage.clear();
