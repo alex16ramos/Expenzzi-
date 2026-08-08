@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { checkUserInterfaceMembership } from '@/lib/membership-cache';
+import { getTodayExchangeRates } from '@/lib/exchange-rate';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,11 +36,39 @@ export async function GET(
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
     }
 
-    // Fetch members of interface
-    const membersData = await prisma.usuarioInterfaz.findMany({
-      where: { idinterfazoperacion: interfaceId, fechasalida: null },
-      include: { usuario: true },
-    });
+    // Fetch members, expenses, settlements and exchange rates in parallel
+    const [membersData, gastosData, settlementsData, rates] = await Promise.all([
+      prisma.usuarioInterfaz.findMany({
+        where: { idinterfazoperacion: interfaceId, fechasalida: null },
+        include: { usuario: true },
+      }),
+      prisma.gasto.findMany({
+        where: {
+          estado: true,
+          participantes: { some: {} },
+          OR: [
+            { categoria: { idinterfazoperacion: interfaceId } },
+            { submetodopago: { idinterfazoperacion: interfaceId } },
+          ],
+        },
+        include: {
+          usuarioResponsable: true,
+          participantes: {
+            include: { usuario: true },
+          },
+        },
+        orderBy: { fecha: 'desc' },
+      }),
+      prisma.deudaSaldada.findMany({
+        where: { idinterfazoperacion: interfaceId, estado: true },
+        include: {
+          deudor: true,
+          acreedor: true,
+        },
+        orderBy: { fechacreacion: 'desc' },
+      }),
+      getTodayExchangeRates(),
+    ]);
 
     const members = membersData.map((m) => ({
       idusuario: m.idusuario,
@@ -48,48 +77,7 @@ export async function GET(
       email: m.usuario?.email || '',
     }));
 
-    // Fetch all active gastos with participants belonging to this interface
-    const gastosData = await prisma.gasto.findMany({
-      where: {
-        estado: true,
-        participantes: { some: {} },
-        OR: [
-          { categoria: { idinterfazoperacion: interfaceId } },
-          { submetodopago: { idinterfazoperacion: interfaceId } },
-          {
-            usuarioResponsable: {
-              usuarioInterfaces: {
-                some: { idinterfazoperacion: interfaceId },
-              },
-            },
-          },
-          {
-            usuarioIngresador: {
-              usuarioInterfaces: {
-                some: { idinterfazoperacion: interfaceId },
-              },
-            },
-          },
-        ],
-      },
-      include: {
-        usuarioResponsable: true,
-        participantes: {
-          include: { usuario: true },
-        },
-      },
-      orderBy: { fecha: 'desc' },
-    });
 
-    // Fetch all active debt settlements for this interface
-    const settlementsData = await prisma.deudaSaldada.findMany({
-      where: { idinterfazoperacion: interfaceId, estado: true },
-      include: {
-        deudor: true,
-        acreedor: true,
-      },
-      orderBy: { fechacreacion: 'desc' },
-    });
 
     // Pairwise debt calculation map: rawDebts[moneda][deudorId][acreedorId] = amount
     const rawDebts: Record<string, Record<string, Record<string, number>>> = {
@@ -263,6 +251,7 @@ export async function GET(
       sharedExpenses,
       netBalances,
       settlements,
+      rates,
     });
   } catch (err: unknown) {
     console.error('[API /api/interfaces/[id]/gastos-compartidos GET Error]:', err);
