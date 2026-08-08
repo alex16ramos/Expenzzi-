@@ -17,6 +17,7 @@ interface SubmetodoManagerModalProps {
   onCreate: (data: Omit<SubmetodoItem, 'id'>) => Promise<void>;
   onUpdate: (data: SubmetodoItem) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  userRole?: string;
 }
 
 export function SubmetodoManagerModal({
@@ -26,7 +27,9 @@ export function SubmetodoManagerModal({
   onCreate,
   onUpdate,
   onDelete,
+  userRole,
 }: SubmetodoManagerModalProps) {
+  const isVisualizador = userRole === 'Visualizador';
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nombre, setNombre] = useState('');
   const [metodo, setMetodo] = useState<'Efectivo' | 'Credito' | 'Debito'>('Debito');
@@ -119,7 +122,8 @@ export function SubmetodoManagerModal({
         )}
 
         {/* ABM Form */}
-        <form onSubmit={handleSubmit} className="space-y-3 p-3 bg-slate-100/70 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
+        {!isVisualizador && (
+          <form onSubmit={handleSubmit} className="space-y-3 p-3 bg-slate-100/70 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
           <div className="flex justify-between items-center">
             <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
               {editingId ? 'Editar Submétodo' : 'Agregar Submétodo de Pago'}
@@ -170,6 +174,7 @@ export function SubmetodoManagerModal({
             {isSubmitting ? 'Procesando...' : editingId ? 'Actualizar Submétodo' : 'Crear Submétodo'}
           </Button>
         </form>
+        )}
 
         {/* Existing Submethods List */}
         <div className="flex-1 overflow-y-auto space-y-2 pr-1">
@@ -194,26 +199,28 @@ export function SubmetodoManagerModal({
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => handleStartEdit(item)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-                    title="Editar Submétodo"
-                    aria-label="Editar submétodo"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteItem(item.id)}
-                    className="p-1.5 rounded-lg text-rose-500 hover:text-rose-600 dark:hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
-                    title="Desactivar Submétodo (Baja Lógica)"
-                    aria-label="Desactivar submétodo"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                {!isVisualizador && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleStartEdit(item)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                      title="Editar Submétodo"
+                      aria-label="Editar submétodo"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteItem(item.id)}
+                      className="p-1.5 rounded-lg text-rose-500 hover:text-rose-600 dark:hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
+                      title="Desactivar Submétodo (Baja Lógica)"
+                      aria-label="Desactivar submétodo"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             ))
           )}

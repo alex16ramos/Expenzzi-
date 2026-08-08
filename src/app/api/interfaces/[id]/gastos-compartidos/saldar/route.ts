@@ -37,9 +37,15 @@ export async function POST(
     const resolvedParams = await params;
     const interfaceId = BigInt(resolvedParams.id);
 
-    const { hasAccess } = await checkUserInterfaceMembership(userId, interfaceId);
+    const { hasAccess, role } = await checkUserInterfaceMembership(userId, interfaceId);
     if (!hasAccess) {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+    }
+    if (role === 'Visualizador') {
+      return NextResponse.json(
+        { error: 'El rol Visualizador no tiene permisos para saldar deudas.' },
+        { status: 403 }
+      );
     }
 
     const body = await req.json();

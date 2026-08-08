@@ -3,19 +3,23 @@
 import React, { useState } from 'react';
 import { Plus, ArrowUpCircle, ArrowDownCircle, PiggyBank } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 interface FabButtonProps {
   onOpenGastoModal: () => void;
   onOpenIngresoModal: () => void;
   onOpenAhorroModal: () => void;
+  userRole?: string;
 }
 
 export function FabButton({
   onOpenGastoModal,
   onOpenIngresoModal,
   onOpenAhorroModal,
+  userRole,
 }: FabButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const isVisualizador = userRole === 'Visualizador';
 
   return (
     <div className="fixed bottom-20 lg:bottom-8 right-5 z-40 flex flex-col items-end gap-3 pointer-events-auto">
@@ -89,7 +93,13 @@ export function FabButton({
       {/* Main Trigger FAB */}
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (isVisualizador) {
+            toast.error('Tu rol actual (Visualizador) es de solo lectura. No puedes registrar operaciones.');
+            return;
+          }
+          setIsOpen(!isOpen);
+        }}
         className={`w-13 h-13 rounded-2xl text-white shadow-xl shadow-indigo-600/30 flex items-center justify-center transition-colors z-40 cursor-pointer ${
           isOpen
             ? 'bg-slate-800 dark:bg-slate-700 rotate-45 scale-95 hover:bg-red-600/80 dark:hover:bg-red-500/80'

@@ -16,6 +16,7 @@ interface TransactionDetailPanelProps {
   onRestore?: (id: string | number) => void;
   onViewHistory?: (tx: Transaction) => void;
   isInline?: boolean;
+  userRole?: string;
 }
 
 export function TransactionDetailPanel({
@@ -27,8 +28,11 @@ export function TransactionDetailPanel({
   onRestore,
   onViewHistory,
   isInline = false,
+  userRole,
 }: TransactionDetailPanelProps) {
   if (!tx) return null;
+
+  const isVisualizador = userRole === 'Visualizador';
 
   const isIngreso = tx.type === 'Ingreso';
   const isAhorro = tx.type === 'Ahorro';
@@ -151,7 +155,7 @@ export function TransactionDetailPanel({
           </Button>
         )}
 
-        {onEdit && (
+        {!isVisualizador && onEdit && (
           <Button
             size="sm"
             onClick={() => {
@@ -164,7 +168,7 @@ export function TransactionDetailPanel({
           </Button>
         )}
 
-        {onDelete && tx.estado !== false && (
+        {!isVisualizador && onDelete && tx.estado !== false && (
           <Button
             size="sm"
             variant="destructive"
@@ -179,7 +183,7 @@ export function TransactionDetailPanel({
           </Button>
         )}
 
-        {onRestore && tx.estado === false && (
+        {!isVisualizador && onRestore && tx.estado === false && (
           <Button
             size="sm"
             onClick={() => {

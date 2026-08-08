@@ -50,20 +50,6 @@ export async function GET() {
               OR: [
                 { categoria: { idinterfazoperacion: interfaceId } },
                 { submetodopago: { idinterfazoperacion: interfaceId } },
-                {
-                  usuarioResponsable: {
-                    usuarioInterfaces: {
-                      some: { idinterfazoperacion: interfaceId, fechasalida: null },
-                    },
-                  },
-                },
-                {
-                  usuarioIngresador: {
-                    usuarioInterfaces: {
-                      some: { idinterfazoperacion: interfaceId, fechasalida: null },
-                    },
-                  },
-                },
               ],
             },
             select: { fecha: true, moneda: true, importe: true },
@@ -100,10 +86,14 @@ export async function GET() {
           return totalIngresos - totalGastos + totalAhorros;
         };
 
-        const [balanceARS, balanceUSD, balanceUYU] = await Promise.all([
+        const [balanceARS, balanceUSD, balanceUYU, membersList] = await Promise.all([
           calcNet('ARS'),
           calcNet('USD'),
           calcNet('UYU'),
+          prisma.usuarioInterfaz.findMany({
+            where: { idinterfazoperacion: interfaceId, fechasalida: null },
+            include: { usuario: true },
+          }).catch(() => []),
         ]);
 
         return {
@@ -119,6 +109,13 @@ export async function GET() {
           balanceARS,
           balanceUSD,
           balanceUYU,
+          members: membersList.map((m) => ({
+            idusuario: m.idusuario,
+            nombreusuario: m.usuario?.nombreusuario || 'Usuario',
+            email: m.usuario?.email || '',
+            fotoperfil: m.usuario?.fotoperfil || null,
+            rol: m.rol,
+          })),
         };
       })
     );

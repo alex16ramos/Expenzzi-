@@ -35,7 +35,7 @@ export function InviteModal({
   const [searching, setSearching] = useState(false);
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [isCopied, setIsCopied] = useState(false);
+  const [copiedRole, setCopiedRole] = useState<'Invitado' | 'Visualizador' | null>(null);
   const [fetchedCodes, setFetchedCodes] = useState<{ linkinvitado?: string; linkvisualizador?: string }>({});
 
   // Load quick friends list
@@ -73,7 +73,7 @@ export function InviteModal({
     if (isOpen) {
       clearCloseTimer();
       const timer = setTimeout(() => {
-        setIsCopied(false);
+        setCopiedRole(null);
         fetchFriends();
         setSearchQuery('');
         setSearchResults([]);
@@ -135,19 +135,19 @@ export function InviteModal({
     };
   }, []);
 
-  const handleCopyCode = async () => {
+  const handleCopySpecificCode = async (role: 'Invitado' | 'Visualizador') => {
     const activeInvitado = linkinvitado || fetchedCodes.linkinvitado;
     const activeVisualizador = linkvisualizador || fetchedCodes.linkvisualizador;
-    const targetCode = selectedRole === 'Visualizador' ? (activeVisualizador || activeInvitado) : (activeInvitado || activeVisualizador);
+    const targetCode = role === 'Visualizador' ? activeVisualizador : activeInvitado;
 
     if (!targetCode) return;
 
     try {
       await navigator.clipboard.writeText(targetCode);
-      setIsCopied(true);
-      setFeedback({ type: 'success', message: '¡Código de invitación copiado al portapapeles!' });
+      setCopiedRole(role);
+      setFeedback({ type: 'success', message: `¡Código para ${role} copiado al portapapeles!` });
       setTimeout(() => {
-        setIsCopied(false);
+        setCopiedRole(null);
       }, 3000);
     } catch {
       setFeedback({ type: 'error', message: 'No se pudo copiar el código al portapapeles' });
@@ -228,47 +228,86 @@ export function InviteModal({
           </button>
         </div>
 
-        {/* Direct Invitation Code Copy Box */}
-        <div className="p-3.5 bg-indigo-50/70 dark:bg-slate-950/80 border border-indigo-200 dark:border-slate-800 rounded-2xl space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
-              <Copy className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              Código de Invitación Directo
-            </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-              (Ingresar en &quot;Unirse a Interfaz&quot;)
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-600 dark:text-slate-400">
-            Comparte este código directamente para que cualquier miembro se una con rol de <strong>{selectedRole}</strong>.
-          </p>
-
-          <div className="flex items-center gap-2 pt-0.5">
-            <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-slate-800 dark:text-slate-200 truncate select-all shadow-inner">
-              {currentCode || 'Cargando código de invitación...'}
+        {/* Direct Invitation Codes Copy Boxes (Both Roles) */}
+        <div className="space-y-3">
+          {/* Card 1: Invitado */}
+          <div className="p-3 bg-indigo-50/70 dark:bg-slate-950/80 border border-indigo-200 dark:border-slate-800 rounded-2xl space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
+                <Copy className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                Código para Rol Invitado (Cargar movimientos)
+              </span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                Edición completa
+              </span>
             </div>
-            <Button
-              type="button"
-              onClick={handleCopyCode}
-              disabled={!currentCode}
-              className={`h-8 px-3 text-xs font-bold gap-1.5 transition-colors shrink-0 rounded-xl ${
-                isCopied
-                  ? 'bg-emerald-600 text-white hover:bg-emerald-500'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-500'
-              }`}
-            >
-              {isCopied ? (
-                <>
-                  <Check className="w-3.5 h-3.5" />
-                  ¡Copiado!
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5" />
-                  Copiar Código
-                </>
-              )}
-            </Button>
+            <div className="flex items-center gap-2 pt-0.5">
+              <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-slate-800 dark:text-slate-200 truncate select-all shadow-inner">
+                {activeInvitadoCode || 'Cargando código de invitado...'}
+              </div>
+              <Button
+                type="button"
+                onClick={() => handleCopySpecificCode('Invitado')}
+                disabled={!activeInvitadoCode}
+                className={`h-8 px-3 text-xs font-bold gap-1.5 transition-colors shrink-0 rounded-xl cursor-pointer ${
+                  copiedRole === 'Invitado'
+                    ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-500'
+                }`}
+              >
+                {copiedRole === 'Invitado' ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    ¡Copiado!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    Copiar Invitado
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Card 2: Visualizador */}
+          <div className="p-3 bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <Copy className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                Código para Rol Visualizador (Solo lectura)
+              </span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                Sin permisos de edición
+              </span>
+            </div>
+            <div className="flex items-center gap-2 pt-0.5">
+              <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-slate-800 dark:text-slate-200 truncate select-all shadow-inner">
+                {activeVisualizadorCode || 'Cargando código de visualizador...'}
+              </div>
+              <Button
+                type="button"
+                onClick={() => handleCopySpecificCode('Visualizador')}
+                disabled={!activeVisualizadorCode}
+                className={`h-8 px-3 text-xs font-bold gap-1.5 transition-colors shrink-0 rounded-xl cursor-pointer ${
+                  copiedRole === 'Visualizador'
+                    ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                    : 'bg-slate-700 dark:bg-slate-800 text-white hover:bg-slate-600'
+                }`}
+              >
+                {copiedRole === 'Visualizador' ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    ¡Copiado!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    Copiar Visualizador
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
 

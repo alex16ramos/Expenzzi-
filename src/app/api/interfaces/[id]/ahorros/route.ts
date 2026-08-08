@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { TMoneda, TPeriodo } from '@prisma/client';
 import { notifyInterfaceMembers } from '@/lib/notify-members';
+import { checkUserInterfaceMembership } from '@/lib/membership-cache';
 import { extractTimeFromItem, formatCommentWithTime, safeToISOString } from '@/lib/time-utils';
 
 export const dynamic = 'force-dynamic';
@@ -151,16 +152,13 @@ export async function POST(
     const resolvedParams = await params;
     const interfaceId = BigInt(resolvedParams.id);
 
-    const member = await prisma.usuarioInterfaz.findFirst({
-      where: {
-        idinterfazoperacion: interfaceId,
-        idusuario: userId,
-        fechasalida: null,
-      },
-    });
-    if (!member) {
+    const { hasAccess, role } = await checkUserInterfaceMembership(userId, interfaceId);
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+    }
+    if (role === 'Visualizador') {
       return NextResponse.json(
-        { error: 'Debes pertenecer a esta interfaz para registrar ahorros' },
+        { error: 'El rol Visualizador no tiene permisos para registrar ahorros' },
         { status: 403 }
       );
     }
@@ -248,10 +246,13 @@ export async function PUT(
     const resolvedParams = await params;
     const interfaceId = BigInt(resolvedParams.id);
 
-    const isAdmin = await checkAdminRole(interfaceId, userId);
-    if (!isAdmin) {
+    const { hasAccess, role } = await checkUserInterfaceMembership(userId, interfaceId);
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+    }
+    if (role === 'Visualizador') {
       return NextResponse.json(
-        { error: 'Solo los usuarios con rol Administrador pueden modificar ahorros' },
+        { error: 'El rol Visualizador no tiene permisos para modificar ahorros' },
         { status: 403 }
       );
     }
@@ -317,10 +318,13 @@ export async function DELETE(
     const resolvedParams = await params;
     const interfaceId = BigInt(resolvedParams.id);
 
-    const isAdmin = await checkAdminRole(interfaceId, userId);
-    if (!isAdmin) {
+    const { hasAccess, role } = await checkUserInterfaceMembership(userId, interfaceId);
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+    }
+    if (role === 'Visualizador') {
       return NextResponse.json(
-        { error: 'Solo los usuarios con rol Administrador pueden desactivar ahorros' },
+        { error: 'El rol Visualizador no tiene permisos para desactivar ahorros' },
         { status: 403 }
       );
     }

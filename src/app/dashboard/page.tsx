@@ -49,6 +49,13 @@ interface InterfazItem {
   balanceARS?: number;
   balanceUSD?: number;
   balanceUYU?: number;
+  members?: {
+    idusuario: string;
+    nombreusuario: string;
+    email?: string;
+    fotoperfil?: string | null;
+    rol?: string;
+  }[];
 }
 
 import { performSignOut } from '@/lib/logout';
@@ -114,7 +121,6 @@ export default function DashboardPage() {
   }, []);
 
   const [openCardMenuId, setOpenCardMenuId] = useState<string | null>(null);
-  const [codesModalItem, setCodesModalItem] = useState<InterfazItem | null>(null);
   const [deleteConfirmItem, setDeleteConfirmItem] = useState<InterfazItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -727,7 +733,6 @@ export default function DashboardPage() {
                   setOpenCardMenuId={setOpenCardMenuId}
                   toggleFavorite={toggleFavorite}
                   toggleInterfaceSelection={toggleInterfaceSelection}
-                  setCodesModalItem={setCodesModalItem}
                   setDeleteConfirmItem={setDeleteConfirmItem}
                 />
               ))}
@@ -737,8 +742,6 @@ export default function DashboardPage() {
       </main>
 
       <DashboardModalsContainer
-        codesModalItem={codesModalItem}
-        setCodesModalItem={setCodesModalItem}
         isJoinDialogOpen={isJoinDialogOpen}
         setIsJoinDialogOpen={setIsJoinDialogOpen}
         joinCode={joinCode}
@@ -775,7 +778,6 @@ function DashboardInterfaceCardItem({
   setOpenCardMenuId,
   toggleFavorite,
   toggleInterfaceSelection,
-  setCodesModalItem,
   setDeleteConfirmItem,
 }: {
   item: InterfazItem;
@@ -787,7 +789,6 @@ function DashboardInterfaceCardItem({
   setOpenCardMenuId: (id: string | null) => void;
   toggleFavorite: (id: string, e: React.MouseEvent) => void;
   toggleInterfaceSelection: (id: string, e: React.MouseEvent) => void;
-  setCodesModalItem: (item: InterfazItem | null) => void;
   setDeleteConfirmItem: (item: InterfazItem | null) => void;
 }) {
   const isFavorite = favorites.includes(item.id);
@@ -871,17 +872,7 @@ function DashboardInterfaceCardItem({
                       exit={{ opacity: 0, scale: 0.95 }}
                       className="absolute right-0 mt-1 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl py-1.5 z-50 overflow-hidden text-xs"
                     >
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenCardMenuId(null);
-                          setCodesModalItem(item);
-                        }}
-                        className="w-full px-3.5 py-2 text-left text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 font-medium"
-                      >
-                        <Copy className="w-3.5 h-3.5 text-indigo-500" /> Ver Códigos
-                      </button>
+
 
                       <button
                         type="button"
@@ -923,9 +914,32 @@ function DashboardInterfaceCardItem({
 
       {/* Footer Row */}
       <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800/80">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-900/50">
-          {item.rol}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-900/50">
+            {item.rol}
+          </span>
+          {item.members && item.members.length > 0 && (
+            <div className="flex items-center -space-x-1.5 overflow-hidden" title={`${item.members.length} integrante${item.members.length > 1 ? 's' : ''}`}>
+              {item.members.slice(0, 3).map((m) => (
+                <div
+                  key={m.idusuario}
+                  className={`w-6 h-6 rounded-full ${getAvatarBg(m.fotoperfil)} border border-white dark:border-slate-900 flex items-center justify-center font-bold text-[9px] overflow-hidden shrink-0`}
+                >
+                  {m.fotoperfil ? (
+                    <Image src={m.fotoperfil} alt={m.nombreusuario} width={24} height={24} unoptimized className={getAvatarClass(m.fotoperfil)} />
+                  ) : (
+                    (m.nombreusuario || 'U').slice(0, 2).toUpperCase()
+                  )}
+                </div>
+              ))}
+              {item.members.length > 3 && (
+                <div className="w-6 h-6 rounded-full bg-indigo-600 text-white font-bold text-[9px] flex items-center justify-center border border-white dark:border-slate-900 shrink-0">
+                  +{item.members.length - 3}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
           Ingresar <ArrowRight className="w-3.5 h-3.5" />
         </span>
@@ -935,8 +949,6 @@ function DashboardInterfaceCardItem({
 }
 
 function DashboardModalsContainer({
-  codesModalItem,
-  setCodesModalItem,
   isJoinDialogOpen,
   setIsJoinDialogOpen,
   joinCode,
@@ -959,8 +971,6 @@ function DashboardModalsContainer({
   copiedId,
   onCopy,
 }: {
-  codesModalItem: InterfazItem | null;
-  setCodesModalItem: (item: InterfazItem | null) => void;
   isJoinDialogOpen: boolean;
   setIsJoinDialogOpen: (val: boolean) => void;
   joinCode: string;
@@ -991,77 +1001,7 @@ function DashboardModalsContainer({
 
   return (
     <>
-      {/* MODAL: CODES & INVITE LINKS */}
-      {codesModalItem && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Copy className="w-5 h-5 text-indigo-500" /> Códigos de Invitación
-            </h3>
-            <p className="text-xs text-slate-500">
-              Comparte estos enlaces para invitar miembros a &quot;{codesModalItem.nombre}&quot;.
-            </p>
 
-            <div className="space-y-3 pt-2">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Enlace para Rol Invitado (Cargar movimientos)
-                </label>
-                <div className="flex gap-2">
-                  <Input
-                    readOnly
-                    value={`${origin}/interface/join?code=${codesModalItem.linkinvitado}`}
-                    className="text-xs bg-slate-50 dark:bg-slate-950 font-mono"
-                  />
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      onCopy(
-                        `${origin}/interface/join?code=${codesModalItem.linkinvitado}`,
-                        'invitado'
-                      )
-                    }
-                    className="bg-indigo-600 text-white text-xs gap-1"
-                  >
-                    {copiedId === 'invitado' ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Enlace para Rol Visualizador (Solo lectura)
-                </label>
-                <div className="flex gap-2">
-                  <Input
-                    readOnly
-                    value={`${origin}/interface/join?code=${codesModalItem.linkvisualizador}`}
-                    className="text-xs bg-slate-50 dark:bg-slate-950 font-mono"
-                  />
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      onCopy(
-                        `${origin}/interface/join?code=${codesModalItem.linkvisualizador}`,
-                        'visualizador'
-                      )
-                    }
-                    className="bg-indigo-600 text-white text-xs gap-1"
-                  >
-                    {copiedId === 'visualizador' ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <Button onClick={() => setCodesModalItem(null)} variant="outline" className="text-xs rounded-xl">
-                Cerrar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* DIALOG: UNIRSE POR CÓDIGO */}
       {isJoinDialogOpen && (

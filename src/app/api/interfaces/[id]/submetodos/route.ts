@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { TMetodoDePago } from '@prisma/client';
+import { checkUserInterfaceMembership } from '@/lib/membership-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,6 +74,18 @@ export async function POST(
 
     const resolvedParams = await params;
     const interfaceId = BigInt(resolvedParams.id);
+
+    const { hasAccess, role } = await checkUserInterfaceMembership(userId, interfaceId);
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+    }
+    if (role === 'Visualizador') {
+      return NextResponse.json(
+        { error: 'El rol Visualizador no tiene permisos para crear submétodos.' },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
 
     const { nombre, metodo } = body;
@@ -115,12 +128,27 @@ export async function POST(
  * Update a submethod of payment
  */
 export async function PUT(
-  req: Request
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromSession();
     if (!userId) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const resolvedParams = await params;
+    const interfaceId = BigInt(resolvedParams.id);
+
+    const { hasAccess, role } = await checkUserInterfaceMembership(userId, interfaceId);
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+    }
+    if (role === 'Visualizador') {
+      return NextResponse.json(
+        { error: 'El rol Visualizador no tiene permisos para editar submétodos.' },
+        { status: 403 }
+      );
     }
 
     const body = await req.json();
@@ -163,12 +191,27 @@ export async function PUT(
  * Soft delete submethod by setting `estado = false`
  */
 export async function DELETE(
-  req: Request
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromSession();
     if (!userId) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const resolvedParams = await params;
+    const interfaceId = BigInt(resolvedParams.id);
+
+    const { hasAccess, role } = await checkUserInterfaceMembership(userId, interfaceId);
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+    }
+    if (role === 'Visualizador') {
+      return NextResponse.json(
+        { error: 'El rol Visualizador no tiene permisos para desactivar submétodos.' },
+        { status: 403 }
+      );
     }
 
     const { searchParams } = new URL(req.url);

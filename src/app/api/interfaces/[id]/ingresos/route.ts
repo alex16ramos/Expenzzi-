@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { TMoneda } from '@prisma/client';
 import { notifyInterfaceMembers } from '@/lib/notify-members';
+import { checkUserInterfaceMembership } from '@/lib/membership-cache';
 import { extractTimeFromItem, formatCommentWithTime, safeToISOString } from '@/lib/time-utils';
 
 export const dynamic = 'force-dynamic';
@@ -156,6 +157,18 @@ export async function POST(
 
     const resolvedParams = await params;
     const interfaceId = BigInt(resolvedParams.id);
+
+    const { hasAccess, role } = await checkUserInterfaceMembership(userId, interfaceId);
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+    }
+    if (role === 'Visualizador') {
+      return NextResponse.json(
+        { error: 'El rol Visualizador no tiene permisos para crear ingresos.' },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
 
     const { fecha, responsableingreso, moneda, importe, comentario } = body;
@@ -240,12 +253,27 @@ export async function POST(
  * Update an existing Ingreso
  */
 export async function PUT(
-  req: Request
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromSession();
     if (!userId) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const resolvedParams = await params;
+    const interfaceId = BigInt(resolvedParams.id);
+
+    const { hasAccess, role } = await checkUserInterfaceMembership(userId, interfaceId);
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+    }
+    if (role === 'Visualizador') {
+      return NextResponse.json(
+        { error: 'El rol Visualizador no tiene permisos para editar ingresos.' },
+        { status: 403 }
+      );
     }
 
     const body = await req.json();
@@ -295,12 +323,27 @@ export async function PUT(
  * Soft delete Ingreso by setting `estado = false`
  */
 export async function DELETE(
-  req: Request
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromSession();
     if (!userId) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const resolvedParams = await params;
+    const interfaceId = BigInt(resolvedParams.id);
+
+    const { hasAccess, role } = await checkUserInterfaceMembership(userId, interfaceId);
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+    }
+    if (role === 'Visualizador') {
+      return NextResponse.json(
+        { error: 'El rol Visualizador no tiene permisos para eliminar ingresos.' },
+        { status: 403 }
+      );
     }
 
     const { searchParams } = new URL(req.url);
