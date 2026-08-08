@@ -32,7 +32,7 @@ const KNOWN_AUTH_COOKIES = [
 
 /**
  * POST /api/auth/logout
- * Deletes all authentication & session cookies on the server and response cleanly.
+ * Deletes all authentication & session cookies on server, response and browser.
  */
 export async function POST() {
   try {
@@ -74,10 +74,18 @@ export async function POST() {
           'Set-Cookie',
           `${name}=; Path=/; Expires=${pastDate}; Max-Age=0; HttpOnly; Secure; SameSite=Lax`
         );
+        response.headers.append(
+          'Set-Cookie',
+          `${name}=; Path=/; Expires=${pastDate}; Max-Age=0; Secure; SameSite=Lax`
+        );
       } else {
         response.headers.append(
           'Set-Cookie',
           `${name}=; Path=/; Expires=${pastDate}; Max-Age=0; HttpOnly; SameSite=Lax`
+        );
+        response.headers.append(
+          'Set-Cookie',
+          `${name}=; Path=/; Expires=${pastDate}; Max-Age=0; SameSite=Lax`
         );
       }
     }

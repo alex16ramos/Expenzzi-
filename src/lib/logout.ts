@@ -3,24 +3,20 @@ import { toast } from 'sonner';
 
 /**
  * Performs a full sign-out:
- * 1. Calls Neon authClient.signOut()
- * 2. Calls server-side /api/auth/logout to erase all httpOnly cookies
- * 3. Clears browser document.cookie, localStorage and sessionStorage
- * 4. Redirects immediately to home '/'
+ * 1. Calls Neon authClient.signOut() and server /api/auth/logout in parallel
+ * 2. Clears browser document.cookie, localStorage and sessionStorage
+ * 3. Redirects to home page '/?logged_out=1'
  */
 export async function performSignOut() {
   try {
-    await authClient.signOut().catch(() => {});
-  } catch {
-    // Ignore
-  }
-
-  try {
-    await fetch('/api/auth/logout', {
-      method: 'POST',
-      cache: 'no-store',
-      credentials: 'include',
-    }).catch(() => {});
+    await Promise.allSettled([
+      authClient.signOut().catch(() => {}),
+      fetch('/api/auth/logout', {
+        method: 'POST',
+        cache: 'no-store',
+        credentials: 'include',
+      }).catch(() => {}),
+    ]);
   } catch {
     // Ignore
   }
