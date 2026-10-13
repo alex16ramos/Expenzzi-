@@ -13,7 +13,7 @@ vi.mock('next/navigation', () => ({
     replace: vi.fn(),
     prefetch: vi.fn(),
   }),
-  usePathname: () => '/interface/test-interface-123',
+  usePathname: () => '/interface/123',
 }));
 
 // Mock EventSource for realtime SSE
@@ -115,7 +115,7 @@ describe('InterfaceDetailsPage - Test Invariante de Información e Interfaz', ()
 
   it('certifica que los elementos clave de información de la interfaz SIEMPRE se rendericen', async () => {
     // Arrange & Act
-    const paramsPromise = Promise.resolve({ id: 'test-interface-123' });
+    const paramsPromise = Promise.resolve({ id: '123' });
     
     await React.act(async () => {
       render(<InterfaceDetailsPage params={paramsPromise} />);
@@ -146,7 +146,7 @@ describe('InterfaceDetailsPage - Test Invariante de Información e Interfaz', ()
 
   it('certifica invariante: la estructura HTML coincide con la expectativa y el contenedor main existe', async () => {
     // Arrange & Act
-    const paramsPromise = Promise.resolve({ id: 'test-interface-123' });
+    const paramsPromise = Promise.resolve({ id: '123' });
 
     await React.act(async () => {
       render(<InterfaceDetailsPage params={paramsPromise} />);

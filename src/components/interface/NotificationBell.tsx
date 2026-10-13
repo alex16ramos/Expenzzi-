@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
-import { Bell, Check, X, Shield, Sparkles, Loader2, RefreshCw, Trash2 } from 'lucide-react';
+import { Bell, Check, X, Shield, Sparkles, Loader2, RefreshCw, Trash2, CheckCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { getAvatarBg, getAvatarClass } from '@/lib/avatar-utils';
 
 export interface NotificacionItem {
@@ -213,6 +214,41 @@ export function NotificationBell({
     }
   };
 
+  const handleMarkAllAsRead = async () => {
+    try {
+      const res = await fetch('/api/notificaciones', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all: true }),
+      });
+      if (res.ok && isMountedRef.current) {
+        setNotificaciones((prev) => prev.map((n) => ({ ...n, leido: true })));
+        setUnreadCount(0);
+        toast.success('Notificaciones marcadas como leídas');
+      }
+    } catch (err) {
+      console.error('Error marking all as read:', err);
+    }
+  };
+
+  const handleMarkAsRead = async (idnotificacion: string) => {
+    try {
+      const res = await fetch('/api/notificaciones', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idnotificacion }),
+      });
+      if (res.ok && isMountedRef.current) {
+        setNotificaciones((prev) =>
+          prev.map((n) => (n.idnotificacion === idnotificacion ? { ...n, leido: true } : n))
+        );
+        setUnreadCount((count) => Math.max(0, count - 1));
+      }
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+  };
+
   const unreadGeneral = notificaciones.filter((n) => !n.leido && isGeneralNotif(n)).length;
   const activityNotifs = notificaciones.filter((n) => !isGeneralNotif(n));
   const unreadInterfaz = activityNotifs.filter((n) => !n.leido).length;
@@ -262,14 +298,28 @@ export function NotificationBell({
                 </span>
               )}
             </div>
-            <button
-              type="button"
-              onClick={fetchNotificaciones}
-              aria-label="Actualizar notificaciones"
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg transition-colors"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            </button>
+            <div className="flex items-center gap-1.5">
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleMarkAllAsRead}
+                  aria-label="Marcar todas como leídas"
+                  title="Marcar todas como leídas"
+                  className="text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-semibold flex items-center gap-1 p-1 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-950/50 transition-colors"
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  <span className="text-[10px] hidden sm:inline">Leídas</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={fetchNotificaciones}
+                aria-label="Actualizar notificaciones"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg transition-colors"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
 
           {/* Navigation Tabs Bar */}
@@ -372,6 +422,7 @@ export function NotificationBell({
                   actionLoading={actionLoading}
                   onRespond={handleRespond}
                   onDelete={handleDeleteNotification}
+                  onMarkAsRead={handleMarkAsRead}
                 />
               ))
             )}
@@ -387,11 +438,13 @@ function NotificationCardItem({
   actionLoading,
   onRespond,
   onDelete,
+  onMarkAsRead,
 }: {
   n: NotificacionItem;
   actionLoading: string | null;
   onRespond: (id: string, aceptar: boolean) => void;
   onDelete: (id: string) => void;
+  onMarkAsRead: (id: string) => void;
 }) {
   const emisorNombre = n.emisor?.nombreusuario || 'Un usuario';
   const initials = emisorNombre
@@ -468,6 +521,19 @@ function NotificationCardItem({
                     timeZone: 'UTC',
                   })}
                 </span>
+                {!n.leido && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMarkAsRead(n.idnotificacion);
+                    }}
+                    className="text-violet-500 hover:text-violet-600 dark:hover:text-violet-400 p-0.5 rounded transition-colors ml-1"
+                    title="Marcar como leída"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={(e) => {

@@ -35,7 +35,6 @@ export function CategoriaManagerModal({
   onViewHistory,
   userRole = 'Visualizador',
 }: CategoriaManagerModalProps) {
-  const isVisualizador = userRole === 'Visualizador';
   const isAdmin = userRole === 'Administrador';
   const [form, setForm] = useState<{
     editingId: string | null;
@@ -165,8 +164,13 @@ export function CategoriaManagerModal({
           </div>
         )}
 
-        {/* ABM Form */}
-        {!isVisualizador && (
+        {/* ABM Form - Only Administrador can manage categories */}
+        {!isAdmin ? (
+          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2 shrink-0">
+            <ShieldAlert className="w-4 h-4 shrink-0 text-amber-500" />
+            <span>Solo los administradores pueden gestionar categorías y límites de gasto (RF20).</span>
+          </div>
+        ) : (
           <form onSubmit={handleSubmit} className="space-y-3 p-3 bg-slate-100/70 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
           <div className="flex justify-between items-center">
             <span className="text-xs font-semibold text-violet-700 dark:text-violet-300">
@@ -289,7 +293,7 @@ export function CategoriaManagerModal({
                 onStartEdit={handleStartEdit}
                 onDeleteItem={handleDeleteItem}
                 onViewHistory={onViewHistory}
-                isVisualizador={isVisualizador}
+                canManage={isAdmin}
               />
             ))
           )}
@@ -304,13 +308,13 @@ function CategoryCardItem({
   onStartEdit,
   onDeleteItem,
   onViewHistory,
-  isVisualizador = false,
+  canManage = false,
 }: {
   c: CategoriaItem;
   onStartEdit: (cat: CategoriaItem) => void;
   onDeleteItem: (id: string) => void;
   onViewHistory?: (cat: CategoriaItem) => void;
-  isVisualizador?: boolean;
+  canManage?: boolean;
 }) {
   const used = c.importeutilizado || 0;
   const limit = c.importe || 0;
@@ -353,7 +357,7 @@ function CategoryCardItem({
               <History className="w-3.5 h-3.5" />
             </button>
           )}
-          {!isVisualizador && (
+          {canManage && (
             <>
               <button
                 type="button"

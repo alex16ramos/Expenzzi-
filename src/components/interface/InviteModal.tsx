@@ -113,11 +113,11 @@ export function InviteModal({
     const timer = setTimeout(async () => {
       setSearching(true);
       try {
-        const res = await fetch(`/api/amigos/buscar?query=${encodeURIComponent(searchQuery)}`);
+        const res = await fetch(`/api/usuarios?q=${encodeURIComponent(searchQuery)}`);
         if (!res.ok) return;
         const data = await res.json();
         if (data.success) {
-          setSearchResults(data.resultados || []);
+          setSearchResults(data.usuarios || data.resultados || []);
         }
       } catch (err) {
         console.error('Error searching users:', err);
@@ -143,14 +143,16 @@ export function InviteModal({
     if (!targetCode) return;
 
     try {
-      await navigator.clipboard.writeText(targetCode);
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const inviteUrl = `${origin}/interface/join?code=${targetCode}`;
+      await navigator.clipboard.writeText(inviteUrl);
       setCopiedRole(role);
-      setFeedback({ type: 'success', message: `¡Código para ${role} copiado al portapapeles!` });
+      setFeedback({ type: 'success', message: `¡Enlace de invitación para ${role} copiado al portapapeles!` });
       setTimeout(() => {
         setCopiedRole(null);
       }, 3000);
     } catch {
-      setFeedback({ type: 'error', message: 'No se pudo copiar el código al portapapeles' });
+      setFeedback({ type: 'error', message: 'No se pudo copiar el enlace al portapapeles' });
     }
   };
 
@@ -263,7 +265,7 @@ export function InviteModal({
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5" />
-                    Copiar Invitado
+                    Copiar Enlace
                   </>
                 )}
               </Button>
@@ -275,7 +277,7 @@ export function InviteModal({
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                 <Copy className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                Código para Rol Visualizador (Solo lectura)
+                Enlace para Rol Visualizador (Solo lectura)
               </span>
               <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                 Sin permisos de edición
@@ -303,7 +305,7 @@ export function InviteModal({
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5" />
-                    Copiar Visualizador
+                    Copiar Enlace
                   </>
                 )}
               </Button>

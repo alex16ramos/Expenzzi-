@@ -105,9 +105,26 @@ export default function LandingAuthPage() {
           window.location.href = '/dashboard';
         }
       } else if (activeTab === 'forgot') {
-        toast.info('Si el correo existe en el sistema, recibirás las instrucciones de recuperación.');
-        setEmail('');
-        setActiveTab('login');
+        if (!email.trim()) {
+          toast.error('Por favor ingresa tu correo electrónico');
+          setLoading(false);
+          return;
+        }
+
+        const res = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'forgot', email: email.trim() }),
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          toast.error(data.error || 'Error al procesar la solicitud de recuperación');
+        } else {
+          toast.success(data.message || 'Si el correo existe en el sistema, recibirás las instrucciones de recuperación.');
+          setEmail('');
+          setActiveTab('login');
+        }
       }
     } catch (err) {
       console.error('Auth submit error:', err);

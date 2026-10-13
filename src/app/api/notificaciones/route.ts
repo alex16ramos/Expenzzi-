@@ -81,6 +81,57 @@ export async function GET() {
 }
 
 /**
+ * PATCH /api/notificaciones
+ * Marks one or all notifications as read.
+ */
+export async function PATCH(req: Request) {
+  try {
+    const session = await auth.getSession();
+    const sessObj = session as unknown as Record<string, unknown>;
+    const dataObj = sessObj?.data as Record<string, unknown> | undefined;
+    const userObj = (dataObj?.user || sessObj?.user) as Record<string, unknown> | undefined;
+    const userId = (userObj?.id || userObj?.idusuario || userObj?.userId) as string | undefined;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const { idnotificacion, all } = body;
+
+    if (all || !idnotificacion) {
+      await prisma.notificacion.updateMany({
+        where: { idreceptor: userId, leido: false },
+        data: { leido: true },
+      });
+      return NextResponse.json({
+        success: true,
+        message: 'Todas las notificaciones han sido marcadas como leídas',
+      });
+    }
+
+    await prisma.notificacion.updateMany({
+      where: {
+        idnotificacion: BigInt(idnotificacion),
+        idreceptor: userId,
+      },
+      data: { leido: true },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Notificación marcada como leída',
+    });
+  } catch (err: unknown) {
+    console.error('Error marking notifications as read:', err);
+    return NextResponse.json(
+      { error: 'Error al marcar notificaciones como leídas' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * DELETE /api/notificaciones
  * Deletes an individual notification by ID.
  */

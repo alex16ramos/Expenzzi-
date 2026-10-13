@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { PiggyBank, TrendingUp, TrendingDown } from 'lucide-react';
+import { PiggyBank, TrendingUp, TrendingDown, Eye, EyeOff } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -77,6 +77,26 @@ export function BalanceCards({
   const [internalCurrency, setInternalCurrency] = useState<'ARS' | 'USD' | 'UYU'>('ARS');
   const activeCurrency = externalSelectedCurrency || internalCurrency;
 
+  const [isBalanceVisible, setIsBalanceVisible] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const stored = localStorage.getItem('expenzzi_privacy_mode');
+      return stored !== null ? JSON.parse(stored) : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleBalanceVisibility = () => {
+    const next = !isBalanceVisible;
+    setIsBalanceVisible(next);
+    try {
+      localStorage.setItem('expenzzi_privacy_mode', JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  };
+
   const handleSelectCurrency = (curr: 'ARS' | 'USD' | 'UYU') => {
     setInternalCurrency(curr);
     if (onCurrencySelect) {
@@ -93,25 +113,38 @@ export function BalanceCards({
 
       {/* FOLDER TABS HEADER BAR */}
       <div className="relative pt-2">
-        <div className="flex items-end gap-1.5 relative z-10 -mb-[2px]">
-          {CURRENCY_CONFIGS.map((cfg) => {
-            const isActive = activeCurrency === cfg.code;
-            return (
-              <button
-                type="button"
-                key={cfg.code}
-                onClick={() => handleSelectCurrency(cfg.code)}
-                className={`relative px-4 py-2 text-xs font-extrabold rounded-t-2xl transition-colors duration-200 flex items-center gap-1.5 ${
-                  isActive
-                    ? `bg-white dark:bg-slate-900 bg-gradient-to-t ${cfg.bgGradient} border-t border-x ${cfg.border} rounded-t-xl p-5 -translate-y-[0.7px] z-20`
-                    : `${cfg.inactiveTabColor} opacity-85 hover:opacity-100 z-10 -translate-y-[1.5px] cursor-pointer`
-                }`}
-              >
-                <span>{cfg.code}</span>
-                <span className="text-[10px] font-normal opacity-80">({cfg.symbol})</span>
-              </button>
-            );
-          })}
+        <div className="flex items-end justify-between relative z-10 -mb-[2px]">
+          <div className="flex items-end gap-1.5">
+            {CURRENCY_CONFIGS.map((cfg) => {
+              const isActive = activeCurrency === cfg.code;
+              return (
+                <button
+                  type="button"
+                  key={cfg.code}
+                  onClick={() => handleSelectCurrency(cfg.code)}
+                  className={`relative px-4 py-2 text-xs font-extrabold rounded-t-2xl transition-colors duration-200 flex items-center gap-1.5 ${
+                    isActive
+                      ? `bg-white dark:bg-slate-900 bg-gradient-to-t ${cfg.bgGradient} border-t border-x ${cfg.border} rounded-t-xl p-5 -translate-y-[0.7px] z-20`
+                      : `${cfg.inactiveTabColor} opacity-85 hover:opacity-100 z-10 -translate-y-[1.5px] cursor-pointer`
+                  }`}
+                >
+                  <span>{cfg.code}</span>
+                  <span className="text-[10px] font-normal opacity-80">({cfg.symbol})</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={toggleBalanceVisibility}
+            aria-label={isBalanceVisible ? 'Ocultar saldos' : 'Mostrar saldos'}
+            title={isBalanceVisible ? 'Modo Privacidad: Ocultar saldos' : 'Mostrar saldos'}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 text-[11px] font-semibold transition-colors cursor-pointer mb-1"
+          >
+            {isBalanceVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            <span className="hidden sm:inline">{isBalanceVisible ? 'Ocultar' : 'Mostrar'}</span>
+          </button>
         </div>
 
         {/* ACTIVE FOLDER CONTENT CARD */}
@@ -136,7 +169,7 @@ export function BalanceCards({
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Balance Neto Consolidado</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${isPositive ? 'text-slate-900 dark:text-white' : 'text-rose-600 dark:text-rose-400'}`}>
-                    {formatMoney(activeData.net, activeConfig.symbol)}
+                    {isBalanceVisible ? formatMoney(activeData.net, activeConfig.symbol) : `${activeConfig.symbol} ••••••••`}
                   </span>
                   {isPositive ? (
                     <TrendingUp className="w-5 h-5 text-emerald-500" />
@@ -153,7 +186,7 @@ export function BalanceCards({
                     <TrendingUp className="w-3.5 h-3.5" /> Ingresos
                   </span>
                   <p className="font-extrabold text-slate-800 dark:text-slate-100 mt-1 truncate">
-                    {formatMoney(activeData.ingresos, activeConfig.symbol)}
+                    {isBalanceVisible ? formatMoney(activeData.ingresos, activeConfig.symbol) : '••••••••'}
                   </p>
                 </div>
 
@@ -162,7 +195,7 @@ export function BalanceCards({
                     <TrendingDown className="w-3.5 h-3.5" /> Egresos
                   </span>
                   <p className="font-extrabold text-slate-800 dark:text-slate-100 mt-1 truncate">
-                    {formatMoney(activeData.gastos, activeConfig.symbol)}
+                    {isBalanceVisible ? formatMoney(activeData.gastos, activeConfig.symbol) : '••••••••'}
                   </p>
                 </div>
 
@@ -171,7 +204,7 @@ export function BalanceCards({
                     <PiggyBank className="w-3.5 h-3.5" /> Ahorros
                   </span>
                   <p className="font-extrabold text-slate-800 dark:text-slate-100 mt-1 truncate">
-                    {formatMoney(activeData.ahorros, activeConfig.symbol)}
+                    {isBalanceVisible ? formatMoney(activeData.ahorros, activeConfig.symbol) : '••••••••'}
                   </p>
                 </div>
               </div>

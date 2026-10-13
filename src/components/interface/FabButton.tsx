@@ -20,6 +20,12 @@ export function FabButton({
 }: FabButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const isVisualizador = userRole === 'Visualizador';
+  const isAdmin = userRole === 'Administrador';
+
+  // Role restriction: Visualizador is read-only, hide FAB completely
+  if (isVisualizador) {
+    return null;
+  }
 
   return (
     <div className="fixed bottom-20 lg:bottom-8 right-5 z-40 flex flex-col items-end gap-3 pointer-events-auto">
@@ -41,20 +47,22 @@ export function FabButton({
               exit={{ opacity: 0, y: 15, scale: 0.9 }}
               className="flex flex-col items-end gap-2.5 z-40"
             >
-              {/* Option Ahorro */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  onOpenAhorroModal();
-                }}
-                className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-500 transition-colors font-bold text-xs group cursor-pointer"
-              >
-                <span>Nuevo Ahorro</span>
-                <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <PiggyBank className="w-4 h-4" />
-                </div>
-              </button>
+              {/* Option Ahorro - Restricted to Administrador */}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onOpenAhorroModal();
+                  }}
+                  className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-500 transition-colors font-bold text-xs group cursor-pointer"
+                >
+                  <span>Nuevo Ahorro</span>
+                  <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <PiggyBank className="w-4 h-4" />
+                  </div>
+                </button>
+              )}
 
               {/* Option Ingreso */}
               <button

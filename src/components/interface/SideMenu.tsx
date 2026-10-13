@@ -18,9 +18,9 @@ import {
   UserPlus,
   LogOut,
   ChevronRight,
+  Edit2,
 } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
-import { toast } from 'sonner';
 import { getAvatarBg, getAvatarClass } from '@/lib/avatar-utils';
 
 interface SideMenuProps {
@@ -34,6 +34,7 @@ interface SideMenuProps {
   onOpenSubmethods?: () => void;
   onOpenDelete?: () => void;
   onOpenInvite?: () => void;
+  onOpenEdit?: () => void;
   interfaceName?: string;
 }
 
@@ -54,6 +55,7 @@ export function SideMenu({
   onOpenSubmethods,
   onOpenDelete,
   onOpenInvite,
+  onOpenEdit,
   interfaceName,
 }: SideMenuProps) {
   const pathname = usePathname();
@@ -96,6 +98,19 @@ export function SideMenu({
           onClick: () => (window.location.href = '/dashboard'),
           variant: 'default' as const,
         },
+        ...(isAdmin && onOpenEdit
+          ? [
+              {
+                label: 'Modificar Interfaz',
+                icon: Edit2,
+                onClick: () => {
+                  onOpenEdit();
+                  onClose();
+                },
+                variant: 'default' as const,
+              },
+            ]
+          : []),
         ...(onOpenInvite
           ? [
               {
@@ -141,6 +156,18 @@ export function SideMenu({
               {
                 label: 'Eliminar Interfaz',
                 icon: Trash2,
+                onClick: () => {
+                  onOpenDelete();
+                  onClose();
+                },
+                variant: 'danger' as const,
+              },
+            ]
+          : !isAdmin && onOpenDelete
+          ? [
+              {
+                label: 'Abandonar Interfaz',
+                icon: LogOut,
                 onClick: () => {
                   onOpenDelete();
                   onClose();

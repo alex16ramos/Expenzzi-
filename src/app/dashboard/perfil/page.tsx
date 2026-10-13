@@ -16,6 +16,7 @@ import {
   AtSign,
   ArrowRight,
   Lock,
+  Palette,
 } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
 import { Header } from '@/components/interface/Header';
@@ -24,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface UserProfile {
   idusuario: string;
@@ -451,6 +453,33 @@ export default function ProfilePage() {
                   </Button>
                 </div>
               </form>
+            </div>
+
+            {/* THEME & APPEARANCE SECTION */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Palette className="w-5 h-5 text-indigo-500" /> Tema Visual & Apariencia
+                  </h3>
+                  <p className="text-xs text-slate-500">Personaliza la interfaz visual de la aplicación según tu preferencia (Modo Claro, Modo Oscuro o Sistema).</p>
+                </div>
+                <ThemeToggle
+                  variant="buttons"
+                  onThemeSaved={async (newTheme) => {
+                    try {
+                      await fetch('/api/perfil', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ temapreferido: newTheme }),
+                      });
+                      toast.success(`Tema actualizado a: ${newTheme === 'light' ? 'Claro' : newTheme === 'dark' ? 'Oscuro' : 'Sistema'}`);
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                />
+              </div>
             </div>
 
             {/* SECURITY & PASSWORD SECTION */}

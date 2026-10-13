@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo, use, useRef } from 'react';
-import { Layers } from 'lucide-react';
+import { Layers, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Header } from '@/components/interface/Header';
 import { SideMenu } from '@/components/interface/SideMenu';
 import { TransactionCard, Transaction } from '@/components/interface/TransactionCard';
@@ -141,6 +142,54 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
   // Delete Confirm Dialog state
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isDeletingInterface, setIsDeletingInterface] = useState(false);
+
+  // Edit Interface Modal state
+  const [isEditInterfaceOpen, setIsEditInterfaceOpen] = useState(false);
+  const [editInterfaceNombre, setEditInterfaceNombre] = useState('');
+  const [editInterfaceDescripcion, setEditInterfaceDescripcion] = useState('');
+  const [isSavingInterface, setIsSavingInterface] = useState(false);
+
+  const handleSaveInterfaceEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editInterfaceNombre.trim()) {
+      toast.error('El nombre de la interfaz es obligatorio');
+      return;
+    }
+    if (editInterfaceNombre.trim().length > 50) {
+      toast.error('El nombre no puede superar los 50 caracteres');
+      return;
+    }
+
+    setIsSavingInterface(true);
+    try {
+      const res = await fetch(`/api/interfaces/${interfaceId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: editInterfaceNombre.trim(),
+          descripcion: editInterfaceDescripcion.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Error al actualizar la interfaz');
+      }
+
+      setInterfaceData({
+        ...interfaceData!,
+        nombre: editInterfaceNombre.trim(),
+        descripcion: editInterfaceDescripcion.trim(),
+      });
+      setIsEditInterfaceOpen(false);
+      toast.success('Interfaz de operaciones actualizada con éxito');
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message || 'Error al actualizar interfaz';
+      toast.error(msg);
+    } finally {
+      setIsSavingInterface(false);
+    }
+  };
 
   // Audit History Modal state
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
@@ -854,6 +903,11 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         onOpenSubmethods={() => setIsSubmethodModalOpen(true)}
         onOpenDelete={() => setIsDeleteConfirmOpen(true)}
         onOpenInvite={() => setIsInviteModalOpen(true)}
+        onOpenEdit={() => {
+          setEditInterfaceNombre(interfaceData?.nombre || '');
+          setEditInterfaceDescripcion(interfaceData?.descripcion || '');
+          setIsEditInterfaceOpen(true);
+        }}
         interfaceName={interfaceData?.nombre}
       />
 
@@ -1116,6 +1170,14 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
         onUpdateSubmethod={handleUpdateSubmethod}
         onDeleteSubmethod={handleDeleteSubmethod}
         onOpenAuditModal={handleOpenAuditModal}
+        isEditInterfaceOpen={isEditInterfaceOpen}
+        setIsEditInterfaceOpen={setIsEditInterfaceOpen}
+        editInterfaceNombre={editInterfaceNombre}
+        setEditInterfaceNombre={setEditInterfaceNombre}
+        editInterfaceDescripcion={editInterfaceDescripcion}
+        setEditInterfaceDescripcion={setEditInterfaceDescripcion}
+        isSavingInterface={isSavingInterface}
+        handleSaveInterfaceEdit={handleSaveInterfaceEdit}
       />
     </div>
   );
@@ -1155,6 +1217,14 @@ function InterfaceModalsContainer({
   onUpdateSubmethod,
   onDeleteSubmethod,
   onOpenAuditModal,
+  isEditInterfaceOpen,
+  setIsEditInterfaceOpen,
+  editInterfaceNombre,
+  setEditInterfaceNombre,
+  editInterfaceDescripcion,
+  setEditInterfaceDescripcion,
+  isSavingInterface,
+  handleSaveInterfaceEdit,
 }: {
   interfaceId: string;
   userRole: string;
@@ -1199,6 +1269,14 @@ function InterfaceModalsContainer({
   onUpdateSubmethod: (data: SubmetodoItem) => Promise<void>;
   onDeleteSubmethod: (id: string) => Promise<void>;
   onOpenAuditModal: (type: 'todos' | 'gasto' | 'ingreso' | 'ahorro' | 'limite', entityId?: string | number | null, title?: string) => void;
+  isEditInterfaceOpen: boolean;
+  setIsEditInterfaceOpen: (val: boolean) => void;
+  editInterfaceNombre: string;
+  setEditInterfaceNombre: (val: string) => void;
+  editInterfaceDescripcion: string;
+  setEditInterfaceDescripcion: (val: string) => void;
+  isSavingInterface: boolean;
+  handleSaveInterfaceEdit: (e: React.FormEvent) => Promise<void>;
 }) {
   const {
     isGastoModalOpen,
@@ -1303,6 +1381,76 @@ function InterfaceModalsContainer({
         confirmText={userRole === 'Administrador' ? 'Sí, Eliminar' : 'Sí, Salir'}
         cancelText="Cancelar"
       />
+
+      {/* EDIT INTERFACE MODAL */}
+      {isEditInterfaceOpen && (
+        <div className="fixed inset-0 bg-slate-950/60 dark:bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl p-5 space-y-4 shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-slate-800">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Modificar Interfaz de Operaciones
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsEditInterfaceOpen(false)}
+                className="p-1 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                aria-label="Cerrar modal de modificación"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveInterfaceEdit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Nombre de la Interfaz * (máx. 50 caracteres)
+                </label>
+                <input
+                  type="text"
+                  maxLength={50}
+                  required
+                  value={editInterfaceNombre}
+                  onChange={(e) => setEditInterfaceNombre(e.target.value)}
+                  placeholder="Ej: Viaje a Bariloche, Gastos Departamento..."
+                  className="w-full h-10 px-3 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Descripción (opcional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={editInterfaceDescripcion}
+                  onChange={(e) => setEditInterfaceDescripcion(e.target.value)}
+                  placeholder="Descripción de la interfaz o propósito..."
+                  className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditInterfaceOpen(false)}
+                  disabled={isSavingInterface}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSavingInterface}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white"
+                >
+                  {isSavingInterface ? 'Guardando...' : 'Guardar Cambios'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }
