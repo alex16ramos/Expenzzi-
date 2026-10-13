@@ -186,7 +186,7 @@ export function ExchangeRateDropdown() {
 
             {/* Footer */}
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[10px] text-slate-400">
-              <span>Fuente: DolarApi (DolarHoy)</span>
+              <span>Fuente: Mercado en vivo</span>
               <span>{fecha || 'Hoy'}</span>
             </div>
           </motion.div>
