@@ -43,7 +43,6 @@ pnpx react-doctor --verbose
 ---
 
 ## Estructura del Proyecto
-
 - `prisma/schema.prisma`: Esquema de datos de Prisma ORM con enums, modelos y relaciones.
 - `prisma.config.ts`: Configuración CLI de Prisma 7 conectada vía `DIRECT_URL`.
 - `setup.sql`: Script DDL de PostgreSQL con triggers automáticos, vistas y RLS.
@@ -115,7 +114,6 @@ En conjunto, Expenzzi busca fomentar **hábitos responsables**, mejorar la trans
 - Historial de cambios e integridad de datos.
 
 ## 🛠️ Requerimientos No Funcionales
-
 - Disponible para **Android**, **iOS** y navegadores web.
 - Desarrollado en **React Native** (mobile) + Web responsive.
 - Base de datos **PostgreSQL**.
@@ -138,4 +136,3 @@ MIT — Libre para usar, modificar y mejorar.
 ## 👤 Autores
 Proyecto desarrollado para la materia **Seminario Integrador / Proyecto Final / 2025**,  
 Universidad Tecnológica Nacional (UTN).
-
