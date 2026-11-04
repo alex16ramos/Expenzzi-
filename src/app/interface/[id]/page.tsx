@@ -26,6 +26,7 @@ import { InviteModal } from '@/components/interface/InviteModal';
 import { CustomDialog } from '@/components/ui/custom-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { useParams } from 'next/navigation';
 import { enqueueOfflineMutation } from '@/lib/offline-sync';
 import { itemsNav } from '@/lib/nav-items';
 import { extractTimeFromItem } from '@/lib/time-utils';
@@ -49,8 +50,16 @@ const DEFAULT_MULTI_FILTERS: MultiFilterState = {
 
 
 export default function InterfaceDetailsPage({ params }: PageProps) {
-  const resolvedParams = use(params);
-  const interfaceId = resolvedParams.id;
+  let routeParams: Record<string, string | string[] | undefined> = {};
+  try {
+    const hookParams = useParams();
+    if (hookParams) routeParams = hookParams;
+  } catch {
+    // Graceful fallback if useParams is omitted in mock test runners
+  }
+  const resolvedParams = params ? use(params) : null;
+  const rawId = (resolvedParams?.id || (routeParams?.id as string) || '') as string;
+  const interfaceId = Array.isArray(rawId) ? rawId[0] : rawId;
 
   // Interface state
   const [detailsState, setDetailsState] = useState({
@@ -210,13 +219,22 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
 
   // 1. Fetch Interface Details
   const loadInterfaceDetails = useCallback(async () => {
-    if (!interfaceId || !/^\d+$/.test(interfaceId)) {
+    if (!interfaceId) {
+      return;
+    }
+    if (!/^\d+$/.test(interfaceId)) {
       toast.error('No tienes acceso a esta interfaz o fue eliminada.');
       window.location.href = '/dashboard';
       return;
     }
     try {
-      const res = await fetch(`/api/interfaces/${interfaceId}/details`);
+      let res = await fetch(`/api/interfaces/${interfaceId}/details`);
+      if (!res.ok && (res.status === 404 || res.status === 403)) {
+        // Brief retry in case of recent creation replication lag
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        res = await fetch(`/api/interfaces/${interfaceId}/details`);
+      }
+
       if (!res.ok) {
         if (res.status === 404 || res.status === 403) {
           toast.error('No tienes acceso a esta interfaz o fue eliminada.');
@@ -598,6 +616,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       toast.success(isEdit ? 'Gasto modificado correctamente' : 'Gasto registrado correctamente');
       loadSectionRecords();
       loadBalances();
+      loadInterfaceDetails();
     } catch (err: unknown) {
       if (typeof window !== 'undefined' && !navigator.onLine) {
         enqueueOfflineMutation(
@@ -644,6 +663,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       toast.success(isEdit ? 'Ingreso modificado correctamente' : 'Ingreso registrado correctamente');
       loadSectionRecords();
       loadBalances();
+      loadInterfaceDetails();
     } catch (err: unknown) {
       if (typeof window !== 'undefined' && !navigator.onLine) {
         enqueueOfflineMutation(
@@ -690,6 +710,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
       toast.success(isEdit ? 'Ahorro modificado correctamente' : 'Ahorro registrado correctamente');
       loadSectionRecords();
       loadBalances();
+      loadInterfaceDetails();
     } catch (err: unknown) {
       if (typeof window !== 'undefined' && !navigator.onLine) {
         enqueueOfflineMutation(
@@ -1087,6 +1108,7 @@ export default function InterfaceDetailsPage({ params }: PageProps) {
                         tx.comment || tx.user
                       )
                     }
+                    userRole={userRole}
                   />
                 </div>
               )}

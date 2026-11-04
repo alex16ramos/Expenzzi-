@@ -100,6 +100,8 @@ export async function POST(
 
     if (action === 'confirm_acreedor' || (userId === idacreedor && action !== 'unconfirm_acreedor')) {
       newConfAcreedor = true;
+      // If creditor confirms payment received, immediately mark debt as fully settled (debtor does not need to confirm)
+      newConfDeudor = true;
     } else if (action === 'unconfirm_acreedor') {
       newConfAcreedor = false;
     }

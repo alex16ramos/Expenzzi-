@@ -15,6 +15,7 @@ interface TransactionDetailModalProps {
   onEdit?: (tx: Transaction) => void;
   onDelete?: (id: string | number) => void;
   onViewHistory?: (tx: Transaction) => void;
+  userRole?: string;
 }
 
 export function TransactionDetailModal({
@@ -24,8 +25,13 @@ export function TransactionDetailModal({
   onEdit,
   onDelete,
   onViewHistory,
+  userRole,
 }: TransactionDetailModalProps) {
   if (!isOpen || !tx) return null;
+
+  const isVisualizador = userRole === 'Visualizador';
+  const isAdmin = userRole === 'Administrador';
+  const canModify = !isVisualizador && (tx.type !== 'Ahorro' || isAdmin);
 
   const isIngreso = tx.type === 'Ingreso';
   const isAhorro = tx.type === 'Ahorro';
@@ -146,7 +152,7 @@ export function TransactionDetailModal({
             </Button>
           )}
 
-          {onEdit && (
+          {canModify && onEdit && (
             <Button
               size="sm"
               onClick={() => {
@@ -160,7 +166,7 @@ export function TransactionDetailModal({
             </Button>
           )}
 
-          {onDelete && (
+          {canModify && onDelete && (
             <Button
               size="sm"
               variant="destructive"

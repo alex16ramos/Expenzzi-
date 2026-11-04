@@ -14,6 +14,7 @@ vi.mock('next/navigation', () => ({
     prefetch: vi.fn(),
   }),
   usePathname: () => '/interface/123',
+  useParams: () => ({ id: '123' }),
 }));
 
 // Mock EventSource for realtime SSE

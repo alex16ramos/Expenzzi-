@@ -111,7 +111,7 @@ export function SideMenu({
               },
             ]
           : []),
-        ...(onOpenInvite
+        ...(isAdmin && onOpenInvite
           ? [
               {
                 label: 'Invitar Amigos',

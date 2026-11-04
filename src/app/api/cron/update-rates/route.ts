@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { defaultExchangeRateService } from '@/lib/exchange-rates/provider.factory';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: Request) {
   // Validate authorization token if present in headers to secure the cron
   const authHeader = req.headers.get('authorization');

@@ -44,11 +44,11 @@ describe('Interfaces Update and Role Restrictions', () => {
     it('debe rechazar con 403 si el usuario no es Administrador', async () => {
       vi.mocked(auth.getSession).mockResolvedValueOnce({
         user: { id: 'user-guest' },
-      } as any);
+      } as unknown as never);
 
       vi.mocked(prisma.usuarioInterfaz.findFirst).mockResolvedValueOnce({
         rol: 'Invitado',
-      } as any);
+      } as unknown as never);
 
       const req = new Request('http://localhost/api/interfaces/123', {
         method: 'PUT',
@@ -64,11 +64,11 @@ describe('Interfaces Update and Role Restrictions', () => {
     it('debe rechazar con 400 si el nombre está vacío o supera 50 caracteres', async () => {
       vi.mocked(auth.getSession).mockResolvedValueOnce({
         user: { id: 'admin-user' },
-      } as any);
+      } as unknown as never);
 
       vi.mocked(prisma.usuarioInterfaz.findFirst).mockResolvedValueOnce({
         rol: 'Administrador',
-      } as any);
+      } as unknown as never);
 
       const longName = 'A'.repeat(51);
       const req = new Request('http://localhost/api/interfaces/123', {
@@ -85,17 +85,17 @@ describe('Interfaces Update and Role Restrictions', () => {
     it('debe actualizar la interfaz exitosamente si el usuario es Administrador', async () => {
       vi.mocked(auth.getSession).mockResolvedValueOnce({
         user: { id: 'admin-user' },
-      } as any);
+      } as unknown as never);
 
       vi.mocked(prisma.usuarioInterfaz.findFirst).mockResolvedValueOnce({
         rol: 'Administrador',
-      } as any);
+      } as unknown as never);
 
       vi.mocked(prisma.interfazOperacion.update).mockResolvedValueOnce({
         idinterfazoperacion: BigInt(123),
         nombre: 'Viaje a Bariloche Actualizado',
         descripcion: 'Gastos del viaje compartido 2026',
-      } as any);
+      } as unknown as never);
 
       const req = new Request('http://localhost/api/interfaces/123', {
         method: 'PUT',
@@ -114,11 +114,11 @@ describe('Interfaces Update and Role Restrictions', () => {
     it('debe rechazar POST ahorros con 403 para usuarios con rol Invitado o Visualizador', async () => {
       vi.mocked(auth.getSession).mockResolvedValueOnce({
         user: { id: 'guest-user' },
-      } as any);
+      } as unknown as never);
 
       vi.mocked(prisma.usuarioInterfaz.findFirst).mockResolvedValueOnce({
         rol: 'Invitado',
-      } as any);
+      } as unknown as never);
 
       const req = new Request('http://localhost/api/interfaces/123/ahorros', {
         method: 'POST',
@@ -138,11 +138,11 @@ describe('Interfaces Update and Role Restrictions', () => {
     it('debe rechazar POST categorias con 403 para rol no Administrador', async () => {
       vi.mocked(auth.getSession).mockResolvedValueOnce({
         user: { id: 'viewer-user' },
-      } as any);
+      } as unknown as never);
 
       vi.mocked(prisma.usuarioInterfaz.findFirst).mockResolvedValueOnce({
         rol: 'Visualizador',
-      } as any);
+      } as unknown as never);
 
       const req = new Request('http://localhost/api/interfaces/123/categorias', {
         method: 'POST',
@@ -156,11 +156,11 @@ describe('Interfaces Update and Role Restrictions', () => {
     it('debe rechazar POST submetodos con 403 para rol no Administrador', async () => {
       vi.mocked(auth.getSession).mockResolvedValueOnce({
         user: { id: 'guest-user' },
-      } as any);
+      } as unknown as never);
 
       vi.mocked(prisma.usuarioInterfaz.findFirst).mockResolvedValueOnce({
         rol: 'Invitado',
-      } as any);
+      } as unknown as never);
 
       const req = new Request('http://localhost/api/interfaces/123/submetodos', {
         method: 'POST',

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
+import { randomUUID } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const cleanCode = rawCode.trim();
+    let cleanCode = rawCode.trim();
+    if (cleanCode.includes('code=')) {
+      const match = cleanCode.match(/code=([a-zA-Z0-9-]+)/);
+      if (match) cleanCode = match[1];
+    }
     const session = await auth.getSession();
     const sessObj = session as unknown as Record<string, unknown>;
     const dataObj = sessObj?.data as Record<string, unknown> | undefined;
@@ -65,6 +70,27 @@ export async function POST(req: Request) {
 
     const role = matchedInterfaz.linkinvitado === cleanCode ? 'Invitado' : 'Visualizador';
 
+    // 2.1 Check if user is already an active member of this interface
+    const existingMembership = await prisma.usuarioInterfaz.findUnique({
+      where: {
+        idinterfazoperacion_idusuario: {
+          idinterfazoperacion: matchedInterfaz.idinterfazoperacion,
+          idusuario: userId,
+        },
+      },
+    });
+
+    if (existingMembership && existingMembership.fechasalida === null) {
+      return NextResponse.json(
+        {
+          error: `Ya perteneces a esta interfaz con el rol de ${existingMembership.rol}.`,
+          interfaceId: String(matchedInterfaz.idinterfazoperacion),
+          alreadyMember: true,
+        },
+        { status: 400 }
+      );
+    }
+
     // 3. Upsert relationship in usuariointerfaz
     const joinData = await prisma.usuarioInterfaz.upsert({
       where: {
@@ -84,6 +110,16 @@ export async function POST(req: Request) {
         rol: role,
         fechaunion: new Date(),
       },
+    });
+
+    // 4. Renew the used invitation code so it is not static/reused indefinitely
+    const updateData = role === 'Invitado'
+      ? { linkinvitado: randomUUID() }
+      : { linkvisualizador: randomUUID() };
+
+    await prisma.interfazOperacion.update({
+      where: { idinterfazoperacion: matchedInterfaz.idinterfazoperacion },
+      data: updateData,
     });
 
     const targetInterfaceId = String(matchedInterfaz.idinterfazoperacion);

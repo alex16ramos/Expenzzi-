@@ -307,7 +307,7 @@ export function GastoFormModal({
                   <div className="flex justify-between items-center text-[10px]">
                     <span className="text-slate-600 dark:text-slate-400">Consumido este período:</span>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">
-                      ${currentUsed.toLocaleString('es-AR')} / ${limitAmount.toLocaleString('es-AR')} {limitCurrency}
+                      ${currentUsed.toLocaleString('es-AR')} / ${limitAmount.toLocaleString('es-AR')} {limitCurrency} ({Math.round((currentUsed / limitAmount) * 100)}%)
                     </span>
                   </div>
                   <div className="w-full bg-slate-200 dark:bg-slate-900 rounded-full h-1.5 overflow-hidden">

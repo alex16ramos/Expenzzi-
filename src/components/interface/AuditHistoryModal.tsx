@@ -57,23 +57,26 @@ export function AuditHistoryModal({
     if (entityIdFilter) params.set('entityId', String(entityIdFilter));
 
     fetch(`/api/interfaces/${interfaceId}/historial?${params.toString()}`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Error de conexión');
-        return res.json();
+      .then(async (res) => {
+        const json = await res.json().catch(() => null);
+        if (!res.ok) {
+          throw new Error(json?.error || 'Error al obtener el historial de auditoría');
+        }
+        return json;
       })
       .then((json) => {
         if (isMounted) {
-          if (Array.isArray(json.data)) {
+          if (Array.isArray(json?.data)) {
             setLogs(json.data);
             setErrorMsg('');
           } else {
-            setErrorMsg(json.error || 'Error al obtener el historial de auditoría');
+            setErrorMsg(json?.error || 'Error al obtener el historial de auditoría');
           }
         }
       })
-      .catch(() => {
+      .catch((err) => {
         if (isMounted) {
-          setErrorMsg('Error de conexión al cargar auditoría');
+          setErrorMsg(err.message || 'Error de conexión al cargar auditoría');
         }
       })
       .finally(() => {

@@ -5,6 +5,7 @@ import { TMoneda, TPeriodo } from '@prisma/client';
 import { notifyInterfaceMembers } from '@/lib/notify-members';
 import { checkUserInterfaceMembership } from '@/lib/membership-cache';
 import { extractTimeFromItem, formatCommentWithTime, safeToISOString } from '@/lib/time-utils';
+import { recordAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -255,6 +256,47 @@ export async function PUT(
 
     if (periodoaporte && !['Semanal', 'Mensual', 'Trimestral', 'Anual'].includes(periodoaporte)) {
       return NextResponse.json({ error: 'Periodo de aporte no valido' }, { status: 400 });
+    }
+
+    const prevAhorro = await prisma.ahorro.findUnique({
+      where: { idahorro: BigInt(idahorro) },
+    });
+
+    if (!prevAhorro) {
+      return NextResponse.json({ error: 'Ahorro no encontrado' }, { status: 404 });
+    }
+
+    const isAmountChanged = importe !== undefined && Number(importe) !== Number(prevAhorro.importe);
+    const isCurrencyChanged = moneda && moneda !== prevAhorro.moneda;
+    const isCommentChanged = comentario !== undefined && comentario !== prevAhorro.comentario;
+    const isPeriodChanged = periodoaporte && periodoaporte !== prevAhorro.periodoaporte;
+    const isDateChanged =
+      (fechadesde && new Date(fechadesde).toISOString().split('T')[0] !== prevAhorro.fechadesde.toISOString().split('T')[0]) ||
+      (fechahasta && new Date(fechahasta).toISOString().split('T')[0] !== prevAhorro.fechahasta.toISOString().split('T')[0]);
+
+    if (isAmountChanged || isCurrencyChanged || isCommentChanged || isPeriodChanged || isDateChanged) {
+      await recordAuditLog({
+        tipo: 'ahorro',
+        identidad: BigInt(idahorro),
+        idinterfaz: interfaceId,
+        responsable: userId,
+        datosprevios: {
+          importe: Number(prevAhorro.importe),
+          moneda: prevAhorro.moneda,
+          comentario: prevAhorro.comentario || '',
+          periodoaporte: prevAhorro.periodoaporte,
+          fechadesde: prevAhorro.fechadesde.toISOString().split('T')[0],
+          fechahasta: prevAhorro.fechahasta.toISOString().split('T')[0],
+        },
+        datosnuevos: {
+          importe: importe !== undefined ? Number(importe) : Number(prevAhorro.importe),
+          moneda: moneda || prevAhorro.moneda,
+          comentario: comentario !== undefined ? String(comentario) : (prevAhorro.comentario || ''),
+          periodoaporte: periodoaporte || prevAhorro.periodoaporte,
+          fechadesde: fechadesde ? new Date(fechadesde).toISOString().split('T')[0] : prevAhorro.fechadesde.toISOString().split('T')[0],
+          fechahasta: fechahasta ? new Date(fechahasta).toISOString().split('T')[0] : prevAhorro.fechahasta.toISOString().split('T')[0],
+        },
+      });
     }
 
     const updated = await prisma.ahorro.update({

@@ -3,6 +3,8 @@ import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { getExchangeRatesForDate, convertCurrency } from '@/lib/exchange-rate';
+import { ensureUserInDb } from '@/lib/user-sync';
+import { invalidateMembershipCache } from '@/lib/membership-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,9 +28,12 @@ export async function GET() {
       );
     }
 
+    const dbUser = await ensureUserInDb(userObj);
+    const candidateUserIds = Array.from(new Set([userId, dbUser?.idusuario].filter(Boolean))) as string[];
+
     const userInterfaces = await prisma.usuarioInterfaz.findMany({
       where: {
-        idusuario: userId,
+        idusuario: { in: candidateUserIds },
         fechasalida: null,
       },
       include: {
@@ -157,14 +162,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const userEmail = (userObj?.email as string) || '';
-    const userName = (userObj?.name as string) || userEmail.split('@')[0] || 'Usuario';
-
-    await prisma.usuario.upsert({
-      where: { idusuario: userId },
-      update: { nombreusuario: userName, email: userEmail },
-      create: { idusuario: userId, nombreusuario: userName, email: userEmail },
-    });
+    const dbUser = await ensureUserInDb(userObj);
+    const effectiveUserId = dbUser?.idusuario || userId;
 
     const newInterfaz = await prisma.interfazOperacion.create({
       data: {
@@ -178,11 +177,16 @@ export async function POST(req: Request) {
     await prisma.usuarioInterfaz.create({
       data: {
         idinterfazoperacion: newInterfaz.idinterfazoperacion,
-        idusuario: userId,
+        idusuario: effectiveUserId,
         rol: 'Administrador',
         fechaunion: new Date(),
       },
     });
+
+    invalidateMembershipCache(userId, newInterfaz.idinterfazoperacion);
+    if (effectiveUserId !== userId) {
+      invalidateMembershipCache(effectiveUserId, newInterfaz.idinterfazoperacion);
+    }
 
     return NextResponse.json({
       success: true,

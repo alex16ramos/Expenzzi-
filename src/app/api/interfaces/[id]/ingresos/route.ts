@@ -5,6 +5,7 @@ import { TMoneda } from '@prisma/client';
 import { notifyInterfaceMembers } from '@/lib/notify-members';
 import { checkUserInterfaceMembership } from '@/lib/membership-cache';
 import { extractTimeFromItem, formatCommentWithTime, safeToISOString } from '@/lib/time-utils';
+import { recordAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -281,6 +282,40 @@ export async function PUT(
 
     if (!idingreso) {
       return NextResponse.json({ error: 'idingreso es requerido' }, { status: 400 });
+    }
+
+    const prevIngreso = await prisma.ingreso.findUnique({
+      where: { idingreso: BigInt(idingreso) },
+    });
+
+    if (!prevIngreso) {
+      return NextResponse.json({ error: 'Ingreso no encontrado' }, { status: 404 });
+    }
+
+    const isAmountChanged = importe !== undefined && Number(importe) !== Number(prevIngreso.importe);
+    const isCurrencyChanged = moneda && moneda !== prevIngreso.moneda;
+    const isCommentChanged = comentario !== undefined && comentario !== prevIngreso.comentario;
+    const isDateChanged = fecha && new Date(fecha).toISOString().split('T')[0] !== prevIngreso.fecha.toISOString().split('T')[0];
+
+    if (isAmountChanged || isCurrencyChanged || isCommentChanged || isDateChanged) {
+      await recordAuditLog({
+        tipo: 'ingreso',
+        identidad: BigInt(idingreso),
+        idinterfaz: interfaceId,
+        responsable: userId,
+        datosprevios: {
+          importe: Number(prevIngreso.importe),
+          moneda: prevIngreso.moneda,
+          comentario: prevIngreso.comentario || '',
+          fecha: prevIngreso.fecha.toISOString().split('T')[0],
+        },
+        datosnuevos: {
+          importe: importe !== undefined ? Number(importe) : Number(prevIngreso.importe),
+          moneda: moneda || prevIngreso.moneda,
+          comentario: comentario !== undefined ? String(comentario) : (prevIngreso.comentario || ''),
+          fecha: fecha ? new Date(fecha).toISOString().split('T')[0] : prevIngreso.fecha.toISOString().split('T')[0],
+        },
+      });
     }
 
     const updated = await prisma.ingreso.update({

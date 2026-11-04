@@ -49,6 +49,12 @@ function JoinInterfaceContent() {
               router.replace('/dashboard');
             }
           }, 1000);
+        } else if (data.alreadyMember && data.interfaceId) {
+          setStatus('success');
+          toast.info(data.error || 'Ya perteneces a esta interfaz.');
+          setTimeout(() => {
+            router.replace(`/interface/${data.interfaceId}`);
+          }, 1500);
         } else {
           setStatus('error');
           const msg = data.error || 'Código de invitación inválido o la interfaz se encuentra inactiva.';

@@ -1,16 +1,20 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
+import { ensureUserInDb } from '@/lib/user-sync';
+import { getCategoryLimitUsageMap } from '@/lib/limits';
 
 export const dynamic = 'force-dynamic';
 
-async function getUserIdFromSession(): Promise<string | null> {
+async function getSessionUser(): Promise<{ userId: string; userObj: Record<string, unknown> } | null> {
   try {
     const session = await auth.getSession();
     const sessObj = session as unknown as Record<string, unknown>;
     const dataObj = sessObj?.data as Record<string, unknown> | undefined;
     const userObj = (dataObj?.user || sessObj?.user) as Record<string, unknown> | undefined;
-    return (userObj?.id || userObj?.idusuario || userObj?.userId) as string || null;
+    const userId = (userObj?.id || userObj?.idusuario || userObj?.userId) as string || null;
+    if (!userId || !userObj) return null;
+    return { userId, userObj };
   } catch {
     return null;
   }
@@ -26,10 +30,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = await getUserIdFromSession();
-    if (!userId) {
+    const sessionData = await getSessionUser();
+    if (!sessionData) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
+    const { userId, userObj } = sessionData;
 
     const resolvedParams = await params;
     if (!resolvedParams.id || !/^\d+$/.test(resolvedParams.id)) {
@@ -43,11 +48,14 @@ export async function GET(
       return NextResponse.json({ error: 'ID de interfaz inválido' }, { status: 404 });
     }
 
+    const dbUser = await ensureUserInDb(userObj);
+    const candidateUserIds = Array.from(new Set([userId, dbUser?.idusuario].filter(Boolean))) as string[];
+
     // Check user association and role in interface
     const userInterfaz = await prisma.usuarioInterfaz.findFirst({
       where: {
         idinterfazoperacion: interfaceId,
-        idusuario: userId,
+        idusuario: { in: candidateUserIds },
         fechasalida: null,
       },
       include: {
@@ -64,7 +72,7 @@ export async function GET(
 
     // Auto-seed example data (Categories, Submethods, Gastos, Ingresos, Ahorros) if empty
     const { ensureDemoDataForInterface } = await import('@/lib/demo-seed');
-    await ensureDemoDataForInterface(interfaceId, userId);
+    await ensureDemoDataForInterface(interfaceId, userInterfaz.idusuario);
 
     // Fetch active categories for this interface
     const categories = await prisma.categoria.findMany({
@@ -76,19 +84,7 @@ export async function GET(
     });
 
     // Calculate category limit usage map
-    const categoryUsageMap = new Map<string, number>();
-    try {
-      const rows = await prisma.$queryRaw<Array<{ idcategoria: bigint; importeutilizado: number | string | null }>>`
-        SELECT idcategoria, importeutilizado 
-        FROM vistalimitegastosperiodo 
-        WHERE idinterfazoperacion = ${interfaceId}
-      `;
-      for (const r of rows) {
-        categoryUsageMap.set(String(r.idcategoria), Number(r.importeutilizado || 0));
-      }
-    } catch {
-      // Fallback ignore if raw query unavailable
-    }
+    const categoryUsageMap = await getCategoryLimitUsageMap(interfaceId);
 
     // Fetch submethods, members, and latest exchange rate safely
     const [submethods, members, latestCambio] = await Promise.all([

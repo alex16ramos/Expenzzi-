@@ -72,6 +72,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'La interfaz especificada no existe' }, { status: 404 });
     }
 
+    // Verify that the issuer is an active Administrator of the interface
+    const emisorMembership = await prisma.usuarioInterfaz.findUnique({
+      where: {
+        idinterfazoperacion_idusuario: {
+          idinterfazoperacion: interfazIdBigInt,
+          idusuario: idemisor,
+        },
+      },
+    });
+
+    if (!emisorMembership || emisorMembership.fechasalida !== null || emisorMembership.rol !== 'Administrador') {
+      return NextResponse.json(
+        { error: 'Solo el administrador de la interfaz puede enviar invitaciones' },
+        { status: 403 }
+      );
+    }
+
     // Check if recipient is already a member of the interface
     const existingMembership = await prisma.usuarioInterfaz.findUnique({
       where: {

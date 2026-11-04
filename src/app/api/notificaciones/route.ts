@@ -43,7 +43,46 @@ export async function GET() {
       take: 50,
     });
 
-    const notificaciones = notificacionesRaw.map((n) => ({
+    // Verify any pending friendship notifications still have an active pending friendship
+    const pendingFriendNotifs = notificacionesRaw.filter(
+      (n) => n.tipo === 'SOLICITUD_AMISTAD' && n.estado === 'Pendiente'
+    );
+
+    const orphanedNotifIds: bigint[] = [];
+    if (pendingFriendNotifs.length > 0) {
+      const pendingFriendships = await prisma.amistad.findMany({
+        where: {
+          estado: 'Pendiente',
+          OR: pendingFriendNotifs.map((n) => ({
+            idremitente: n.idemisor,
+            iddestinatario: n.idreceptor,
+          })),
+        },
+      });
+
+      const activePairSet = new Set(
+        pendingFriendships.map((f) => `${f.idremitente}:${f.iddestinatario}`)
+      );
+
+      for (const n of pendingFriendNotifs) {
+        if (!activePairSet.has(`${n.idemisor}:${n.idreceptor}`)) {
+          orphanedNotifIds.push(n.idnotificacion);
+        }
+      }
+
+      if (orphanedNotifIds.length > 0) {
+        // Clean up orphaned notifications from database in the background
+        prisma.notificacion.deleteMany({
+          where: { idnotificacion: { in: orphanedNotifIds } },
+        }).catch(() => {});
+      }
+    }
+
+    const visibleNotificaciones = orphanedNotifIds.length > 0
+      ? notificacionesRaw.filter((n) => !orphanedNotifIds.includes(n.idnotificacion))
+      : notificacionesRaw;
+
+    const notificaciones = visibleNotificaciones.map((n) => ({
       idnotificacion: n.idnotificacion.toString(),
       idreceptor: n.idreceptor,
       idemisor: n.idemisor,
