@@ -113,11 +113,11 @@ export function InviteModal({
     const timer = setTimeout(async () => {
       setSearching(true);
       try {
-        const res = await fetch(`/api/amigos/buscar?query=${encodeURIComponent(searchQuery)}`);
+        const res = await fetch(`/api/usuarios?q=${encodeURIComponent(searchQuery)}`);
         if (!res.ok) return;
         const data = await res.json();
         if (data.success) {
-          setSearchResults(data.resultados || []);
+          setSearchResults(data.usuarios || data.resultados || []);
         }
       } catch (err) {
         console.error('Error searching users:', err);
@@ -143,9 +143,11 @@ export function InviteModal({
     if (!targetCode) return;
 
     try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const inviteUrl = `${origin}/interface/join?code=${targetCode}`;
       await navigator.clipboard.writeText(targetCode);
       setCopiedRole(role);
-      setFeedback({ type: 'success', message: `¡Código para ${role} copiado al portapapeles!` });
+      setFeedback({ type: 'success', message: `¡Código de invitación para ${role} copiado al portapapeles!` });
       setTimeout(() => {
         setCopiedRole(null);
       }, 3000);
@@ -249,11 +251,10 @@ export function InviteModal({
                 type="button"
                 onClick={() => handleCopySpecificCode('Invitado')}
                 disabled={!activeInvitadoCode}
-                className={`h-8 px-3 text-xs font-bold gap-1.5 transition-colors shrink-0 rounded-xl cursor-pointer ${
-                  copiedRole === 'Invitado'
-                    ? 'bg-emerald-600 text-white hover:bg-emerald-500'
-                    : 'bg-indigo-600 text-white hover:bg-indigo-500'
-                }`}
+                className={`h-8 px-3 text-xs font-bold gap-1.5 transition-colors shrink-0 rounded-xl cursor-pointer ${copiedRole === 'Invitado'
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                  : 'bg-indigo-600 text-white hover:bg-indigo-500'
+                  }`}
               >
                 {copiedRole === 'Invitado' ? (
                   <>
@@ -263,7 +264,7 @@ export function InviteModal({
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5" />
-                    Copiar Invitado
+                    Copiar Código
                   </>
                 )}
               </Button>
@@ -289,11 +290,10 @@ export function InviteModal({
                 type="button"
                 onClick={() => handleCopySpecificCode('Visualizador')}
                 disabled={!activeVisualizadorCode}
-                className={`h-8 px-3 text-xs font-bold gap-1.5 transition-colors shrink-0 rounded-xl cursor-pointer ${
-                  copiedRole === 'Visualizador'
-                    ? 'bg-emerald-600 text-white hover:bg-emerald-500'
-                    : 'bg-slate-700 dark:bg-slate-800 text-white hover:bg-slate-600'
-                }`}
+                className={`h-8 px-3 text-xs font-bold gap-1.5 transition-colors shrink-0 rounded-xl cursor-pointer ${copiedRole === 'Visualizador'
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                  : 'bg-slate-700 dark:bg-slate-800 text-white hover:bg-slate-600'
+                  }`}
               >
                 {copiedRole === 'Visualizador' ? (
                   <>
@@ -303,7 +303,7 @@ export function InviteModal({
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5" />
-                    Copiar Visualizador
+                    Copiar Código
                   </>
                 )}
               </Button>
@@ -314,11 +314,10 @@ export function InviteModal({
         {/* Feedback Message */}
         {feedback && (
           <div
-            className={`p-3 rounded-2xl border text-xs font-semibold flex items-center gap-2 animate-in fade-in duration-150 ${
-              feedback.type === 'success'
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
-                : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-400'
-            }`}
+            className={`p-3 rounded-2xl border text-xs font-semibold flex items-center gap-2 animate-in fade-in duration-150 ${feedback.type === 'success'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
+              : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-400'
+              }`}
           >
             {feedback.type === 'success' && <Check className="w-4 h-4 shrink-0" />}
             <span>{feedback.message}</span>
@@ -426,11 +425,10 @@ export function InviteModal({
                     key={role}
                     type="button"
                     onClick={() => setSelectedRole(role)}
-                    className={`py-1.5 text-xs font-semibold rounded-xl border transition-colors ${
-                      selectedRole === role
-                        ? 'bg-violet-600 text-white border-violet-600 shadow-sm'
-                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-400'
-                    }`}
+                    className={`py-1.5 text-xs font-semibold rounded-xl border transition-colors ${selectedRole === role
+                      ? 'bg-violet-600 text-white border-violet-600 shadow-sm'
+                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                      }`}
                   >
                     {role}
                   </button>

@@ -253,10 +253,11 @@ RETURNS TRIGGER AS $$
 BEGIN
   IF (TG_OP = 'INSERT') THEN
     BEGIN
-      INSERT INTO public.usuario (nombreusuario, email, contrasena)
-      VALUES (COALESCE(NEW.name, 'Usuario'), NEW.email, 'NEON_AUTH')
-      ON CONFLICT (email) DO UPDATE
-      SET nombreusuario = EXCLUDED.nombreusuario;
+      INSERT INTO public.usuario (idusuario, nombreusuario, email, contrasena)
+      VALUES (NEW.id::uuid, COALESCE(NEW.name, 'Usuario'), NEW.email, 'NEON_AUTH')
+      ON CONFLICT (idusuario) DO UPDATE
+      SET nombreusuario = EXCLUDED.nombreusuario,
+          email = EXCLUDED.email;
     EXCEPTION WHEN OTHERS THEN
       RAISE WARNING 'sync_usuario_fn insert error: %', SQLERRM;
     END;
@@ -917,6 +918,22 @@ CREATE POLICY select_historialahorro ON "historialahorro" FOR SELECT TO authenti
 CREATE POLICY select_historialgasto ON "historialgasto" FOR SELECT TO authenticated, anonymous, PUBLIC USING (true);
 CREATE POLICY select_historialingreso ON "historialingreso" FOR SELECT TO authenticated, anonymous, PUBLIC USING (true);
 CREATE POLICY select_historiallimite ON "historiallimite" FOR SELECT TO authenticated, anonymous, PUBLIC USING (true);
+
+-- L. Tabla de Auditoría General (RF6)
+CREATE TABLE IF NOT EXISTS public.auditoria_registro (
+  idauditoria BIGSERIAL PRIMARY KEY,
+  tipo VARCHAR(20) NOT NULL,
+  identidad BIGINT NOT NULL,
+  idinterfaz BIGINT NOT NULL,
+  responsable UUID,
+  fechacambio TIMESTAMPTZ DEFAULT NOW(),
+  datosprevios JSONB,
+  datosnuevos JSONB
+);
+CREATE INDEX IF NOT EXISTS idx_auditoria_registro_interfaz ON public.auditoria_registro (idinterfaz, tipo, identidad);
+ALTER TABLE public.auditoria_registro ENABLE ROW LEVEL SECURITY;
+CREATE POLICY select_auditoria_registro ON public.auditoria_registro FOR SELECT TO authenticated, anonymous, PUBLIC USING (true);
+CREATE POLICY insert_auditoria_registro ON public.auditoria_registro FOR INSERT TO authenticated, anonymous, PUBLIC WITH CHECK (true);
 
 
 

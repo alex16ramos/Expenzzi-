@@ -9,7 +9,8 @@ import { TRol } from '@prisma/client';
  */
 export async function POST(req: Request) {
   try {
-    const { idreceptor, idinterfazoperacion, rolPropuesto = 'Invitado' } = await req.json();
+    const body = await req.json();
+    const { idinterfazoperacion, rolPropuesto = 'Invitado' } = body;
 
     const session = await auth.getSession();
     const sessObj = session as unknown as Record<string, unknown>;
@@ -24,27 +25,40 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!idreceptor || !idinterfazoperacion) {
+    const recipientKey = String(body.idreceptor || body.email || body.idusuario || '').trim();
+
+    if (!recipientKey || !idinterfazoperacion) {
       return NextResponse.json(
-        { error: 'Faltan parámetros requeridos (idreceptor, idinterfazoperacion)' },
+        { error: 'Faltan parámetros requeridos (idreceptor o email, idinterfazoperacion)' },
         { status: 400 }
       );
     }
+
+    // Verify recipient exists (by id or email)
+    let receptor = null;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recipientKey);
+    if (isUuid) {
+      receptor = await prisma.usuario.findUnique({
+        where: { idusuario: recipientKey },
+      });
+    }
+    if (!receptor) {
+      receptor = await prisma.usuario.findFirst({
+        where: { email: { equals: recipientKey, mode: 'insensitive' } },
+      });
+    }
+
+    if (!receptor) {
+      return NextResponse.json({ error: 'El usuario destinatario no existe' }, { status: 404 });
+    }
+
+    const idreceptor = receptor.idusuario;
 
     if (idreceptor === idemisor) {
       return NextResponse.json(
         { error: 'No te puedes enviar una invitación a ti mismo' },
         { status: 400 }
       );
-    }
-
-    // Verify recipient exists
-    const receptor = await prisma.usuario.findUnique({
-      where: { idusuario: idreceptor },
-    });
-
-    if (!receptor) {
-      return NextResponse.json({ error: 'El usuario destinatario no existe' }, { status: 404 });
     }
 
     const interfazIdBigInt = BigInt(idinterfazoperacion);
@@ -56,6 +70,23 @@ export async function POST(req: Request) {
 
     if (!interfaz) {
       return NextResponse.json({ error: 'La interfaz especificada no existe' }, { status: 404 });
+    }
+
+    // Verify that the issuer is an active Administrator of the interface
+    const emisorMembership = await prisma.usuarioInterfaz.findUnique({
+      where: {
+        idinterfazoperacion_idusuario: {
+          idinterfazoperacion: interfazIdBigInt,
+          idusuario: idemisor,
+        },
+      },
+    });
+
+    if (!emisorMembership || emisorMembership.fechasalida !== null || emisorMembership.rol !== 'Administrador') {
+      return NextResponse.json(
+        { error: 'Solo el administrador de la interfaz puede enviar invitaciones' },
+        { status: 403 }
+      );
     }
 
     // Check if recipient is already a member of the interface

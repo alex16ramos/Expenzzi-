@@ -16,8 +16,10 @@ const TTL_MS = 60 * 1000; // 60 seconds TTL
  */
 export async function checkUserInterfaceMembership(
   userId: string,
-  interfaceId: bigint
+  interfaceId: bigint,
+  candidateIds?: string[]
 ): Promise<{ hasAccess: boolean; role: TRol | 'Visualizador' }> {
+  const userIds = Array.from(new Set([userId, ...(candidateIds || [])].filter(Boolean))) as string[];
   const cacheKey = `${userId}:${interfaceId.toString()}`;
   const now = Date.now();
 
@@ -31,7 +33,7 @@ export async function checkUserInterfaceMembership(
   const userInterfaz = await prisma.usuarioInterfaz.findFirst({
     where: {
       idinterfazoperacion: interfaceId,
-      idusuario: userId,
+      idusuario: { in: userIds },
       fechasalida: null,
     },
     select: {

@@ -43,7 +43,46 @@ export async function GET() {
       take: 50,
     });
 
-    const notificaciones = notificacionesRaw.map((n) => ({
+    // Verify any pending friendship notifications still have an active pending friendship
+    const pendingFriendNotifs = notificacionesRaw.filter(
+      (n) => n.tipo === 'SOLICITUD_AMISTAD' && n.estado === 'Pendiente'
+    );
+
+    const orphanedNotifIds: bigint[] = [];
+    if (pendingFriendNotifs.length > 0) {
+      const pendingFriendships = await prisma.amistad.findMany({
+        where: {
+          estado: 'Pendiente',
+          OR: pendingFriendNotifs.map((n) => ({
+            idremitente: n.idemisor,
+            iddestinatario: n.idreceptor,
+          })),
+        },
+      });
+
+      const activePairSet = new Set(
+        pendingFriendships.map((f) => `${f.idremitente}:${f.iddestinatario}`)
+      );
+
+      for (const n of pendingFriendNotifs) {
+        if (!activePairSet.has(`${n.idemisor}:${n.idreceptor}`)) {
+          orphanedNotifIds.push(n.idnotificacion);
+        }
+      }
+
+      if (orphanedNotifIds.length > 0) {
+        // Clean up orphaned notifications from database in the background
+        prisma.notificacion.deleteMany({
+          where: { idnotificacion: { in: orphanedNotifIds } },
+        }).catch(() => {});
+      }
+    }
+
+    const visibleNotificaciones = orphanedNotifIds.length > 0
+      ? notificacionesRaw.filter((n) => !orphanedNotifIds.includes(n.idnotificacion))
+      : notificacionesRaw;
+
+    const notificaciones = visibleNotificaciones.map((n) => ({
       idnotificacion: n.idnotificacion.toString(),
       idreceptor: n.idreceptor,
       idemisor: n.idemisor,
@@ -75,6 +114,57 @@ export async function GET() {
     console.error('Error fetching notifications:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor al consultar notificaciones' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH /api/notificaciones
+ * Marks one or all notifications as read.
+ */
+export async function PATCH(req: Request) {
+  try {
+    const session = await auth.getSession();
+    const sessObj = session as unknown as Record<string, unknown>;
+    const dataObj = sessObj?.data as Record<string, unknown> | undefined;
+    const userObj = (dataObj?.user || sessObj?.user) as Record<string, unknown> | undefined;
+    const userId = (userObj?.id || userObj?.idusuario || userObj?.userId) as string | undefined;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const { idnotificacion, all } = body;
+
+    if (all || !idnotificacion) {
+      await prisma.notificacion.updateMany({
+        where: { idreceptor: userId, leido: false },
+        data: { leido: true },
+      });
+      return NextResponse.json({
+        success: true,
+        message: 'Todas las notificaciones han sido marcadas como leídas',
+      });
+    }
+
+    await prisma.notificacion.updateMany({
+      where: {
+        idnotificacion: BigInt(idnotificacion),
+        idreceptor: userId,
+      },
+      data: { leido: true },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Notificación marcada como leída',
+    });
+  } catch (err: unknown) {
+    console.error('Error marking notifications as read:', err);
+    return NextResponse.json(
+      { error: 'Error al marcar notificaciones como leídas' },
       { status: 500 }
     );
   }

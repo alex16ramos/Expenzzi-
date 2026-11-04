@@ -18,13 +18,6 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { action, email, currentPassword, newPassword } = body;
 
-    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
-      return NextResponse.json(
-        { error: 'La nueva contraseña debe tener al menos 6 caracteres' },
-        { status: 400 }
-      );
-    }
-
     if (action === 'forgot') {
       if (!email || typeof email !== 'string') {
         return NextResponse.json(
@@ -43,21 +36,41 @@ export async function POST(req: Request) {
       if (!user) {
         return NextResponse.json(
           { error: 'No existe ninguna cuenta asociada a este correo electrónico' },
-          { status: 444 }
+          { status: 404 }
         );
       }
 
-      const hashedPassword = hashPassword(newPassword);
+      if (newPassword) {
+        if (typeof newPassword !== 'string' || newPassword.length < 6) {
+          return NextResponse.json(
+            { error: 'La nueva contraseña debe tener al menos 6 caracteres' },
+            { status: 400 }
+          );
+        }
+        const hashedPassword = hashPassword(newPassword);
 
-      await prisma.usuario.update({
-        where: { idusuario: user.idusuario },
-        data: { contrasena: hashedPassword },
-      });
+        await prisma.usuario.update({
+          where: { idusuario: user.idusuario },
+          data: { contrasena: hashedPassword },
+        });
+
+        return NextResponse.json({
+          success: true,
+          message: 'Contraseña restablecida correctamente. Ya puedes iniciar sesión con tu nueva clave.',
+        });
+      }
 
       return NextResponse.json({
         success: true,
-        message: 'Contraseña restablecida correctamente. Ya puedes iniciar sesión con tu nueva clave.',
+        message: 'Si el correo existe en el sistema, recibirás las instrucciones de recuperación.',
       });
+    }
+
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+      return NextResponse.json(
+        { error: 'La nueva contraseña debe tener al menos 6 caracteres' },
+        { status: 400 }
+      );
     } else if (action === 'change') {
       const session = await auth.getSession();
       const sessObj = session as unknown as Record<string, unknown>;

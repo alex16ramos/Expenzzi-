@@ -17,6 +17,83 @@ async function getUserIdFromSession(): Promise<string | null> {
 }
 
 /**
+ * PUT /api/interfaces/[id]
+ * Updates an operation interface name and description (Administrador only).
+ */
+export async function PUT(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const userId = await getUserIdFromSession();
+    if (!userId) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const resolvedParams = await params;
+    const interfaceId = BigInt(resolvedParams.id);
+
+    const userInterfaz = await prisma.usuarioInterfaz.findFirst({
+      where: {
+        idinterfazoperacion: interfaceId,
+        idusuario: userId,
+        fechasalida: null,
+      },
+    });
+
+    if (!userInterfaz) {
+      return NextResponse.json({ error: 'No tienes acceso a esta interfaz' }, { status: 403 });
+    }
+
+    if (userInterfaz.rol !== 'Administrador') {
+      return NextResponse.json(
+        { error: 'Solo los administradores pueden modificar la interfaz' },
+        { status: 403 }
+      );
+    }
+
+    const body = await req.json();
+    const { nombre, descripcion } = body;
+
+    if (!nombre || typeof nombre !== 'string' || !nombre.trim()) {
+      return NextResponse.json(
+        { error: 'El nombre de la interfaz es obligatorio' },
+        { status: 400 }
+      );
+    }
+
+    if (nombre.trim().length > 50) {
+      return NextResponse.json(
+        { error: 'El nombre no puede exceder los 50 caracteres' },
+        { status: 400 }
+      );
+    }
+
+    const updated = await prisma.interfazOperacion.update({
+      where: { idinterfazoperacion: interfaceId },
+      data: {
+        nombre: nombre.trim(),
+        descripcion: descripcion !== undefined ? (typeof descripcion === 'string' ? descripcion.trim() || null : null) : undefined,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Interfaz actualizada exitosamente',
+      data: {
+        id: String(updated.idinterfazoperacion),
+        nombre: updated.nombre,
+        descripcion: updated.descripcion,
+      },
+    });
+  } catch (err: unknown) {
+    console.error('[API /api/interfaces/[id] PUT Error]:', err);
+    const errorMsg = (err as { message?: string })?.message || 'Error del servidor al actualizar la interfaz';
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
+  }
+}
+
+/**
  * DELETE /api/interfaces/[id]
  * Deletes an operation interface (Administrador only).
  */

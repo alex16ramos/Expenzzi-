@@ -33,6 +33,8 @@ export function TransactionDetailPanel({
   if (!tx) return null;
 
   const isVisualizador = userRole === 'Visualizador';
+  const isAdmin = userRole === 'Administrador';
+  const canModify = !isVisualizador && (tx.type !== 'Ahorro' || isAdmin);
 
   const isIngreso = tx.type === 'Ingreso';
   const isAhorro = tx.type === 'Ahorro';
@@ -155,7 +157,7 @@ export function TransactionDetailPanel({
           </Button>
         )}
 
-        {!isVisualizador && onEdit && (
+        {canModify && onEdit && (
           <Button
             size="sm"
             onClick={() => {
@@ -168,7 +170,7 @@ export function TransactionDetailPanel({
           </Button>
         )}
 
-        {!isVisualizador && onDelete && tx.estado !== false && (
+        {canModify && onDelete && tx.estado !== false && (
           <Button
             size="sm"
             variant="destructive"
@@ -183,7 +185,7 @@ export function TransactionDetailPanel({
           </Button>
         )}
 
-        {!isVisualizador && onRestore && tx.estado === false && (
+        {canModify && onRestore && tx.estado === false && (
           <Button
             size="sm"
             onClick={() => {

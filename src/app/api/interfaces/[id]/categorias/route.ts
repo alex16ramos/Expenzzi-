@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { TMoneda, TPeriodo } from '@prisma/client';
 import { checkUserInterfaceMembership } from '@/lib/membership-cache';
+import { getCategoryLimitUsageMap } from '@/lib/limits';
+import { recordAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +27,7 @@ async function getUserRole(userId: string, interfaceId: bigint): Promise<string 
   return ui?.rol || null;
 }
 
-async function getCategoryLimitUsageMap(interfaceId: bigint): Promise<Map<string, number>> {
+async function _legacyGetCategoryLimitUsageMap(interfaceId: bigint): Promise<Map<string, number>> {
   const map = new Map<string, number>();
   try {
     const rows = await prisma.$queryRaw<Array<{ idcategoria: bigint; importeutilizado: number | string | null }>>`
@@ -54,7 +56,7 @@ async function getCategoryLimitUsageMap(interfaceId: bigint): Promise<Map<string
       const catId = String(g.idcategoria);
       const limitMoneda = g.categoria.moneda || 'ARS';
       const period = g.categoria.periodoaplicacion || 'Mensual';
-      
+
       const now = new Date();
       const gDate = new Date(g.fecha);
       let inPeriod = false;
@@ -63,7 +65,7 @@ async function getCategoryLimitUsageMap(interfaceId: bigint): Promise<Map<string
         const day = startOfWeek.getDay();
         const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
         startOfWeek.setDate(diff);
-        startOfWeek.setHours(0,0,0,0);
+        startOfWeek.setHours(0, 0, 0, 0);
         inPeriod = gDate >= startOfWeek;
       } else if (period === 'Mensual') {
         inPeriod = gDate.getFullYear() === now.getFullYear() && gDate.getMonth() === now.getMonth();
@@ -160,9 +162,9 @@ export async function POST(
     if (!hasAccess) {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
     }
-    if (role === 'Visualizador') {
+    if (role !== 'Administrador') {
       return NextResponse.json(
-        { error: 'El rol Visualizador no tiene permisos para crear categorías.' },
+        { error: 'Solo los administradores tienen permisos para crear categorías.' },
         { status: 403 }
       );
     }
@@ -239,9 +241,9 @@ export async function PUT(
     if (!hasAccess) {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
     }
-    if (role === 'Visualizador') {
+    if (role !== 'Administrador') {
       return NextResponse.json(
-        { error: 'El rol Visualizador no tiene permisos para editar categorías.' },
+        { error: 'Solo los administradores tienen permisos para editar categorías.' },
         { status: 403 }
       );
     }
@@ -261,6 +263,41 @@ export async function PUT(
           { status: 403 }
         );
       }
+    }
+
+    const prevCat = await prisma.categoria.findUnique({
+      where: { idcategoria: BigInt(idcategoria) },
+    });
+
+    if (
+      prevCat &&
+      prevCat.estadolimite &&
+      prevCat.importe !== null &&
+      prevCat.periodoaplicacion &&
+      (importe !== undefined || periodoaplicacion !== undefined || estadolimite !== undefined || moneda !== undefined)
+    ) {
+      const usageMapBefore = await getCategoryLimitUsageMap(interfaceId);
+      const used = usageMapBefore.get(String(prevCat.idcategoria)) || 0;
+      await recordAuditLog({
+        tipo: 'limite',
+        identidad: BigInt(idcategoria),
+        idinterfaz: interfaceId,
+        responsable: userId,
+        datosprevios: {
+          importe: Number(prevCat.importe),
+          moneda: prevCat.moneda || 'ARS',
+          periodoaplicacion: prevCat.periodoaplicacion,
+          importeutilizado: used,
+          nombreItem: prevCat.nombre,
+        },
+        datosnuevos: {
+          importe: importe !== undefined ? (importe ? Number(importe) : null) : Number(prevCat.importe),
+          moneda: moneda || prevCat.moneda || 'ARS',
+          periodoaplicacion: periodoaplicacion || prevCat.periodoaplicacion,
+          importeutilizado: used,
+          nombreItem: nombre ? String(nombre).trim() : prevCat.nombre,
+        },
+      });
     }
 
     const updated = await prisma.categoria.update({
@@ -318,9 +355,9 @@ export async function DELETE(
     if (!hasAccess) {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
     }
-    if (role === 'Visualizador') {
+    if (role !== 'Administrador') {
       return NextResponse.json(
-        { error: 'El rol Visualizador no tiene permisos para desactivar categorías.' },
+        { error: 'Solo los administradores tienen permisos para desactivar categorías.' },
         { status: 403 }
       );
     }

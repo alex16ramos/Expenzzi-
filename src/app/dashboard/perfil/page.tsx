@@ -16,6 +16,9 @@ import {
   AtSign,
   ArrowRight,
   Lock,
+  Palette,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
 import { Header } from '@/components/interface/Header';
@@ -24,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface UserProfile {
   idusuario: string;
@@ -223,8 +227,8 @@ export default function ProfilePage() {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      toast.error('Las contraseñas nuevas no coinciden');
+    if (!currentPassword) {
+      toast.error('Por favor ingresa tu contraseña actual');
       return;
     }
 
@@ -233,28 +237,32 @@ export default function ProfilePage() {
       return;
     }
 
+    if (newPassword !== confirmPassword) {
+      toast.error('Las contraseñas nuevas no coinciden');
+      return;
+    }
+
     setSavingPassword(true);
 
     try {
-      const res = await fetch('/api/auth/change-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword, newPassword }),
+      const { error } = await authClient.changePassword({
+        currentPassword,
+        newPassword,
+        revokeOtherSessions: false,
       });
-      if (!res.ok) {
-        toast.error('Error al actualizar contraseña');
-        return;
-      }
-      const data = await res.json();
 
-      if (res.ok && data.success) {
+      if (error) {
+        const errorMsg =
+          error.message?.toLowerCase().includes('invalid') || error.message?.toLowerCase().includes('incorrect')
+            ? 'La contraseña actual ingresada es incorrecta'
+            : (error.message || 'Error al actualizar la contraseña');
+        toast.error(errorMsg);
+      } else {
         toast.success('Contraseña actualizada con éxito');
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
         setShowSecuritySection(false);
-      } else {
-        toast.error(data.error || 'No se pudo cambiar la contraseña');
       }
     } catch (err) {
       console.error('Error changing password:', err);
@@ -453,6 +461,33 @@ export default function ProfilePage() {
               </form>
             </div>
 
+            {/* THEME & APPEARANCE SECTION */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Palette className="w-5 h-5 text-indigo-500" /> Tema Visual & Apariencia
+                  </h3>
+                  <p className="text-xs text-slate-500">Personaliza la interfaz visual de la aplicación según tu preferencia (Modo Claro, Modo Oscuro o Sistema).</p>
+                </div>
+                <ThemeToggle
+                  variant="buttons"
+                  onThemeSaved={async (newTheme) => {
+                    try {
+                      await fetch('/api/perfil', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ temapreferido: newTheme }),
+                      });
+                      toast.success(`Tema actualizado a: ${newTheme === 'light' ? 'Claro' : newTheme === 'dark' ? 'Oscuro' : 'Sistema'}`);
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
             {/* SECURITY & PASSWORD SECTION */}
             <SecuritySectionForm
               showSecuritySection={showSecuritySection}
@@ -626,6 +661,10 @@ function SecuritySectionForm({
   savingPassword: boolean;
   onChangePassword: (e: React.FormEvent) => void;
 }) {
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
       <div className="flex justify-between items-center">
@@ -652,39 +691,82 @@ function SecuritySectionForm({
           className="space-y-4 pt-3 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-200"
         >
           <div className="space-y-1.5">
-            <label htmlFor="sec-current-password" className="text-xs font-bold text-slate-700 dark:text-slate-300">Contraseña Actual *</label>
-            <Input
-              id="sec-current-password"
-              type="password"
-              required
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-            />
+            <label htmlFor="sec-current-password" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Contraseña Actual *
+            </label>
+            <div className="relative">
+              <Input
+                id="sec-current-password"
+                type={showCurrentPassword ? 'text' : 'password'}
+                required
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="pr-10"
+                placeholder="Ingresa tu contraseña actual"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                title={showCurrentPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                aria-label={showCurrentPassword ? 'Ocultar contraseña actual' : 'Ver contraseña actual'}
+              >
+                {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label htmlFor="sec-new-password" className="text-xs font-bold text-slate-700 dark:text-slate-300">Nueva Contraseña *</label>
-              <Input
-                id="sec-new-password"
-                type="password"
-                required
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
+              <label htmlFor="sec-new-password" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Nueva Contraseña *
+              </label>
+              <div className="relative">
+                <Input
+                  id="sec-new-password"
+                  type={showNewPassword ? 'text' : 'password'}
+                  required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="pr-10"
+                  placeholder="Mínimo 6 caracteres"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                  title={showNewPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                  aria-label={showNewPassword ? 'Ocultar nueva contraseña' : 'Ver nueva contraseña'}
+                >
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <div className="space-y-1.5">
               <label htmlFor="sec-confirm-password" className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Confirmar Nueva Contraseña *
               </label>
-              <Input
-                id="sec-confirm-password"
-                type="password"
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
+              <div className="relative">
+                <Input
+                  id="sec-confirm-password"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pr-10"
+                  placeholder="Repite la nueva contraseña"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                  title={showConfirmPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                  aria-label={showConfirmPassword ? 'Ocultar confirmación de contraseña' : 'Ver confirmación de contraseña'}
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
           </div>
 

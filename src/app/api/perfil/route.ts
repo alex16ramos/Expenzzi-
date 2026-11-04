@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
+import { ensureUserInDb } from '@/lib/user-sync';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,9 +29,13 @@ export async function GET() {
     const userName = (userObj?.name as string) || userEmail.split('@')[0] || 'Usuario';
 
     // Retrieve user from public.usuario table
-    const dbUser = await prisma.usuario.findUnique({
+    let dbUser = await prisma.usuario.findUnique({
       where: { idusuario: userId },
     });
+
+    if (!dbUser && userObj) {
+      dbUser = await ensureUserInDb(userObj);
+    }
 
     const user = dbUser || {
       idusuario: userId,
@@ -77,6 +82,15 @@ export async function PUT(req: Request) {
         { error: 'El nombre de usuario no puede estar vacío' },
         { status: 400 }
       );
+    }
+
+    // Ensure user exists in database before update
+    const existing = await prisma.usuario.findUnique({
+      where: { idusuario: userId },
+    });
+
+    if (!existing && userObj) {
+      await ensureUserInDb(userObj);
     }
 
     const updatedUser = await prisma.usuario.update({

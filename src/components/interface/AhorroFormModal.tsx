@@ -29,6 +29,7 @@ export function AhorroFormModal({
   userRole,
 }: AhorroFormModalProps) {
   const isVisualizador = userRole === 'Visualizador';
+  const isAdmin = userRole === 'Administrador';
 
   const [fechadesde, setFechadesde] = useState(
     () => initialData?.fechadesde || new Date().toISOString().split('T')[0]
@@ -54,6 +55,11 @@ export function AhorroFormModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+
+    if (!isAdmin) {
+      setErrorMsg('Solo un usuario Administrador puede crear o modificar fondos de ahorro (RF15)');
+      return;
+    }
 
     const val = parseFloat(importe);
     if (isNaN(val) || val <= 0) {
@@ -108,13 +114,13 @@ export function AhorroFormModal({
           </button>
         </div>
 
-        {isVisualizador && (
+        {!isAdmin && (
           <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-700 dark:text-amber-200 flex items-start gap-2">
             <ShieldAlert className="w-4 h-4 shrink-0 text-amber-500 dark:text-amber-400 mt-0.5" />
             <div>
               <p className="font-semibold">Acceso Restringido</p>
               <p className="text-[11px] text-amber-600 dark:text-amber-300/80 mt-0.5">
-                Su rol actual es <strong className="underline">{userRole}</strong>. Los usuarios con rol de solo lectura no pueden crear o editar fondos de ahorro.
+                Su rol actual es <strong className="underline">{userRole}</strong>. Solo un usuario Administrador puede crear o modificar fondos de ahorro (RF15).
               </p>
             </div>
           </div>
@@ -233,7 +239,7 @@ export function AhorroFormModal({
             </Button>
             <Button
               type="submit"
-              disabled={isVisualizador || isSubmitting}
+              disabled={!isAdmin || isSubmitting}
               className="flex-1 bg-violet-600 hover:bg-violet-700 text-white gap-1.5"
             >
               <Save className="w-4 h-4" />

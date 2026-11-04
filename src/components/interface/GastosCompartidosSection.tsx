@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
+import { extractTimeFromItem } from '@/lib/time-utils';
 
 interface Member {
   idusuario: string;
@@ -644,6 +645,7 @@ export function GastosCompartidosSection({
               const convertedTotal = convertCurrency(exp.importeTotal, exp.moneda, monedaFilter, rates);
               const convertedCuota = convertCurrency(exp.cuotaPorPersona, exp.moneda, monedaFilter, rates);
               const isDifferentCurrency = exp.moneda !== monedaFilter;
+              const { cleanComment, time } = extractTimeFromItem(exp.idgasto, exp.comentario, exp.fecha);
 
               return (
                 <div
@@ -654,10 +656,10 @@ export function GastosCompartidosSection({
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-bold text-slate-900 dark:text-white">
-                          {exp.comentario || 'Gasto Compartido sin comentario'}
+                          {cleanComment || 'Gasto Compartido sin comentario'}
                         </span>
                         <span className="text-[10px] text-slate-600 dark:text-slate-400 font-medium px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-800">
-                          {exp.fecha}
+                          {exp.fecha}{time ? ` • hora: ${time}` : ''}
                         </span>
                         {isDifferentCurrency && rates && (
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">

@@ -6,6 +6,8 @@ import { emitRealtimeEvent } from '@/lib/events';
 import { getExchangeRatesForDate } from '@/lib/exchange-rate';
 import { extractTimeFromItem, formatCommentWithTime, safeToISOString } from '@/lib/time-utils';
 import { checkUserInterfaceMembership } from '@/lib/membership-cache';
+import { getCategoryLimitUsageMap } from '@/lib/limits';
+import { recordAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -386,6 +388,27 @@ export async function POST(
       });
     }
 
+    if (catIdToUse) {
+      try {
+        const cat = await prisma.categoria.findUnique({ where: { idcategoria: catIdToUse } });
+        if (cat && cat.estadolimite && cat.importe) {
+          const usageMap = await getCategoryLimitUsageMap(interfaceId);
+          const used = usageMap.get(String(cat.idcategoria)) || 0;
+          await prisma.historialLimite.create({
+            data: {
+              idcategoria: cat.idcategoria,
+              periodoaplicacion: cat.periodoaplicacion || 'Mensual',
+              importelimite: cat.importe,
+              importeutilizado: used,
+              fechacreacionlimite: new Date(),
+            },
+          });
+        }
+      } catch (limitErr) {
+        console.error('Error persisting category limit usage snapshot:', limitErr);
+      }
+    }
+
     emitRealtimeEvent(String(interfaceId), { type: 'MUTATION', entity: 'gasto', action: 'create' });
 
     return NextResponse.json({
@@ -450,6 +473,40 @@ export async function PUT(
       return NextResponse.json({ error: 'idgasto es requerido' }, { status: 400 });
     }
 
+    const prevGasto = await prisma.gasto.findUnique({
+      where: { idgasto: BigInt(idgasto) },
+    });
+
+    if (!prevGasto) {
+      return NextResponse.json({ error: 'Gasto no encontrado' }, { status: 404 });
+    }
+
+    const isAmountChanged = importe !== undefined && Number(importe) !== Number(prevGasto.importe);
+    const isCurrencyChanged = moneda && moneda !== prevGasto.moneda;
+    const isCommentChanged = comentario !== undefined && comentario !== prevGasto.comentario;
+    const isDateChanged = fecha && new Date(fecha).toISOString().split('T')[0] !== prevGasto.fecha.toISOString().split('T')[0];
+
+    if (isAmountChanged || isCurrencyChanged || isCommentChanged || isDateChanged) {
+      await recordAuditLog({
+        tipo: 'gasto',
+        identidad: BigInt(idgasto),
+        idinterfaz: interfaceId,
+        responsable: userId,
+        datosprevios: {
+          importe: Number(prevGasto.importe),
+          moneda: prevGasto.moneda,
+          comentario: prevGasto.comentario || '',
+          fecha: prevGasto.fecha.toISOString().split('T')[0],
+        },
+        datosnuevos: {
+          importe: importe !== undefined ? Number(importe) : Number(prevGasto.importe),
+          moneda: moneda || prevGasto.moneda,
+          comentario: comentario !== undefined ? String(comentario) : (prevGasto.comentario || ''),
+          fecha: fecha ? new Date(fecha).toISOString().split('T')[0] : prevGasto.fecha.toISOString().split('T')[0],
+        },
+      });
+    }
+
     const updated = await prisma.gasto.update({
       where: { idgasto: BigInt(idgasto) },
       data: {
@@ -505,6 +562,27 @@ export async function PUT(
         where: { idgasto: BigInt(idgasto) },
       });
       currentParticipants = existing.map((p) => p.idusuario);
+    }
+
+    if (updated.idcategoria) {
+      try {
+        const cat = await prisma.categoria.findUnique({ where: { idcategoria: updated.idcategoria } });
+        if (cat && cat.estadolimite && cat.importe) {
+          const usageMap = await getCategoryLimitUsageMap(interfaceId);
+          const used = usageMap.get(String(cat.idcategoria)) || 0;
+          await prisma.historialLimite.create({
+            data: {
+              idcategoria: cat.idcategoria,
+              periodoaplicacion: cat.periodoaplicacion || 'Mensual',
+              importelimite: cat.importe,
+              importeutilizado: used,
+              fechacreacionlimite: new Date(),
+            },
+          });
+        }
+      } catch (limitErr) {
+        console.error('Error persisting category limit usage snapshot in PUT:', limitErr);
+      }
     }
 
     return NextResponse.json({

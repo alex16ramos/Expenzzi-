@@ -345,7 +345,14 @@ export default function DashboardPage() {
           window.location.href = `/interface/${targetId}`;
         }
       } else {
-        toast.error(data.error || 'Código de invitación inválido o la interfaz se encuentra inactiva');
+        if (data.alreadyMember && data.interfaceId) {
+          toast.info(data.error || 'Ya perteneces a esta interfaz');
+          setIsJoinDialogOpen(false);
+          setJoinCode('');
+          window.location.href = `/interface/${data.interfaceId}`;
+        } else {
+          toast.error(data.error || 'Código de invitación inválido o la interfaz se encuentra inactiva');
+        }
       }
     } catch (err) {
       console.error('Error joining interface:', err);

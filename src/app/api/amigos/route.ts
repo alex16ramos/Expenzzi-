@@ -487,6 +487,17 @@ export async function DELETE(req: Request) {
       );
     }
 
+    // Also delete any pending friendship notifications between these users
+    await prisma.notificacion.deleteMany({
+      where: {
+        tipo: 'SOLICITUD_AMISTAD',
+        OR: [
+          { idreceptor: friendship.iddestinatario, idemisor: friendship.idremitente },
+          { idreceptor: friendship.idremitente, idemisor: friendship.iddestinatario },
+        ],
+      },
+    });
+
     await prisma.amistad.delete({
       where: { idamistad: BigInt(idamistadStr) },
     });

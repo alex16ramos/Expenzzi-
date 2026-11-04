@@ -215,7 +215,7 @@ export function Header({
                       <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                         <Users className="w-4 h-4 text-indigo-500" /> Integrantes ({displayMembers.length})
                       </span>
-                      {onOpenInvite && (
+                      {onOpenInvite && userRole === 'Administrador' && (
                         <button
                           type="button"
                           onClick={() => {

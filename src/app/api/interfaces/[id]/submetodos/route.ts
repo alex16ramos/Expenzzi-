@@ -79,9 +79,9 @@ export async function POST(
     if (!hasAccess) {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
     }
-    if (role === 'Visualizador') {
+    if (role !== 'Administrador') {
       return NextResponse.json(
-        { error: 'El rol Visualizador no tiene permisos para crear submétodos.' },
+        { error: 'Solo los administradores tienen permisos para crear submétodos.' },
         { status: 403 }
       );
     }
@@ -144,9 +144,9 @@ export async function PUT(
     if (!hasAccess) {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
     }
-    if (role === 'Visualizador') {
+    if (role !== 'Administrador') {
       return NextResponse.json(
-        { error: 'El rol Visualizador no tiene permisos para editar submétodos.' },
+        { error: 'Solo los administradores tienen permisos para editar submétodos.' },
         { status: 403 }
       );
     }
@@ -207,9 +207,9 @@ export async function DELETE(
     if (!hasAccess) {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
     }
-    if (role === 'Visualizador') {
+    if (role !== 'Administrador') {
       return NextResponse.json(
-        { error: 'El rol Visualizador no tiene permisos para desactivar submétodos.' },
+        { error: 'Solo los administradores tienen permisos para desactivar submétodos.' },
         { status: 403 }
       );
     }
